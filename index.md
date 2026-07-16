@@ -13,12 +13,22 @@
 ### System Design Concepts
 - [[wiki/system-design-concepts/web-crawler]] — Distributed web crawler architecture and design trade-offs
 - [[wiki/system-design-concepts/work-distribution]] — Partitioning work across a fleet without starvation or redundancy
+- [[wiki/system-design-concepts/preemption-economics]] — Why distributed schedulers queue/scale/kill instead of context-switching
+- [[wiki/system-design-concepts/compressible-vs-incompressible-resources]] — Why k8s overcommits CPU but hard-reserves memory (requests vs limits)
 
 ### Theory
 - [[wiki/theory/consistent-hashing]] — Stable partition assignment with minimal key movement on node changes
 - [[wiki/theory/bloom-filters]] — Probabilistic set membership for space-efficient dedup
+- [[wiki/theory/pure-functional-programming]] — Pure functions, immutability, expressions-over-statements
+- [[wiki/theory/folds-and-tail-recursion]] — foldl vs foldr, and how TCO turns recursion into a loop
+
+### Tech
+- [[wiki/tech/elm]] — Pure functional front-end language; the Elm Architecture (TEA) state loop
+
+### Coding Patterns
+- [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
 
 ## Statistics
-- Total wiki pages: 4
-- Total sources: 1
-- Last updated: 2026-05-11
+- Total wiki pages: 10
+- Total sources: 3
+- Last updated: 2026-07-01

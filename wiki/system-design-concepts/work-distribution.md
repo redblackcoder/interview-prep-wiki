@@ -33,6 +33,7 @@ Combine both: partition work into queues by key, then use pull-based consumption
 ## Connections
 - [[system-design-concepts/web-crawler]] — primary example: distributing URL fetches across a crawler fleet
 - [[theory/consistent-hashing]] — the standard technique for partition assignment with minimal rebalancing
+- [[system-design-concepts/preemption-economics]] — the admission side: *when* queued work is allowed to start, and why it isn't preemptively interleaved
 
 ## Sources
 - [[sources/docs/web-crawler-system-design]] — both crawler designs solve this as their central challenge
