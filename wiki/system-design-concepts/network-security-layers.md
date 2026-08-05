@@ -57,6 +57,7 @@ Two independent encryption layers, each answering a different question. This is 
 - [[tech/https-tls]] — the tool that secures the payload, and precisely what it leaves exposed
 - [[tech/vpn]] — the tool that secures the envelope and enforces network admission; the fix for this attack
 - [[system-design-concepts/zero-trust-ztna]] — extends the principle from network admission to per-request authorization
+- [[system-design-concepts/agent-tool-sandboxing]] — same shape one layer up: "model judgment ≠ security boundary" mirrors "encryption ≠ access control"; both are RCE riding a trusted-looking channel
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §3 Why HTTPS isn't enough (six gaps + the concrete attack walkthrough)

@@ -17,6 +17,9 @@
 - [[wiki/system-design-concepts/compressible-vs-incompressible-resources]] — Why k8s overcommits CPU but hard-reserves memory (requests vs limits)
 - [[wiki/system-design-concepts/network-security-layers]] — Payload vs envelope: why HTTPS isn't access control, with a concrete attack
 - [[wiki/system-design-concepts/zero-trust-ztna]] — Beyond perimeter VPNs: per-request, per-app authorization
+- [[wiki/system-design-concepts/context-assembly-retrieval-ladder]] — Projecting a huge corpus into a bounded context window via a cost-tiered retrieval ladder
+- [[wiki/system-design-concepts/agent-tool-sandboxing]] — Permission ≠ isolation; model judgment is never a security boundary; containment over policy
+- [[wiki/system-design-concepts/agent-loop]] — The LLM agent as a reactive state machine: typed blocks, tool_use pairing, verification as tool calls
 
 ### Theory
 - [[wiki/theory/consistent-hashing]] — Stable partition assignment with minimal key movement on node changes
@@ -24,6 +27,8 @@
 - [[wiki/theory/pure-functional-programming]] — Pure functions, immutability, expressions-over-statements
 - [[wiki/theory/folds-and-tail-recursion]] — foldl vs foldr, and how TCO turns recursion into a loop
 - [[wiki/theory/osi-model]] — The 7-layer model and encapsulation; where TLS and VPNs sit
+- [[wiki/theory/durability-rpo-rto]] — RPO/RTO, event sourcing, and the non-idempotent replay hazard on crash recovery
+- [[wiki/theory/copy-on-write-vs-mvcc]] — Isolating concurrent views: base+delta overlays (git worktrees) vs. versioned snapshots
 
 ### Tech
 - [[wiki/tech/elm]] — Pure functional front-end language; the Elm Architecture (TEA) state loop
@@ -34,6 +39,6 @@
 - [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
 
 ## Statistics
-- Total wiki pages: 15
-- Total sources: 4
-- Last updated: 2026-07-27
+- Total wiki pages: 20
+- Total sources: 5
+- Last updated: 2026-08-04
