@@ -46,6 +46,9 @@ The contract that makes crashes safe:
 
 ## Connections
 - [[system-design-concepts/agent-loop]] — persisting each loop step (WAL of tool intent/result) is what makes a turn resumable
+- [[tech/aws-rds-postgresql]] — RPO≈0 made concrete: synchronous WAL fsync + Multi-AZ standby; `synchronous_commit` is the RPO-vs-latency knob
+- [[tech/aws-elasticache-redis]] — the RPO>0 case: async replication + snapshot interval, AOF off under Multi-AZ — "persisted" ≠ durable
+- [[system-design-concepts/rds-vs-key-value-store]] — the durability contract is what separates a system of record from a cache
 - [[theory/copy-on-write-vs-mvcc]] — the complementary consistency question: isolating concurrent writers vs. surviving a crash
 - [[theory/consistent-hashing]] — both are foundational distributed-systems primitives for stateful fleets
 - [[system-design-concepts/work-distribution]] — lease/checkpoint recovery when a worker dies mid-task is the same replay-safety problem

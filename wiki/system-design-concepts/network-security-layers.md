@@ -58,6 +58,7 @@ Two independent encryption layers, each answering a different question. This is 
 - [[tech/vpn]] — the tool that secures the envelope and enforces network admission; the fix for this attack
 - [[system-design-concepts/zero-trust-ztna]] — extends the principle from network admission to per-request authorization
 - [[system-design-concepts/agent-tool-sandboxing]] — same shape one layer up: "model judgment ≠ security boundary" mirrors "encryption ≠ access control"; both are RCE riding a trusted-looking channel
+- [[tech/istio-service-mesh]] — the mesh fix made concrete: mTLS + SPIFFE + AuthorizationPolicy is per-call "verified identity, not IP" access control east-west
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §3 Why HTTPS isn't enough (six gaps + the concrete attack walkthrough)
