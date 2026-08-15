@@ -214,6 +214,7 @@
   <a href="#rls-proto" class="sub">5.1 gRPC contract</a>
   <a href="#rls-config" class="sub">5.2 Descriptor tree</a>
   <a href="#rls-identity" class="sub">5.2a Where identity comes from</a>
+  <a href="#rls-identity2" class="sub">5.2b Identifying the client</a>
   <a href="#rls-algo" class="sub">5.3 Fixed-window + Redis</a>
   <a href="#rls-cachekey" class="sub">5.4 Cache key & time bucket</a>
   <a href="#rls-localcache" class="sub">5.5 Local over-limit cache</a>
@@ -223,6 +224,7 @@
   <h2>System Design</h2>
   <a href="#tradeoffs">6 · Local vs Global trade-offs</a>
   <a href="#distributed">7 · Distributed correctness</a>
+  <a href="#global-rl" class="sub">7.5 Global / multi-region</a>
   <a href="#scaling">8 · Scaling & operability</a>
   <a href="#advanced">9 · Advanced features</a>
 
@@ -701,6 +703,34 @@ descriptor: [ (<span class="tok-key">key</span>=to_number, <span class="tok-key"
   <strong>At the edge, identity is a spoofable network/header signal you must harden</strong> (trusted hops, upstream auth); <strong>inside the mesh, identity is a verified cryptographic service principal you should prefer over IP.</strong> Same RLS, same descriptor mechanism — only the source and trustworthiness of the descriptor <em>values</em> change. This is why the RLS being identity-agnostic is a feature: one service correctly limits both a public API keyed on API-key and internal service-to-service traffic keyed on SPIFFE identity, with no code change — only different actions on the two Envoys.
 </div>
 
+<h3 id="rls-identity2">5.2b Identifying the external client — authenticated vs anonymous</h3>
+<p>§5.2a said identity is "whatever attribute you extract." But <em>which</em> attribute is trustworthy hinges on one question the interview will press: <strong>is the caller authenticated?</strong> The answer flips the whole problem.</p>
+<div class="callout key">
+  <div class="label">For an authenticated API, IP is almost irrelevant</div>
+  When the caller presents an <strong>API key / OAuth token / account ID</strong> (Twitter's API, any SaaS backend), <em>the credential is the identity.</em> You key the limit on it directly. A VPN changes the IP but not the token, so IP-hopping does nothing to evade an API-key limit. IP here is only a <em>secondary anomaly signal</em> (one key from 10,000 IPs → credential sharing/theft; one IP minting 10,000 keys → an abuse ring). This is why the VPN-hopping worry (§7.5) mostly evaporates for authenticated surfaces.
+</div>
+<p><strong>Unauthenticated surfaces are where IP actually matters</strong> — login, signup, password reset, token issuance, anonymous reads. There's no account yet, so a network-derived key is the best coarse identity you have — and exactly where raw IP betrays you. The networking fundamentals:</p>
+<table>
+<thead><tr><th>Fundamental</th><th>Why raw IP fails / what to do</th></tr></thead>
+<tbody>
+<tr><td><strong>CGNAT / NAT</strong></td><td>Carrier-grade NAT puts <em>thousands</em> of mobile users behind one public IPv4; an office or VPN exit is one IP for many humans. IP-as-identity → false positives (throttle innocents) <em>and</em> false negatives (one user across many IPs).</td></tr>
+<tr><td><strong>ASN / BGP</strong></td><td>Every IP belongs to an <strong>Autonomous System</strong> (network operator). Distinguish <em>residential/eyeball</em> ASNs from <em>datacenter/hosting</em> ASNs (AWS, OVH) and known <em>VPN/Tor</em> egress. Consumer traffic from a datacenter ASN is inherently suspicious — rate-limit or challenge it far harder. Commercial VPNs have enumerable egress ranges you can buy as threat intel.</td></tr>
+<tr><td><strong>Subnet aggregation &amp; the IPv6 trap</strong></td><td>Limit per <strong>/24</strong> (IPv4) or per <strong>/64</strong> (IPv6), <em>not</em> per exact address. A single IPv6 customer is handed a whole /64; limiting per /128 lets them rotate for free within their own allocation. The /64 is the "one customer" unit.</td></tr>
+<tr><td><strong>Real client IP recovery</strong></td><td>The source IP you see is the last hop (LB/CDN), not the client. Reconstruct via <code>X-Forwarded-For</code> with a correct trusted-hop count, RFC 7239 <code>Forwarded</code>, or Proxy Protocol (L4). Wrong config → bucket everyone as the LB (limit collapses) or trust attacker-supplied XFF (limit evaporates). See the §5.2a XFF trap.</td></tr>
+</tbody>
+</table>
+<h4>Beyond IP — identifying the source when IP is defeatable</h4>
+<p>Since a determined attacker rotates IPs (VPNs, residential-proxy networks), layer in signals that survive IP rotation:</p>
+<ul>
+<li><strong>TLS fingerprinting (JA3 / JA4)</strong> — the ClientHello (cipher suites, extensions, curves, <em>and their order</em>) fingerprints the client <em>software/stack</em>. A given bot or library has a characteristic JA4 hash <em>regardless of IP</em>, so 1,000 rotating IPs may present one telltale fingerprint. The single most useful "who is this really" signal for bot/abuse detection.</li>
+<li><strong>TCP/IP stack fingerprinting (p0f-style)</strong> — TTL, window size, TCP options reveal OS/stack; can expose that "1,000 IPs" are all the same tooling.</li>
+<li><strong>HTTP/2 fingerprinting &amp; header order</strong>, and for browsers <strong>device fingerprinting</strong> (canvas/fonts) and <strong>device IDs / cookies</strong> for stickiness across IPs (clearable → weak alone).</li>
+</ul>
+<div class="callout warn">
+  <div class="label">The honest admission — and what to do instead</div>
+  You <strong>cannot</strong> perfectly identify the source of an unauthenticated request over the modern internet — NAT, VPNs, and residential proxies make it fundamentally ambiguous. So the goal shifts from <em>identify</em> to <strong>raise attacker cost + composite scoring + graceful degradation</strong>: (1) rate-limit simultaneously per-account, per-IP, per-/64, per-ASN, and per-JA4, tripping on the <em>tightest</em> that matches (a hierarchy, not one key); (2) use <strong>ASN reputation as a multiplier</strong> — datacenter/VPN ASNs get a fraction of the residential budget; (3) on weak/ambiguous signals <strong>degrade to a challenge</strong> (CAPTCHA, proof-of-work, step-up auth) rather than a hard 429 — so a shared-IP false positive costs a real user a challenge, not an outage.
+</div>
+
 <h3 id="rls-algo">5.3 The algorithm: fixed-window over an atomic counter</h3>
 <p>The RLS uses a <strong>fixed-window counter</strong> (§2.1). This is a deliberate, defensible choice — understanding <em>why</em> is the interview payoff.</p>
 <div class="callout repo">
@@ -812,6 +842,48 @@ windowStart = (now / divider) * divider   <span class="tok-com">// integer floor
 <div class="callout q">
   <div class="label">Likely follow-up</div>
   <em>"Your Redis does 200k ops/s but you need 2M decisions/s — what now?"</em> → (1) cut round-trips: batch descriptors, local over-limit cache; (2) shard by key across a Redis Cluster (works because each counter is independent); (3) push down to local per-node budgets with async reconciliation; (4) relax the algorithm to sliding-counter to reduce store pressure. Name the trade each makes.
+</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="global-rl">
+<h2 class="section">7.5 · Global / multi-region rate limiting</h2>
+<p>The hardest version of the question: <em>"Rate-limit a globally-distributed API (say Twitter) by API key, so a user can't bypass the limit by VPN-hopping across regions. Surely you're not proposing a globally-consistent Redis?"</em> The trap is that this sounds like a hard consistency problem. It mostly isn't — <strong>if you get two framings right.</strong></p>
+
+<div class="callout key">
+  <div class="label">Framing 1 — VPN-hopping is beaten by identity keying, not by counter consistency</div>
+  The bypass exists <em>only</em> if you partition the counter by geography (independent per-region limiters with no cross-region accounting). Key the counter on <strong>identity</strong> (the API key) instead, map that key to <em>one logical global count</em>, and hopping us→eu→asia draws down the <em>same</em> total everywhere. For an authenticated API the identity is the credential (§5.2b) — a VPN can't change it. So "make the global counter strongly consistent so hopping can't help" is solving the wrong problem with the most expensive tool.
+</div>
+<div class="callout key">
+  <div class="label">Framing 2 — globally <em>consistent</em> ≠ globally <em>accurate</em></div>
+  <strong>Consistent</strong> (linearizable) is expensive and unnecessary; <strong>accurate</strong> (eventually convergent) is cheap and sufficient. Ask the business question: if the limit is 1000/hr, does anything break if an attacker briefly gets 1010 before regions converge? Almost never. <strong>The first design move is choosing the consistency model — "bounded overshoot is fine" — not choosing a store.</strong> That choice dissolves the latency problem below.
+</div>
+
+<h4>The pushback, made precise</h4>
+<p>A <em>synchronous</em> global counter on the hot path is genuinely non-viable — but because of <strong>cross-region RTT</strong> (us↔eu ≈ 80 ms, us↔asia ≈ 150–250 ms), not because of Redis. Adding that to every single-digit-ms API call is a non-starter, and it makes availability <em>worse</em> (every region now depends on a far quorum). And note: <strong>"globally consistent Redis" is nearly a category error</strong> — Redis Cluster replicates <em>asynchronously</em>; it does no cross-region consensus. So the strongly-consistent thing being rejected doesn't exist in Redis anyway. Reject it — but for the RTT reason, and know that an <em>eventually-consistent</em> global Redis (active-active) very much <em>is</em> viable.</p>
+
+<h4>Three viable designs — no request-path RTT</h4>
+<table>
+<thead><tr><th>Approach</th><th>How it works</th><th>Overshoot</th><th>Cost</th></tr></thead>
+<tbody>
+<tr><td><strong>CRDT counters (active-active)</strong></td><td>Each region increments its own sub-counter locally; regions async-replicate and <strong>merge by summing per-region counts</strong> (a PN/G-Counter — the canonical CRDT). Never loses a count; converges to the true total. Redis Enterprise "Active-Active" ships exactly this.</td><td>~ replication lag (sub-sec–secs)</td><td>Local write latency; async bandwidth</td></tr>
+<tr><td><strong>Home-region pinning</strong></td><td><code>hash(api_key) → home region</code>. All counting for a key lives in its home Redis; out-of-home requests forward <em>just the rate-limit check</em> home.</td><td>~0 (one authoritative counter)</td><td>One cross-region hop for the fraction of a key's traffic landing outside home</td></tr>
+<tr><td><strong>Local budget + async reconcile</strong></td><td>A central controller hands each region a <em>share</em> of the global budget from observed demand; regions enforce locally; controller redistributes on a slow loop (Google "Doorman"-style / large-CDN pattern).</td><td>Bounded by share granularity + reconcile interval</td><td>Fast local check; global math is off-path</td></tr>
+</tbody>
+</table>
+
+<div class="callout key">
+  <div class="label">Recommended architecture — tier consistency by the cost of overshoot</div>
+  <ul>
+  <li><strong>Hot path is always local</strong> — in-region Redis, or an in-process token bucket for the very hottest keys (tier-1 from §6).</li>
+  <li><strong>Most limits</strong> (throughput/fairness, where +5% overshoot is harmless) use <strong>CRDT active-active</strong> — zero request-path RTT, tiny bounded overshoot.</li>
+  <li><strong>A few security-critical, low-volume limits</strong> ("10 password resets/hr/account") that must be <em>tight</em> use <strong>home-region pinning</strong> — accept one cross-region hop because volume is low and correctness matters.</li>
+  </ul>
+  Different consistency for different limits, justified by blast radius — <em>that</em> distinction is the staff-level signal. State the guarantee out loud: "global limit enforced within replication lag; worst-case transient overshoot ≈ (peak cross-region QPS for a key) × (replication lag) — a rounding error for a 1000/hr limit."
+</div>
+<div class="callout q">
+  <div class="label">The one-liner that lands it</div>
+  <strong>This is CAP applied to counting.</strong> You can't have exact-global + low-latency + partition-tolerant, so you relax <em>exactness</em> to bounded overshoot — the dimension the business cares least about. Hopping is defeated by keying on identity; the counter only needs to be <em>approximately</em> globally accurate, which is cheap.
 </div>
 </section>
 

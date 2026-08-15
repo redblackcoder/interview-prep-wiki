@@ -39,10 +39,10 @@ The single most useful framing. Every deployment is a point on a 2×2 grid.
 - **Atomicity / race conditions** — naive `GET; if ok INCR` has a read-modify-write race (two proxies both read 99, both allow → 101). Fix: use **`INCR`'s atomic return value** as the decision. #1 correctness bug in home-grown limiters. Redis's per-shard atomic `INCR` (see [[tech/aws-elasticache-redis]]) is exactly why it's the canonical backing store.
 - **Clock skew** — fixed-window buckets come from each node's local clock; mitigate with NTP + units coarse enough that tens-of-ms skew is negligible.
 - **Hot keys** — one giant tenant concentrates on one Redis slot; you can't shard a single counter. Mitigate with a local over-limit cache, or split a logical limit into K sub-counters summed periodically.
-- **Scaling past one store** — cut round-trips (batch, local cache), shard across a Redis Cluster (counters are independent → clean), then push to **per-node local budgets with async reconciliation** (each node enforces a share of the global budget, reconciles via a coordinator or gossip). Trades exactness for removing the per-request hop — name the overshoot cost.
+- **Scaling past one store** — cut round-trips (batch, local cache), shard across a Redis Cluster (counters are independent → clean), then push to **per-node local budgets with async reconciliation** (each node enforces a share of the global budget, reconciles via a coordinator or gossip). Trades exactness for removing the per-request hop — name the overshoot cost. The multi-region form of this (CRDT active-active, home-region pinning) is [[system-design-concepts/global-rate-limiting]].
 
 ## Identity is composed, not intrinsic
-"What is the caller's identity — IP or service?" is a false choice. A limiter keys on **whatever attributes you extract into the descriptor**. At the **edge**, identity is a spoofable network/header signal you must harden (trusted-hop config, upstream auth); **inside a mesh**, it's a verified cryptographic service principal (mTLS/SPIFFE) you should prefer over IP. Detail in [[tech/envoy-ratelimit-service]].
+"What is the caller's identity — IP or service?" is a false choice. A limiter keys on **whatever attributes you extract into the descriptor**. At the **edge**, identity is a spoofable network/header signal you must harden (trusted-hop config, upstream auth); **inside a mesh**, it's a verified cryptographic service principal (mTLS/SPIFFE) you should prefer over IP. Detail in [[tech/envoy-ratelimit-service]]. Whether that identity is even defeatable (VPN, CGNAT) depends on authenticated-vs-anonymous — see [[system-design-concepts/client-identification]].
 
 ## Key points
 - The design space = counter location × window shape × failure trade-off.
@@ -58,6 +58,8 @@ The single most useful framing. Every deployment is a point on a 2×2 grid.
 ## Connections
 - [[theory/rate-limiting-algorithms]] — the five window shapes (fixed/sliding/token/leaky) and their trade-offs
 - [[tech/envoy-ratelimit-service]] — the concrete global RLS: gRPC + descriptors + Redis, and the identity model
+- [[system-design-concepts/global-rate-limiting]] — scaling one counter across regions (CRDT/home-region) and why VPN-hopping doesn't bypass it
+- [[system-design-concepts/client-identification]] — what you actually key on: authenticated credential vs anonymous IP/ASN/fingerprint
 - [[tech/istio-service-mesh]] — how the limiter is wired onto Envoy at the edge in a mesh deployment
 - [[tech/aws-elasticache-redis]] — the atomic `INCR` per shard is what makes Redis the canonical counter store
 - [[system-design-concepts/work-distribution]] — both are about coordinating a fleet without a central bottleneck

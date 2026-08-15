@@ -51,6 +51,8 @@ The trustworthy signals differ completely by direction:
 ## Connections
 - [[system-design-concepts/rate-limiting]] — the global-limiter half of the local-vs-global framing this implements
 - [[theory/rate-limiting-algorithms]] — why fixed-window-over-atomic-counter, and the cache-key window encoding
+- [[system-design-concepts/client-identification]] — deepens the descriptor identity model: authenticated credential vs anonymous IP/ASN/JA4 at the edge
+- [[system-design-concepts/global-rate-limiting]] — running this single-region counter across regions without a synchronous global store
 - [[tech/istio-service-mesh]] — how the RLS filter + cluster are patched onto the ingress gateway
 - [[tech/aws-elasticache-redis]] — the Redis atomic `INCR`/pipeline/cluster behavior the RLS depends on
 - [[system-design-concepts/network-security-layers]] — the edge-vs-mesh trust distinction mirrors payload-vs-envelope; mTLS/SPIFFE is the verified-identity anchor
