@@ -17,7 +17,7 @@ You are choosing which resource — *durable bytes on SSD* or *fast bytes in DRA
 | Consistency | ACID, strong, MVCC; synchronous Multi-AZ commit | Per-command atomic; **async** replication → weaker; failover can lose writes |
 | Durability (RPO) | Near-zero (WAL + fsync + sync standby) | Non-zero — snapshot interval + replication lag (see [[theory/durability-rpo-rto]]) |
 | Latency (p50 point read) | ~0.2–2 ms | ~50–300 µs |
-| Write scaling | Single writer (vertical / Aurora / Citus) | Horizontal via cluster sharding (up to 500 shards) |
+| Write scaling | Single writer — vertical, or shard (Citus / app / Aurora Limitless); vanilla Aurora raises the ceiling but is still single-writer | Horizontal via cluster sharding (up to 500 shards) |
 | Best role | System of record; anything relational, transactional, query-diverse | Cache, session, rate-limit, leaderboard, queue, derived/ephemeral state |
 
 ## Why "query flexibility" is the relational killer feature

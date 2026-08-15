@@ -51,7 +51,7 @@ Keeps the Postgres wire protocol but replaces storage with a distributed, 6-way-
 - Readable-standby is a product-tier decision — same physical replication underneath.
 - gp3 decouples IOPS from size *above 400 GiB*; below that you're capped at 3,000 IOPS — a classic sizing trap.
 - `synchronous_commit` lets you relax durability for latency without touching topology; `off` still can't corrupt, only lose recent commits.
-- Single writer is the relational scaling ceiling; Aurora/Citus/app-sharding are the escapes.
+- Single writer is the relational scaling ceiling; Aurora *raises* it (better storage, faster failover, 15 low-lag read replicas) but is **still single-writer** — real write scale-out means sharding (Citus / app-level / Aurora Limitless).
 
 ## Interview angle
 

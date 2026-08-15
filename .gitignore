@@ -1,3 +1,8 @@
 .DS_Store
 .obsidian/workspace.json
 .obsidian/graph.json
+
+# Local-only private notes: customer PII, deal specifics, colleague names,
+# internal links. NEVER commit or push (personal GitHub != confidential data).
+private/
+**/private/

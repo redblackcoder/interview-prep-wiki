@@ -7,6 +7,7 @@
 - [[wiki/tech/|Tech]] — Technologies and platforms
 - [[wiki/algorithms/|Algorithms]] — CS algorithms
 - [[wiki/coding-patterns/|Coding Patterns]] — Patterns from coding problems
+- [[wiki/behavioral/|Behavioral]] — Interview stories (STAR), one per leadership-principle prompt
 
 ## Pages
 
@@ -23,6 +24,8 @@
 - [[wiki/system-design-concepts/rds-vs-key-value-store]] — Relational vs KV as the primary store: durable SSD bytes vs fast DRAM bytes
 - [[wiki/system-design-concepts/cloud-database-cost-model]] — The four cost axes (instance/storage/IO/requests) and the ~100–250× RAM-vs-SSD gap
 - [[wiki/system-design-concepts/rate-limiting]] — Counter location × window shape × failure trade-off; local vs global, L4 vs L7
+- [[wiki/system-design-concepts/global-rate-limiting]] — Multi-region counting: consistent vs accurate, CRDT/home-region, why VPN-hopping doesn't bypass
+- [[wiki/system-design-concepts/client-identification]] — What to key a limiter on: authenticated credential vs anonymous IP/ASN/JA4; CGNAT and the IPv6 /64 trap
 
 ### Theory
 - [[wiki/theory/consistent-hashing]] — Stable partition assignment with minimal key movement on node changes
@@ -46,7 +49,10 @@
 ### Coding Patterns
 - [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
 
+### Behavioral
+- [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
+
 ## Statistics
-- Total wiki pages: 28
+- Total wiki pages: 31
 - Total sources: 8
-- Last updated: 2026-08-12
+- Last updated: 2026-08-15
