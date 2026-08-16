@@ -54,4 +54,4 @@ Redis executes commands on **one thread per shard** (I/O threads in 6+/Valkey ha
 
 ## Sources
 - [[sources/docs/rds-vs-kv-store-study-guide]] — §7 ElastiCache specifics, §2 durability, §4 performance/failure modes
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
+- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables

@@ -26,6 +26,8 @@
 - [[wiki/system-design-concepts/rate-limiting]] — Counter location × window shape × failure trade-off; local vs global, L4 vs L7
 - [[wiki/system-design-concepts/global-rate-limiting]] — Multi-region counting: consistent vs accurate, CRDT/home-region, why VPN-hopping doesn't bypass
 - [[wiki/system-design-concepts/client-identification]] — What to key a limiter on: authenticated credential vs anonymous IP/ASN/JA4; CGNAT and the IPv6 /64 trap
+- [[wiki/system-design-concepts/message-fanout]] — Pub/sub fan-out without a hot process: Manifold + FastGlobal + semaphore back-pressure
+- [[wiki/system-design-concepts/read-state-watermarking]] — Durable chat delivery (commit-before-ACK) + per-user watermark for multi-device notification dedup
 
 ### Theory
 - [[wiki/theory/consistent-hashing]] — Stable partition assignment with minimal key movement on node changes
@@ -36,6 +38,8 @@
 - [[wiki/theory/durability-rpo-rto]] — RPO/RTO, event sourcing, and the non-idempotent replay hazard on crash recovery
 - [[wiki/theory/copy-on-write-vs-mvcc]] — Isolating concurrent views: base+delta overlays (git worktrees) vs. versioned snapshots
 - [[wiki/theory/rate-limiting-algorithms]] — The five window shapes (fixed/sliding-log/sliding-counter/token/leaky) and their trade-offs
+- [[wiki/theory/actor-model-message-passing]] — Actor isolation via copy (BEAM) vs immutability+pointers (Akka); the >64B shared-heap loophole
+- [[wiki/theory/concurrency-primitives]] — Process vs thread vs green thread, ranked by context-switch cost (TLB flush vs mode switch vs user-space)
 
 ### Tech
 - [[wiki/tech/elm]] — Pure functional front-end language; the Elm Architecture (TEA) state loop
@@ -53,6 +57,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 31
-- Total sources: 8
-- Last updated: 2026-08-15
+- Total wiki pages: 35
+- Total sources: 9
+- Last updated: 2026-08-16

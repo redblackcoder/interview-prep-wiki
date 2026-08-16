@@ -47,4 +47,4 @@ Client → cloud LB → `istio-ingressgateway` → matches Gateway listener + Vi
 
 ## Sources
 - [[sources/docs/istio-rls-deployment-walkthrough]] — the complete K8s + Istio manifests (namespace → services → gateway → mTLS → authz → Redis → RLS → EnvoyFilters) and the who-configures-what map
-- [istio-rls-deployment-walkthrough.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/istio-rls-deployment-walkthrough.html) — annotated deployment with topology diagram and end-to-end request flow
+- [istio-rls-deployment-walkthrough.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/istio-rls-deployment-walkthrough.html) — annotated deployment with topology diagram and end-to-end request flow

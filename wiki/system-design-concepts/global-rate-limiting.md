@@ -52,4 +52,4 @@ Different consistency for different limits, justified by blast radius — *that*
 
 ## Sources
 - [[sources/docs/rate-limiting-study-guide]] — §7.5 global / multi-region rate limiting
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rate-limiting-study-guide.html#global-rl) — consistency spectrum, CRDT/home-region/reconcile table, CAP-applied-to-counting
+- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html#global-rl) — consistency spectrum, CRDT/home-region/reconcile table, CAP-applied-to-counting

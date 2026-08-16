@@ -66,4 +66,4 @@ The single most useful framing. Every deployment is a point on a 2×2 grid.
 
 ## Sources
 - [[sources/docs/rate-limiting-study-guide]] — §1 why + load-management family, §3 the 2×2, §6–8 trade-offs/correctness/scaling
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rate-limiting-study-guide.html) — full staff+ guide grounded in envoyproxy/ratelimit
+- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html) — full staff+ guide grounded in envoyproxy/ratelimit

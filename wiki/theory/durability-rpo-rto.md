@@ -52,6 +52,7 @@ The contract that makes crashes safe:
 - [[theory/copy-on-write-vs-mvcc]] — the complementary consistency question: isolating concurrent writers vs. surviving a crash
 - [[theory/consistent-hashing]] — both are foundational distributed-systems primitives for stateful fleets
 - [[system-design-concepts/work-distribution]] — lease/checkpoint recovery when a worker dies mid-task is the same replay-safety problem
+- [[system-design-concepts/read-state-watermarking]] — commit-before-ACK + client retry timer is RPO≈0 reasoning applied to chat message delivery
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §8 crash recovery, §9 durability glossary

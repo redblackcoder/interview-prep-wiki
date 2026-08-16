@@ -50,4 +50,4 @@ You **cannot** perfectly identify the source of an unauthenticated request over 
 
 ## Sources
 - [[sources/docs/rate-limiting-study-guide]] — §5.2b identifying the external client (authenticated vs anonymous, beyond-IP signals)
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rate-limiting-study-guide.html#rls-identity2) — CGNAT/ASN//64/XFF table, JA3/JA4 fingerprinting, composite identity, degrade-to-challenge
+- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html#rls-identity2) — CGNAT/ASN//64/XFF table, JA3/JA4 fingerprinting, composite identity, degrade-to-challenge

@@ -59,5 +59,5 @@ The trustworthy signals differ completely by direction:
 
 ## Sources
 - [[sources/docs/rate-limiting-study-guide]] — §5 the global RLS (architecture, gRPC contract, descriptor tree, identity, algorithm, cache, failure modes)
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rate-limiting-study-guide.html) — repo-grounded walkthrough of envoyproxy/ratelimit internals
+- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html) — repo-grounded walkthrough of envoyproxy/ratelimit internals
 - [[sources/docs/istio-rls-deployment-walkthrough]] — the runnable manifests that wire this service to a gateway

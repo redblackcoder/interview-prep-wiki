@@ -57,4 +57,4 @@ Rarely "pick one." The senior answer is **PostgreSQL as the durable system of re
 
 ## Sources
 - [[sources/docs/rds-vs-kv-store-study-guide]] — full staff+ study guide (data model, durability, scaling, pricing, decision framework)
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rds-vs-kv-store-study-guide.html) — §0–1 mental model & data model, §11 decision framework
+- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — §0–1 mental model & data model, §11 decision framework

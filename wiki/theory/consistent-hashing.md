@@ -25,6 +25,7 @@ Each physical node maps to multiple positions on the ring (virtual nodes). This 
 ## Connections
 - [[system-design-concepts/work-distribution]] — consistent hashing is the default partition assignment strategy
 - [[system-design-concepts/web-crawler]] — used to assign host ownership to crawler shards
+- [[system-design-concepts/message-fanout]] — the routing ring FastGlobal serves copy-free, and the `phash2` hashing Manifold's partitioner uses to spread PIDs across cores
 
 ## Sources
 - [[sources/docs/web-crawler-system-design]] — consistent hashing for host-to-shard assignment with minimal content movement on rebalance

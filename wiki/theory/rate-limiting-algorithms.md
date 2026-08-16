@@ -49,4 +49,4 @@ The [[tech/envoy-ratelimit-service|envoyproxy/ratelimit]] service uses **fixed w
 
 ## Sources
 - [[sources/docs/rate-limiting-study-guide]] — §2 the five algorithms, §5.3–5.4 fixed-window + cache-key construction
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rate-limiting-study-guide.html) — algorithm diagrams and comparison table
+- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html) — algorithm diagrams and comparison table

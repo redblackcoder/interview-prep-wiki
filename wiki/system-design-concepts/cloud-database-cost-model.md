@@ -55,4 +55,4 @@ Redis costs ~2.5× more here *and* gives a weaker durability guarantee and no ad
 
 ## Sources
 - [[sources/docs/rds-vs-kv-store-study-guide]] — §8 pricing model breakdown, §9 worked cost examples, §10 rate reference tables
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rds-vs-kv-store-study-guide.html) — full itemized cost math and representative us-east-1 rates
+- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full itemized cost math and representative us-east-1 rates

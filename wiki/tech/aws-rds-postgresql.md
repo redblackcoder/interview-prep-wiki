@@ -66,4 +66,4 @@ Keeps the Postgres wire protocol but replaces storage with a distributed, 6-way-
 
 ## Sources
 - [[sources/docs/rds-vs-kv-store-study-guide]] — §6 RDS specifics (topologies, storage, Aurora), §2 durability
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
+- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
