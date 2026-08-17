@@ -57,7 +57,9 @@ A Spark task's "register file" is its multi-GB working set. There is no cheap sn
 ## Connections
 - [[system-design-concepts/compressible-vs-incompressible-resources]] — the CPU exception: the one resource the cluster still time-slices, and why memory can't be
 - [[system-design-concepts/work-distribution]] — queueing, backpressure, and starvation-avoidance are the admission layer's tools; this page explains *when* work is allowed to start at all
-- Builds on OS scheduling theory — CFS, the context switch, and the round-robin (response time) vs SJF/FIFO (turnaround) tradeoff
+- [[theory/cpu-scheduler-goals]] — the OS-layer goal tradeoffs (responsiveness vs throughput vs fairness) this page inherits and inverts one layer up
+- [[theory/cfs-completely-fair-scheduler]] — the CFS + cgroup shares/quota machinery that time-slices executor threads *underneath* every Spark/k8s workload
+- [[theory/eevdf-scheduler]] — the current (6.6+) OS executor beneath the cluster layer; the round-robin (response time) vs SJF/FIFO (turnaround) tradeoff in its modern form
 - [[theory/concurrency-primitives]] — the context-switch *cost* (TLB flush vs mode switch vs user-space) is exactly what makes preemption cheap or expensive at each layer
 
 ## Sources

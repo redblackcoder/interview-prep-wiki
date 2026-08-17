@@ -54,6 +54,7 @@ Rarely "pick one." The senior answer is **PostgreSQL as the durable system of re
 - [[tech/aws-elasticache-redis]] — the KV implementation: engines, persistence semantics, data tiering
 - [[theory/durability-rpo-rto]] — the durability contract that separates a system of record from a cache
 - [[theory/copy-on-write-vs-mvcc]] — MVCC is *how* Postgres gives readers a consistent snapshot without blocking writers
+- [[theory/latency-numbers]] — the RAM-vs-SSD latency gap (100 ns vs µs–ms) is the physical reason Redis wins on the hot set
 
 ## Sources
 - [[sources/docs/rds-vs-kv-store-study-guide]] — full staff+ study guide (data model, durability, scaling, pricing, decision framework)

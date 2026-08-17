@@ -28,9 +28,19 @@
 - [[wiki/system-design-concepts/client-identification]] — What to key a limiter on: authenticated credential vs anonymous IP/ASN/JA4; CGNAT and the IPv6 /64 trap
 - [[wiki/system-design-concepts/message-fanout]] — Pub/sub fan-out without a hot process: Manifold + FastGlobal + semaphore back-pressure
 - [[wiki/system-design-concepts/read-state-watermarking]] — Durable chat delivery (commit-before-ACK) + per-user watermark for multi-device notification dedup
+- [[wiki/system-design-concepts/hash-vs-range-partitioning]] — Uniform load vs cheap range scans; the DynamoDB composite-key resolution and the hot-partition trap
+- [[wiki/system-design-concepts/hinted-handoff]] — Sloppy quorum: stay writable through AZ+1 at RF=3 without raising the replication factor
+- [[wiki/system-design-concepts/read-repair]] — Read-time convergence: heal the hot set for free on divergent quorum reads
+- [[wiki/system-design-concepts/anti-entropy-merkle-trees]] — Background convergence for cold keys; Merkle diffing in O(diffs·log N), not O(N)
+- [[wiki/system-design-concepts/per-shard-raft]] — Linearizable AND scalable: one Raft group per shard, RF=5 for AZ+1 majority
+- [[wiki/system-design-concepts/leaderless-vs-leader-based]] — The write-path fork; the Dynamo 2007→DynamoDB 2012 switch and why
 
 ### Theory
-- [[wiki/theory/consistent-hashing]] — Stable partition assignment with minimal key movement on node changes
+- [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
+- [[wiki/theory/consistency-models]] — The spectrum eventual→strict-serializable; why W+R>N is NOT linearizable
+- [[wiki/theory/consensus-raft]] — Raft = election + log replication + safety, all on majority overlap; the linearizable mechanism
+- [[wiki/theory/consistent-hashing]] — Ring + vnodes for stable partitioning; the copyset durability trade-off of vnode count
+- [[wiki/theory/vector-clocks]] — Causal-history counters that detect concurrent writes (siblings); vs Lamport clocks; why leaders skip them
 - [[wiki/theory/bloom-filters]] — Probabilistic set membership for space-efficient dedup
 - [[wiki/theory/pure-functional-programming]] — Pure functions, immutability, expressions-over-statements
 - [[wiki/theory/folds-and-tail-recursion]] — foldl vs foldr, and how TCO turns recursion into a loop
@@ -40,6 +50,7 @@
 - [[wiki/theory/rate-limiting-algorithms]] — The five window shapes (fixed/sliding-log/sliding-counter/token/leaky) and their trade-offs
 - [[wiki/theory/actor-model-message-passing]] — Actor isolation via copy (BEAM) vs immutability+pointers (Akka); the >64B shared-heap loophole
 - [[wiki/theory/concurrency-primitives]] — Process vs thread vs green thread, ranked by context-switch cost (TLB flush vs mode switch vs user-space)
+- [[wiki/theory/latency-numbers]] — The latency ladder (L1→RAM→LAN→disk→WAN); latency stalls while bandwidth doubles; physics-bound vs engineering-bound
 
 ### Tech
 - [[wiki/tech/elm]] — Pure functional front-end language; the Elm Architecture (TEA) state loop
@@ -57,6 +68,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 35
-- Total sources: 9
-- Last updated: 2026-08-16
+- Total wiki pages: 46
+- Total sources: 11
+- Last updated: 2026-08-17

@@ -36,6 +36,7 @@ This is the same **preemption-cost logic** as [[system-design-concepts/preemptio
 - [[system-design-concepts/preemption-economics]] — same governing rule: preempt where state save/restore is cheap; the context-switch cost here is that rule at the OS layer
 - [[system-design-concepts/compressible-vs-incompressible-resources]] — CPU (time-sliceable) vs memory (not) mirrors why thread stacks are a hard cap while CPU is overcommittable
 - [[system-design-concepts/message-fanout]] — "single-threaded per process" and reduction-count de-scheduling are why fan-out from one process is a bottleneck
+- [[theory/latency-numbers]] — the ns→ms latency gap is *why* blocking a thread on I/O is catastrophic, and why green threads exist for I/O-bound concurrency
 
 ## Sources
 - [[sources/articles/discord-scaling-elixir-5m-concurrent]] — "OS Primitives: Processes vs. Threads vs. Green Threads" (companion deep-dive)
