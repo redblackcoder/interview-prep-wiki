@@ -60,13 +60,41 @@ Uniqueness is the one invariant whose violation is **silent and unrecoverable** 
 
 The timestamp assumes time only moves forward. NTP step corrections, VM live-migration, and leap seconds move wall clocks **backward by milliseconds** routinely. A worker at `t=1000` yanked back to `t=995` will **re-issue** ids from that window.
 
-**Policy at the moment `now < last_issued`:**
-- Track a `last_issued_ms` watermark (highest ms ever minted from).
-- `now == last` → increment sequence; on overflow, **spin-wait** to next ms.
-- `now < last`, **small** regression (< threshold) → keep minting against `last` (wait for wall clock to catch up).
-- `now < last`, **large** regression → **stop minting, fail loud, alert.** Reject a few retryable writes rather than silently corrupt data. Blast radius = one worker; the client retries onto a healthy one.
-- Prefer a **monotonic clock**; use wall-clock only to seed the epoch at start.
-- If persisting the watermark to survive restarts, do it **per batch, not per id** (per-id disk flush wrecks latency) — and on crash **resume from `last_persisted + batch_size`**, never `last_issued`, or you replay a gap.
+**Split it into two sub-problems — they have different solutions, and conflating them is what drags you toward a hot-path disk flush.**
+
+**A — regression *while the process is alive* (NTP slew, leap-second smear, small step). Zero disk needed.**
+- Seed from the wall clock **once at startup**, then drive the timestamp field from a **monotonic clock** (`CLOCK_MONOTONIC` / `System.nanoTime`). A monotonic clock by definition never regresses, so NTP moving the wall clock underneath you can't move your ids.
+- Keep an **in-memory** `last_issued_ms` watermark:
+  - `now == last` → increment sequence; on overflow, **spin-wait** to next ms.
+  - `now < last`, **small** regression (< threshold) → keep minting against `last` (wait for the clock to catch up).
+  - `now < last`, **large** regression → **stop minting, fail loud, alert.** Reject a few retryable writes rather than silently corrupt data. Blast radius = one worker; the client retries onto a healthy one.
+- In-memory watermark + monotonic source fully covers A. No flush, ever.
+
+**B — the watermark is *lost across a crash/restart*. This is the only part that ever wanted durability — and local disk is the wrong tool.**
+
+> **Don't put a second durable store (local disk, 2–3 ms flush) on the hot path. You already have a durable, consistent, off-hot-path store: the etcd/ZooKeeper worker-id lease. Push restart-durability into the coordination you do at startup anyway.**
+
+The elegant part: **the reclaim delay you already need for Risk 2 (split-brain) also solves B for free.** State the fleet assumption explicitly — *clocks are bounded by `max_clock_skew` (NTP-monitored; a host exceeding it self-ejects)* — then:
+
+```
+Worker A holds id 42; its lease expires (per etcd) at time E. A self-fences on
+lease loss, so A's largest possible timestamp ≤ E + max_clock_skew.
+Id 42 is reclaimed only after lease_TTL past E, so when B acquires 42, B's clock
+already reads ≥ E + lease_TTL − max_clock_skew.
+
+If  lease_TTL > 2 × max_clock_skew,  then  B's clock > A's max timestamp
+BY CONSTRUCTION — before B mints a single id. No disk, no startup wait.
+```
+
+- Size **`lease_TTL ≥ 2 × max_clock_skew + margin`** and the cross-restart clock hazard disappears — the split-brain cooldown does double duty.
+- Sharp edge: a **fast restart** (pod bounces in 500 ms) must not resurrect its old id inside the cooldown. Rule: **every process start is a cold claimant** — acquire a *fresh* lease (new fencing token), never fast-path re-acquisition of a still-cooling id. It then gets either a different id (disjoint `(timestamp, worker)` space → safe) or one that already cleared the delay (safe by the inequality).
+
+**If you genuinely want an explicit persisted watermark (belt + suspenders, e.g. tiny id space): reserve-ahead, never record-behind.** This is the generalization of the gap-vs-replay rule.
+- **Record-behind** (persist `last_issued` *after* minting) → on crash you resume from stale state and **replay** issued ids. *Unsafe — the trap.*
+- **Reserve-ahead** (persist a ceiling *before* minting) → on crash you resume *above* the reservation. **Gap, never replay. Safe by construction.**
+- Mechanism: one etcd write says "worker 42 may issue up to `now + Δ`" (Δ ≈ 2 s). Mint freely below the ceiling with **zero I/O per id**; an async task bumps the reservation before you approach it. Coordination cost is **one write per Δ, off the hot path** — not per id — and gaps are free (nobody needs contiguity).
+
+**Bottom line: the 2–3 ms flush never enters the picture.** In-life regression is a *clock-source* problem (monotonic); cross-restart regression is a *coordination* problem you've already paid for.
 
 ### Risk 2 — worker-id split-brain (detection ≠ fencing)
 
@@ -98,13 +126,13 @@ Snowflake ids leak **creation time and volume** to anyone who sees them in a URL
 1. **Uniqueness by construction, not by remembering** — partition the space; never store issued ids.
 2. **Library, not a service** — no per-id network hop, no per-id P0 dependency; coordinate **once at startup**.
 3. Layout = **time (k-sort) | region+worker (space) | sequence (intra-ms)**; bits ≠ print encoding (base32 = 5 b/char).
-4. **Clock-backward** ⇒ watermark + spin-small / fail-loud-large; monotonic clock; persist per-batch, resume forward.
+4. **Clock-backward** = two problems: *in-life* ⇒ monotonic clock + in-memory watermark (no disk); *across-restart* ⇒ solved free by the split-brain reclaim delay if `lease_TTL ≥ 2·max_skew`. Never flush per id; if you must persist, **reserve-ahead** (gap), never **record-behind** (replay).
 5. **Worker-id split-brain** ⇒ self-fence fail-closed in the worker; reclaim only after `TTL + skew + margin`. LB eviction is not a fence.
 6. **UUIDv7** deletes the whole worker-id/clock problem if you can afford 128 bits; Snowflake buys you 64-bit + decodability.
 
 ## Interview angle
 
-> "The core move is uniqueness by construction rather than by remembering: I partition the id space so two generators can't collide, then generate locally with no per-id coordination. So it's a library, not a service — a central id service or a Redis INCR puts a network hop and a stateful P0 dependency on every write, which is exactly what you can't afford on the hot path. Layout is `[ms timestamp | region+worker | sequence]` — time gives k-sortability, region+worker gives spatial disjointness, sequence disambiguates within a millisecond; 41 bits of ms is ~69 years. Worker ids are leased from etcd once at startup, off the hot path. The two things that actually break uniqueness are the clock going backward — which I handle with a watermark, spinning on small regressions and failing loud on large ones — and worker-id split-brain on a GC pause, where the worker itself has to fail-closed and stop minting the instant it can't confirm its lease, because eviction from the load balancer doesn't stop a local generator. If 128-bit keys are fine, UUIDv7 is honestly the better default since it deletes the worker-id and clock problems entirely; I'd pick Snowflake when I need a 64-bit BIGINT key or decodable metadata."
+> "The core move is uniqueness by construction rather than by remembering: I partition the id space so two generators can't collide, then generate locally with no per-id coordination. So it's a library, not a service — a central id service or a Redis INCR puts a network hop and a stateful P0 dependency on every write, which is exactly what you can't afford on the hot path. Layout is `[ms timestamp | region+worker | sequence]` — time gives k-sortability, region+worker gives spatial disjointness, sequence disambiguates within a millisecond; 41 bits of ms is ~69 years. Worker ids are leased from etcd once at startup, off the hot path. The two things that actually break uniqueness are the clock going backward and worker-id split-brain. Clock-backward is really two problems: while the process is alive I drive the timestamp from a monotonic clock so NTP can't regress it, with an in-memory watermark that spins on small regressions and fails loud on large ones — no disk. Across a restart the watermark is lost, but I don't reach for local disk; that flush is 2–3 ms on the hot path and I already have a durable off-path store in the worker-id lease. If I size `lease_TTL ≥ 2× max clock skew`, the reclaim delay I need for split-brain anyway guarantees a new holder's clock is already past the old holder's last timestamp, so id reuse is safe with no disk and no startup wait. Split-brain itself: on a GC pause the worker has to fail-closed and stop minting the instant it can't confirm its lease, because eviction from the load balancer doesn't stop a local generator. If 128-bit keys are fine, UUIDv7 is honestly the better default since it deletes the worker-id and clock problems entirely; I'd pick Snowflake when I need a 64-bit BIGINT key or decodable metadata."
 
 ## Connections
 - [[theory/consensus-raft]] — what backs the etcd/ZooKeeper worker-id lease; linearizable lease grant is why two workers can't hold the same id (absent the fencing gap)
