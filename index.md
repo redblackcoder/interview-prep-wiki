@@ -35,6 +35,9 @@
 - [[wiki/system-design-concepts/per-shard-raft]] — Linearizable AND scalable: one Raft group per shard, RF=5 for AZ+1 majority
 - [[wiki/system-design-concepts/leaderless-vs-leader-based]] — The write-path fork; the Dynamo 2007→DynamoDB 2012 switch and why
 - [[wiki/system-design-concepts/distributed-id-generation]] — Global unique IDs with no per-ID coordination: uniqueness by construction, library-not-service, clock-backward + worker-id split-brain
+- [[wiki/system-design-concepts/serving-constrained-resources]] — Scarce/expensive backends (GPUs): a queue smooths bursts but can't fix a deficit; add-capacity / shed / degrade
+- [[wiki/system-design-concepts/llm-inference-serving]] — What sets a GPU's serving capacity: KV cache (memory-bound) + continuous batching
+- [[wiki/system-design-concepts/async-response-routing]] — Returning an async/streamed result to the caller: session registry + pub/sub back-channel; durable log vs real-time channel
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -69,6 +72,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 47
-- Total sources: 11
-- Last updated: 2026-08-17
+- Total wiki pages: 50
+- Total sources: 12
+- Last updated: 2026-08-19
