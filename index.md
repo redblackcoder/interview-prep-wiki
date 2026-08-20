@@ -45,6 +45,7 @@
 - [[wiki/system-design-concepts/exactly-once-semantics]] — Effectively-once = at-least-once + dedup-by-key + atomic commit; delivery≠effect; Kafka→Kafka boundary
 - [[wiki/system-design-concepts/hot-key-write-contention]] — Aggregate load shards for free; contention on one key doesn't; remove/concentrate/approximate the coordination
 - [[wiki/system-design-concepts/commutative-aggregation]] — Order-free ops (max/sum/set-union) need durability + a cutoff, not linearizability; CALM/CRDT; idempotence makes at-least-once safe
+- [[wiki/system-design-concepts/read-side-fanout]] — One→many live updates: coalesce to latest, two-level fan-out over a pub/sub bus, snapshot+reconcile bootstrap
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -81,6 +82,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 59
+- Total wiki pages: 60
 - Total sources: 17
 - Last updated: 2026-08-20

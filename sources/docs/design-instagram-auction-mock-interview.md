@@ -41,7 +41,7 @@ Distilled from a Google **Senior Staff (L7)** ~40-min systems-design screen: **"
 
 - **Exactly-once close:** the winner-declaration daemon must be idempotent and sharded — what's the actual mechanism so an auction is closed once and only once (fencing token on the close? conditional write of `winner` keyed by `auction_id`)? I left this as an open thread.
 - **Skew-reconciliation algorithm at close:** I hand-waved "use the timestamps." Concretely, how do I bound cross-node clock skew (TrueTime-style uncertainty interval? bounded-NTP + margin?) and decide the in-window set deterministically when server clocks disagree?
-- **Read fan-out for the live price:** millions may *watch* a hot auction's price tick without bidding. How do I fan out the current max (pub/sub to edge? push vs. poll?) without melting Redis — this is the read-side mirror of the write crux and I never designed it.
+- **Read fan-out for the live price:** millions may *watch* a hot auction's price tick without bidding. How do I fan out the current max (pub/sub to edge? push vs. poll?) without melting Redis — this is the read-side mirror of the write crux and I never designed it. *(Addressed post-interview → [[wiki/system-design-concepts/read-side-fanout]]: coalesce to latest + two-level fan-out over a pub/sub bus + snapshot/reconcile bootstrap.)*
 - **Bid admission control / anti-spam:** best-effort reject-below-current-max at the edge using the (stale) Redis value to cut log spam, with the authoritative check at close — what's the false-reject risk when Redis is stale, and where does min-increment enforcement live?
 - **Sync-window mechanics:** when I flip the last 30s of a hot auction to quorum writes, how does the write path *switch modes* mid-auction without dropping in-flight bids?
 
@@ -55,6 +55,7 @@ Distilled from a Google **Senior Staff (L7)** ~40-min systems-design screen: **"
 - Same machinery as: [[sources/docs/streaming-101-world-beyond-batch]] / [[wiki/system-design-concepts/event-time-vs-processing-time]] — the trailing-1s consumer window + grace period at close *is* windowing with watermarks; the deadline is a watermark and the grace window handles late/skewed events.
 - Relates to: [[wiki/theory/durability-rpo-rto]] — RPO ~1s async replication, the AZ-vs-region distinction, and turning durability up only in the final window.
 - Return-path echo of: [[wiki/system-design-concepts/async-response-routing]] — "bid received" vs. adjudicated; feedback returns asynchronously and must be routed back to the bidder.
+- Read-side twin: [[wiki/system-design-concepts/read-side-fanout]] — broadcasting the live max to millions of watchers (one→many), the mirror of the write-side hot-key crux.
 - Shares the CP-under-partition stance with: [[sources/docs/distributed-kv-store-mock-interview]] — single-leader ownership, choosing consistency over availability for the contended key.
 - Partitioning lens: [[wiki/system-design-concepts/hash-vs-range-partitioning]] — hash-by-`auction_id`, and why a hot key defeats naive partitioning.
 
