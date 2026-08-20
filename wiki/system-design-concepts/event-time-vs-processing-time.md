@@ -35,6 +35,7 @@ For unbounded, out-of-order data you can **never know for certain** you've seen 
 - The named mechanism behind an ad-hoc "5-day grace window" is **watermarks + allowed-lateness**; saying the mechanism (not just the behavior) is the depth signal in an interview.
 - Dashboards tolerate **mutable, eventually-accurate** windows; billing needs a **cutoff + correction policy** — same event log, two consumers, two completeness models (the [[system-design-concepts/lambda-vs-kappa|Lambda/Kappa]] split).
 - Approximation algorithms with error bounds assume in-order arrival — those bounds are meaningless on skewed, out-of-order data. Beware.
+- **A deadline is a watermark; a "grace window" is allowed-lateness.** Auction close is the same machinery: the end time is an event-time cutoff, but *server clocks disagree*, so you accept bids for a small grace window past local end and adjudicate membership by each bid's **recorded event timestamp** — never by which node's wall-clock fired first. The winner is a windowed `max` over the in-cutoff set. "Did this bid make it before close?" is precisely "is this event in-window or late?"
 
 ## Interview angle
 
@@ -47,7 +48,10 @@ For unbounded, out-of-order data you can **never know for certain** you've seen 
 - [[tech/kafka]] — Kafka Streams / stream processors implement event-time windowing + watermarks
 - [[system-design-concepts/the-log-abstraction]] — replaying the log by event time is how you recompute exact windowed views
 - [[theory/latency-numbers]] — the physical skews (WAN, queueing) that make processing time lag event time
+- [[system-design-concepts/commutative-aggregation]] — the auction winner is a windowed order-free fold; "membership/cutoff" is exactly this page's watermark decision
+- [[system-design-concepts/hot-key-write-contention]] — the deferred aggregate that absorbs single-key contention is usually a *windowed* fold, inheriting these completeness concerns
 
 ## Sources
 - [[sources/docs/streaming-101-world-beyond-batch]] — event vs processing time, windowing strategies, watermarks, the completeness problem
 - [streaming-101-world-beyond-batch.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/streaming-101-world-beyond-batch.md) — Tyler Akidau, "Streaming 101" (2015)
+- [[sources/docs/design-instagram-auction-mock-interview]] — auction close as watermark + grace window; clock-skew adjudication by recorded timestamps

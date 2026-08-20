@@ -83,6 +83,16 @@ The most common wrong claim: "Dynamo-style W+R>N gives strong consistency." What
 
 So leaderless quorum ≈ **eventual + a staleness bound**, not linearizable. To get linearizability you route the key through a **single order-imposing authority** — a per-shard leader running consensus (Raft/Paxos). That is exactly the leaderless-vs-leader-based fork: quorum buys availability + tunable staleness; per-shard Raft buys linearizability at the cost of a leader round-trip and unavailability during elections. And the platform corollary: whatever you relax below linearizable, the **store** reconciles (read-repair + anti-entropy, or consensus) — you never export version reconciliation to tenant apps.
 
+## Tool 4 — PACELC: the everyday axis (CAP is the rare case)
+
+CAP only speaks about the moment of a **partition** — minutes per year. It says nothing about the other 99.9% of the time, which is where contended systems actually live. **PACELC** completes it:
+
+> **If Partitioned, trade Availability vs. Consistency; Else, trade Latency vs. Consistency.**
+
+The **E**lse branch is the one you reason about daily: on a perfectly healthy network, stronger consistency still costs **latency** (a leader round-trip, a quorum wait, an fsync). So a "must be consistent" claim is really a standing latency bill, not just a partition-time availability bet. When someone frames a contended-write problem as pure CAP, redirect: *the partition is rare; the everyday question is how much latency your consistency is charging you.*
+
+**And the corollary that catches candidates: don't over-ask.** Before spending that latency, check whether the operation even needs ordering. If the update is an **order-free aggregate** (`max`, counter, set-union — see [[system-design-concepts/commutative-aggregation]]), reordering can't change the result, so linearizability is *overkill*: you need durability + an agreed cutoff, not a total order. Deriving the **weakest sufficient guarantee from the operation's algebra** is the senior move; reflexively demanding linearizability is a tell.
+
 ## What to actually memorize
 
 The rest you derive. Hold onto:
@@ -98,6 +108,7 @@ The rest you derive. Hold onto:
 - **Derive availability from one rule**: needs a global decision ⇒ unavailable; needs only local/session/causal state ⇒ available (sticky if it needs *your* history).
 - **Causal = strongest model available under partition** — the operational meaning of "AP."
 - **W+R>N gives quorum intersection, not linearizability**; linearizable single-key needs consensus per shard.
+- **PACELC > CAP for everyday reasoning**: partitions are rare; the standing trade is *latency vs. consistency*. And check the operation's algebra first — an order-free aggregate needs no linearizability at all.
 
 ## Interview angle
 
@@ -111,8 +122,11 @@ The rest you derive. Hold onto:
 - [[theory/consistent-hashing]] — quorum is defined over the replica set the ring assigns to each key
 - [[system-design-concepts/global-rate-limiting]] — "consistent vs accurate" counters is this exact trade-off (CRDT/eventual, sticky-available) in a concrete subsystem
 - [[theory/copy-on-write-vs-mvcc]] — MVCC is *how* SI reads a consistent snapshot without blocking writers (the mechanism behind Ladder 2's middle)
+- [[system-design-concepts/commutative-aggregation]] — the rung *below* the ladder: when the op is order-free you need no ordering guarantee at all (PACELC corollary)
+- [[system-design-concepts/hot-key-write-contention]] — where the latency-vs-consistency bill actually comes due: many writers on one key
 
 ## Sources
 - [[sources/docs/distributed-kv-store-mock-interview]] — §9 consistency spectrum, §4 quorum, §8 leaderless-vs-leader-based fork
 - [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [[sources/docs/design-instagram-auction-mock-interview]] — PACELC as the everyday frame; retracting an over-claimed linearizability once `max` is seen to be order-free
 - [Jepsen: Consistency Models](https://jepsen.io/consistency/models) — the canonical formal lattice this page distills; Bailis et al., *Highly Available Transactions* is the source of the availability classification

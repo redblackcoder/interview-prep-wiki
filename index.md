@@ -43,6 +43,8 @@
 - [[wiki/system-design-concepts/lambda-vs-kappa]] — Two pipelines (batch+realtime, merge) vs one (stream+replay); the dashboard-approx/billing-exact split
 - [[wiki/system-design-concepts/event-time-vs-processing-time]] — When it happened vs when observed; event-time windowing, watermarks, late-data policy; why a dashboard number mutates
 - [[wiki/system-design-concepts/exactly-once-semantics]] — Effectively-once = at-least-once + dedup-by-key + atomic commit; delivery≠effect; Kafka→Kafka boundary
+- [[wiki/system-design-concepts/hot-key-write-contention]] — Aggregate load shards for free; contention on one key doesn't; remove/concentrate/approximate the coordination
+- [[wiki/system-design-concepts/commutative-aggregation]] — Order-free ops (max/sum/set-union) need durability + a cutoff, not linearizability; CALM/CRDT; idempotence makes at-least-once safe
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -79,6 +81,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 57
-- Total sources: 16
-- Last updated: 2026-08-19
+- Total wiki pages: 59
+- Total sources: 17
+- Last updated: 2026-08-20

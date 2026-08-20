@@ -41,6 +41,7 @@ Serving nodes subscribe to the log and apply writes in log order; they can be **
 - The log is a **cheap** storage mechanism (linear I/O on multi-TB HDDs) and its cost is amortized over every index it feeds — the "wasteful extra copy" objection mostly dissolves.
 - Bounded size via retention window (event data) or **[[system-design-concepts/table-log-duality|log compaction]]** (keyed data: keep the latest value per key).
 - The log can be **CP** (Kafka/BookKeeper, strongly consistent) *or* **AP** (a Dynamo-style log that redelivers and pushes dedup to the subscriber) — the abstraction is orthogonal to the consistency choice.
+- **A log absorbs single-key write contention.** Instead of a lock + read-modify-write on a hot row (auction top bid, viral counter), **append every write to a per-key log** and let a consumer fold it into the current value as a materialized view. The append is cheap and uncoordinated; the expensive decision is deferred and batched. When the fold is an order-free aggregate ([[system-design-concepts/commutative-aggregation]]) you can even split the key across sub-partitions and merge — so the log turns a [[system-design-concepts/hot-key-write-contention|hot key]] into horizontal scale.
 
 ## Interview angle
 
@@ -54,8 +55,11 @@ Serving nodes subscribe to the log and apply writes in log order; they can be **
 - [[system-design-concepts/lambda-vs-kappa]] — both architectures assume a replayable log as their master dataset
 - [[system-design-concepts/leaderless-vs-leader-based]] — the "serving nodes need no leader, the log is truth" point
 - [[system-design-concepts/read-state-watermarking]] — the "read up to offset X" idea is the same offset-as-logical-clock
+- [[system-design-concepts/hot-key-write-contention]] — append-to-log + deferred fold is the primary escape from single-key contention
+- [[system-design-concepts/commutative-aggregation]] — when the fold is order-free, the log's materialized view can be split and merged across partitions
 
 ## Sources
 - [[sources/docs/the-log-jay-kreps]] — the full unifying-abstraction argument (Parts 1–4)
 - [the-log-jay-kreps.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
 - [[sources/docs/kafka-101-bytebytego]] — the log as Kafka's core storage primitive
+- [[sources/docs/design-instagram-auction-mock-interview]] — the log as single-key contention absorber (per-auction bid ledger → materialized `max`)
