@@ -38,6 +38,11 @@
 - [[wiki/system-design-concepts/serving-constrained-resources]] — Scarce/expensive backends (GPUs): a queue smooths bursts but can't fix a deficit; add-capacity / shed / degrade
 - [[wiki/system-design-concepts/llm-inference-serving]] — What sets a GPU's serving capacity: KV cache (memory-bound) + continuous batching
 - [[wiki/system-design-concepts/async-response-routing]] — Returning an async/streamed result to the caller: session registry + pub/sub back-channel; durable log vs real-time channel
+- [[wiki/system-design-concepts/the-log-abstraction]] — The log as system-of-record; every table/index/cache is a replayable projection; O(N²)→O(N) data integration; log+serving split
+- [[wiki/system-design-concepts/table-log-duality]] — Table = fold of the changelog; CDC vs materialized view; fault-tolerant stream state; compaction vs retention
+- [[wiki/system-design-concepts/lambda-vs-kappa]] — Two pipelines (batch+realtime, merge) vs one (stream+replay); the dashboard-approx/billing-exact split
+- [[wiki/system-design-concepts/event-time-vs-processing-time]] — When it happened vs when observed; event-time windowing, watermarks, late-data policy; why a dashboard number mutates
+- [[wiki/system-design-concepts/exactly-once-semantics]] — Effectively-once = at-least-once + dedup-by-key + atomic commit; delivery≠effect; Kafka→Kafka boundary
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -55,6 +60,7 @@
 - [[wiki/theory/actor-model-message-passing]] — Actor isolation via copy (BEAM) vs immutability+pointers (Akka); the >64B shared-heap loophole
 - [[wiki/theory/concurrency-primitives]] — Process vs thread vs green thread, ranked by context-switch cost (TLB flush vs mode switch vs user-space)
 - [[wiki/theory/latency-numbers]] — The latency ladder (L1→RAM→LAN→disk→WAN); latency stalls while bandwidth doubles; physics-bound vs engineering-bound
+- [[wiki/theory/state-machine-replication]] — Deterministic + same ordered input log → identical replicas; the bridge from log to consensus
 
 ### Tech
 - [[wiki/tech/elm]] — Pure functional front-end language; the Elm Architecture (TEA) state loop
@@ -64,6 +70,7 @@
 - [[wiki/tech/aws-elasticache-redis]] — Managed Redis/Valkey: persistence semantics, node vs serverless, data tiering
 - [[wiki/tech/envoy-ratelimit-service]] — The global RLS: gRPC + descriptor tree + Redis; identity-agnostic, edge vs mesh
 - [[wiki/tech/istio-service-mesh]] — CRDs→Envoy via istiod; mTLS/SPIFFE authz; EnvoyFilter escape hatch
+- [[wiki/tech/kafka]] — Distributed append-only log; acks/ISR durability dial; per-partition ordering; KRaft; tiered storage; Connect/Streams
 
 ### Coding Patterns
 - [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
@@ -72,6 +79,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 50
-- Total sources: 12
+- Total wiki pages: 57
+- Total sources: 16
 - Last updated: 2026-08-19
