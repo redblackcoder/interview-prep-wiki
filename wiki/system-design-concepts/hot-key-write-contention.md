@@ -37,7 +37,9 @@ The anti-patterns: a **row lock + read-modify-write** on the hot row (serializes
 - [[system-design-concepts/global-rate-limiting]] — exit #3 in the wild: sharded "accurate" counters vs. a single "consistent" one
 - [[theory/consistency-models]] — whether you *need* coordination is a consistency question; PACELC's "else latency-vs-consistency" is the everyday axis here
 - [[system-design-concepts/event-time-vs-processing-time]] — the deferred aggregate is usually a *windowed* fold, inheriting watermark/cutoff concerns
+- [[system-design-concepts/geospatial-indexing]] — the **spatial twin**: a hot *cell* (stadium/airport/surge) is a hot key in 2-D; aggregate location load shards, cell concentration doesn't
 
 ## Sources
 - [[sources/docs/design-instagram-auction-mock-interview]] — the auction bid path; naming single-key contention as the crux, and `max`-log as the exit
 - [design-instagram-auction-mock-interview.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/design-instagram-auction-mock-interview.md) — full mock-interview transcript
+- [[sources/docs/design-uber-driver-allocation-mock-interview]] — the hot-cell analog (un-entered crux in that round)

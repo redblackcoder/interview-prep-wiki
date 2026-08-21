@@ -46,6 +46,8 @@
 - [[wiki/system-design-concepts/hot-key-write-contention]] — Aggregate load shards for free; contention on one key doesn't; remove/concentrate/approximate the coordination
 - [[wiki/system-design-concepts/commutative-aggregation]] — Order-free ops (max/sum/set-union) need durability + a cutoff, not linearizability; CALM/CRDT; idempotence makes at-least-once safe
 - [[wiki/system-design-concepts/read-side-fanout]] — One→many live updates: coalesce to latest, two-level fan-out over a pub/sub bus, snapshot+reconcile bootstrap
+- [[wiki/system-design-concepts/geospatial-indexing]] — Proximity search via cell schemes (grid/geohash/QuadTree/S2/H3); the location-write path and the hot-cell crux; not a graph-DB problem
+- [[wiki/system-design-concepts/dispatch-and-matching]] — Two-sided offer protocol: rank→broadcast top-N→first-accept-wins behind an atomic two-invariant claim; the lock-isn't-a-fence trap
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -82,6 +84,6 @@
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 
 ## Statistics
-- Total wiki pages: 60
-- Total sources: 17
+- Total wiki pages: 62
+- Total sources: 18
 - Last updated: 2026-08-20
