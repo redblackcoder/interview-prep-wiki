@@ -45,6 +45,8 @@ Commutativity/associativity buy order-independence; **idempotence** buys **dupli
 - [[system-design-concepts/the-log-abstraction]] — the durable input log whose deterministic fold is the aggregate
 - [[system-design-concepts/event-time-vs-processing-time]] — "membership/cutoff" is a watermark + grace-window decision
 - [[system-design-concepts/lambda-vs-kappa]] — recomputing an aggregate by replaying the log is the same monotonic fold
+- [[system-design-concepts/queue-placement]] — the idempotent per-cell write at the DB drain is why the ingestion queue needs only at-least-once, not exactly-once
+- [[system-design-concepts/edge-shed-vs-core-durability]] — idempotent counters make the durable core hop safe with cheap delivery
 
 ## Sources
 - [[sources/docs/design-instagram-auction-mock-interview]] — retracting linearizability once `max` is seen to be order-free; durability + cutoff as the real needs

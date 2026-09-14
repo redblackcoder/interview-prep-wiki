@@ -13,6 +13,7 @@ Links raw files to their source extracts and wiki pages.
 | File/Project | Git link | Extracted to | Wiki pages |
 |---|---|---|---|
 | elm-list-reversal/ | [elm-list-reversal/](https://github.com/redblackcoder/interview-prep-raw/blob/main/code/elm-list-reversal/) ([Ellie](https://ellie-app.com/zkxTj4t9Yqwa1)) | [[sources/docs/functional-programming-elm-study-guide]] | [[wiki/coding-patterns/fold-accumulator]], [[wiki/tech/elm]] |
+| keyed-task-executor/ | [keyed-task-executor/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/keyed-task-executor/) | [[sources/docs/azure-storage-interview-loop]] | [[wiki/coding-patterns/keyed-serial-executor]], [[wiki/theory/concurrency-constructs]] |
 
 ## Docs (../raw/docs/)
 
@@ -34,6 +35,8 @@ Links raw files to their source extracts and wiki pages.
 | the-log-jay-kreps.md | [the-log-jay-kreps.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/the-log-jay-kreps.md) | [[sources/docs/the-log-jay-kreps]] | [[wiki/system-design-concepts/the-log-abstraction]], [[wiki/system-design-concepts/table-log-duality]], [[wiki/theory/state-machine-replication]] |
 | design-instagram-auction-mock-interview.md | [design-instagram-auction-mock-interview.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/design-instagram-auction-mock-interview.md) | [[sources/docs/design-instagram-auction-mock-interview]] | [[wiki/system-design-concepts/hot-key-write-contention]], [[wiki/system-design-concepts/commutative-aggregation]], [[wiki/system-design-concepts/read-side-fanout]], [[wiki/theory/consistency-models]], [[wiki/system-design-concepts/event-time-vs-processing-time]], [[wiki/theory/durability-rpo-rto]], [[wiki/system-design-concepts/the-log-abstraction]] |
 | mock-uber-system-design/ | [mock-uber-system-design/](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/mock-uber-system-design/) | [[sources/docs/design-uber-driver-allocation-mock-interview]] | [[wiki/system-design-concepts/geospatial-indexing]], [[wiki/system-design-concepts/dispatch-and-matching]], [[wiki/theory/bloom-filters]], [[wiki/system-design-concepts/hot-key-write-contention]] |
+| self-youtube-shorts-design/ | [self-youtube-shorts-design/](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/self-youtube-shorts-design/) | [[sources/docs/design-youtube-shorts-self-interview]] | [[wiki/system-design-concepts/timeline-fanout-hybrid]], [[wiki/system-design-concepts/feed-cursor-stability]], [[wiki/system-design-concepts/video-delivery-read-path]], [[wiki/system-design-concepts/cache-stampede]], [[wiki/tech/cdn]]; extended [[wiki/system-design-concepts/hot-key-write-contention]] |
+| azure-storage-interview-loop.md | [azure-storage-interview-loop.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/azure-storage-interview-loop.md) | [[sources/docs/azure-storage-interview-loop]] | [[wiki/theory/concurrency-constructs]], [[wiki/coding-patterns/keyed-serial-executor]], [[wiki/behavioral/project-metadata-replication-scaling]] |
 
 ## Articles (external, ../sources/articles/)
 

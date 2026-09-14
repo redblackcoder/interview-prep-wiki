@@ -25,6 +25,7 @@ The anti-patterns: a **row lock + read-modify-write** on the hot row (serializes
 - **Batching is the universal lever** on the contended path — amortize the expensive step (log append, leader apply, fsync) over many writes; it converts per-write cost into per-batch cost.
 - **Write-time vs. decision-time.** With the log approach the synchronous write is just a durable **append** ("accepted"); the authoritative value is computed downstream/at a cutoff — so acknowledgment ≠ adjudication (name the async return path).
 - The choice among the three exits is dictated by the **operation's algebra**: order-free aggregate → remove coordination; order-sensitive invariant → concentrate it; tolerant of error → approximate.
+- **The read-side mirror is a hot *read* key.** A viral object creates hot keys at multiple layers: its **view/like counter is a hot write key** (this page — shard/approximate it), while its **metadata is a hot *read* key** (one row read by millions on every feed hydration). Reads don't contend, so the read-side fix is *replication/caching*, not a log: edge/replica-cache the metadata, and serve the bytes from a [[tech/cdn]]. Naming both when an object goes viral is the complete answer; "the CDN handles it" covers only the bytes.
 
 ## Interview angle
 
@@ -38,8 +39,12 @@ The anti-patterns: a **row lock + read-modify-write** on the hot row (serializes
 - [[theory/consistency-models]] — whether you *need* coordination is a consistency question; PACELC's "else latency-vs-consistency" is the everyday axis here
 - [[system-design-concepts/event-time-vs-processing-time]] — the deferred aggregate is usually a *windowed* fold, inheriting watermark/cutoff concerns
 - [[system-design-concepts/geospatial-indexing]] — the **spatial twin**: a hot *cell* (stadium/airport/surge) is a hot key in 2-D; aggregate location load shards, cell concentration doesn't
+- [[system-design-concepts/timeline-fanout-hybrid]] — the **fan-out cousin**: a celebrity post is O(followers) writes on the hot path; the fix (don't push, pull-and-stitch) is the same "don't do the hot work" instinct
+- [[system-design-concepts/read-side-fanout]] — the read-side mirror when the hot read is a *live* value pushed to many (vs. static bytes on a CDN)
+- [[tech/cdn]] — where the hot-read *bytes* go; the counterpart to sharding the hot write
 
 ## Sources
 - [[sources/docs/design-instagram-auction-mock-interview]] — the auction bid path; naming single-key contention as the crux, and `max`-log as the exit
 - [design-instagram-auction-mock-interview.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/design-instagram-auction-mock-interview.md) — full mock-interview transcript
 - [[sources/docs/design-uber-driver-allocation-mock-interview]] — the hot-cell analog (un-entered crux in that round)
+- [[sources/docs/design-youtube-shorts-self-interview]] — the viral video: view-counter hot write key + metadata hot read key, both outside the CDN

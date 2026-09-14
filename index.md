@@ -47,7 +47,20 @@
 - [[wiki/system-design-concepts/commutative-aggregation]] — Order-free ops (max/sum/set-union) need durability + a cutoff, not linearizability; CALM/CRDT; idempotence makes at-least-once safe
 - [[wiki/system-design-concepts/read-side-fanout]] — One→many live updates: coalesce to latest, two-level fan-out over a pub/sub bus, snapshot+reconcile bootstrap
 - [[wiki/system-design-concepts/geospatial-indexing]] — Proximity search via cell schemes (grid/geohash/QuadTree/S2/H3); the location-write path and the hot-cell crux; not a graph-DB problem
+- [[wiki/system-design-concepts/space-filling-curves]] — Z-order/Hilbert map 2-D→1-D so a B-tree indexes space; geohash=Z-order; S2's quadtree nests exactly vs H3's aperture-7 hexagons only approximately; lakehouse data-skipping
 - [[wiki/system-design-concepts/dispatch-and-matching]] — Two-sided offer protocol: rank→broadcast top-N→first-accept-wins behind an atomic two-invariant claim; the lock-isn't-a-fence trap
+- [[wiki/system-design-concepts/timeline-fanout-hybrid]] — Social feed build: push (cheap reads) vs pull (cheap writes) vs hybrid; celebrity breaks push, the freshness SLA sets the threshold
+- [[wiki/system-design-concepts/feed-cursor-stability]] — Snapshot-isolated pagination: why offset corrupts a mutating feed; snapshot ID + COW-on-change + TTL
+- [[wiki/system-design-concepts/video-delivery-read-path]] — Client prefetch + adaptive bitrate + segmentation; the <100ms budget is on the client; segment-per-S3-object trade-off
+- [[wiki/system-design-concepts/cache-stampede]] — Thundering herd on a cold/expired hot key: request coalescing, stale-while-revalidate, shield, TTL jitter, pre-warm
+- [[wiki/system-design-concepts/metrics-pull-vs-push]] — Scrape vs send: liveness/reachability/mergeability/exactness are the real forks; Prometheus vs StatsD/OTLP; hybrid edge-pull → remote_write-push
+- [[wiki/system-design-concepts/red-metrics-exposition]] — How RED is exposed; aggregation at event time means a 60s scrape is exact at 50k QPS; histogram→p99 math; StatsD/UDP sidecar + sampling variance
+- [[wiki/system-design-concepts/mergeable-metrics-and-quantiles]] — Never average p99s; aggregate-then-quantile; cumulative buckets vs DDSketch/native histograms; the observability face of commutative aggregation
+- [[wiki/system-design-concepts/counter-reset-and-restart-recovery]] — rate() reset correction and its climb-back blind spot; delta-push silent gaps; why per-window percentiles are unrecoverable and tail-biased
+- [[wiki/system-design-concepts/edge-shed-vs-core-durability]] — reliability increases inward; shed cheap high-rate events at the edge (UDP), persist precious aggregated messages at the core (queue); the flip condition is exactness, not scale
+- [[wiki/system-design-concepts/sidecar-vs-daemonset]] — agent topology decided by upgradeability + blast radius (not runtime memory); one-per-pod isolated-but-version-pinned vs one-per-node central-but-shared
+- [[wiki/system-design-concepts/local-ipc-transports]] — app→agent hop: HTTP loopback vs UDS vs UDP; the real axis is backpressure vs load-shedding; a UDS lets you choose
+- [[wiki/system-design-concepts/queue-placement]] — whether to queue (durability + fan-out, not "buffering") and where (behind a thin collector, in front of the bottleneck DB); guard the bottleneck
 
 ### Theory
 - [[wiki/theory/durability-math]] — Deriving nines from disk AFR + RF + MTTR; why MTTR (not RF) is the lever
@@ -64,6 +77,7 @@
 - [[wiki/theory/rate-limiting-algorithms]] — The five window shapes (fixed/sliding-log/sliding-counter/token/leaky) and their trade-offs
 - [[wiki/theory/actor-model-message-passing]] — Actor isolation via copy (BEAM) vs immutability+pointers (Akka); the >64B shared-heap loophole
 - [[wiki/theory/concurrency-primitives]] — Process vs thread vs green thread, ranked by context-switch cost (TLB flush vs mode switch vs user-space)
+- [[wiki/theory/concurrency-constructs]] — The synchronization toolkit: visibility/mutex/atomics-CAS/semaphore/coordination, one construct per race
 - [[wiki/theory/latency-numbers]] — The latency ladder (L1→RAM→LAN→disk→WAN); latency stalls while bandwidth doubles; physics-bound vs engineering-bound
 - [[wiki/theory/state-machine-replication]] — Deterministic + same ordered input log → identical replicas; the bridge from log to consensus
 
@@ -76,14 +90,20 @@
 - [[wiki/tech/envoy-ratelimit-service]] — The global RLS: gRPC + descriptor tree + Redis; identity-agnostic, edge vs mesh
 - [[wiki/tech/istio-service-mesh]] — CRDs→Envoy via istiod; mTLS/SPIFFE authz; EnvoyFilter escape hatch
 - [[wiki/tech/kafka]] — Distributed append-only log; acks/ISR durability dial; per-partition ordering; KRaft; tiered storage; Connect/Streams
+- [[wiki/tech/cdn]] — Distributed reverse-proxy cache + routing; edge→shield→origin; immutable+segmented URLs for hit ratio; viral is the easy case
+
+### Algorithms
+- [[wiki/algorithms/knapsack-variants]] — 0/1 vs bounded vs unbounded: same O(nW) table; loop direction is the 0/1↔unbounded flip; binary-split / monotonic-deque for bounded
 
 ### Coding Patterns
 - [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
+- [[wiki/coding-patterns/keyed-serial-executor]] — Bounded concurrent executor: per-key serial queue + fixed pool + CAS admission + completion hand-off (complete code)
 
 ### Behavioral
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
+- [[wiki/behavioral/project-metadata-replication-scaling]] — Metadata replication + 100K-tenant scaling deep dive; flags where the live telling went vague and how to tighten it
 
 ## Statistics
-- Total wiki pages: 62
-- Total sources: 18
-- Last updated: 2026-08-20
+- Total wiki pages: 83
+- Total sources: 22
+- Last updated: 2026-09-14

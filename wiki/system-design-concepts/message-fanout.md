@@ -44,6 +44,8 @@ Removing the slow-lookup bottleneck removed its accidental back-pressure, so ~5M
 > "Fan-out to N subscribers naively means N serial sends from one process, and on an actor runtime that process is single-threaded, so a 30k-member broadcast took seconds. The fix is to stop funneling through one process, three ways. Manifold groups recipients by node so you send once per node, then a per-node partitioner hashes recipients across cores — and because the hash is deterministic, ordering is preserved. FastGlobal handles the shared routing table: instead of copying it out of ETS on every read, you compile it into a module constant so the VM serves it from a read-only shared heap, copy-free. And a node-local ETS semaphore sheds load before a doomed request so a stampede can't OOM the box — a semaphore not a circuit breaker, because you want to shape traffic, not stop it dead."
 
 ## Connections
+- [[system-design-concepts/timeline-fanout-hybrid]] — a *different* fan-out sharing the word: precompute-vs-compute for a **stored feed** (Twitter/Shorts timeline), not real-time delivery to live sockets
+- [[system-design-concepts/read-side-fanout]] — the one→many *live-value* fan-out (coalesce a ticking value over a bus); this page is the delivery mechanics underneath it
 - [[system-design-concepts/work-distribution]] — Manifold is fan-out's version of "partition work across a fleet without a central bottleneck"
 - [[theory/consistent-hashing]] — the routing ring FastGlobal serves, and the `phash2` hashing Manifold's partitioner uses
 - [[theory/actor-model-message-passing]] — why `send/2` copies and why ETS reads copy; FastGlobal is the sanctioned copy-free escape
