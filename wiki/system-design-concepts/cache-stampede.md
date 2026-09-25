@@ -44,6 +44,7 @@ Coalescing/stale-serving fix a **read** stampede (many readers, one value). If t
 - [[system-design-concepts/message-fanout]] — the semaphore/back-pressure lever for the *distinct-request* herd (reconnection storm), contrasted with coalescing
 - [[system-design-concepts/rate-limiting]] — admission control as the shed-excess-work sibling of coalesce-identical-work
 - [[tech/aws-elasticache-redis]] — where an app-level singleflight/lock + jittered TTL live for a Redis hot key
+- [[system-design-concepts/cache-eviction-policies]] — the *capacity* side of caching (what to drop when full); this page is the *miss* side (what happens when it's not there)
 
 ## Sources
 - [[sources/docs/design-youtube-shorts-self-interview]] — serving-path failure modes for a viral video; the cold/expiry stampede and its defenses

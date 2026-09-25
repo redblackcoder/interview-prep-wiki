@@ -14,6 +14,8 @@ Links raw files to their source extracts and wiki pages.
 |---|---|---|---|
 | elm-list-reversal/ | [elm-list-reversal/](https://github.com/redblackcoder/interview-prep-raw/blob/main/code/elm-list-reversal/) ([Ellie](https://ellie-app.com/zkxTj4t9Yqwa1)) | [[sources/docs/functional-programming-elm-study-guide]] | [[wiki/coding-patterns/fold-accumulator]], [[wiki/tech/elm]] |
 | keyed-task-executor/ | [keyed-task-executor/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/keyed-task-executor/) | [[sources/docs/azure-storage-interview-loop]] | [[wiki/coding-patterns/keyed-serial-executor]], [[wiki/theory/concurrency-constructs]] |
+| combination-sum-k/ | [combination-sum-k/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/combination-sum-k/) | [[sources/docs/azure-storage-blob-tiering-interview]] | [[wiki/coding-patterns/subset-enumeration-backtracking]], [[wiki/algorithms/knapsack-variants]] |
+| concurrent-lru-cache/ | [concurrent-lru-cache/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/concurrent-lru-cache/) | [[sources/code/concurrent-lru-cache]] | [[wiki/coding-patterns/concurrent-lru-cache]], [[wiki/system-design-concepts/cache-eviction-policies]] |
 
 ## Docs (../raw/docs/)
 
@@ -37,6 +39,7 @@ Links raw files to their source extracts and wiki pages.
 | mock-uber-system-design/ | [mock-uber-system-design/](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/mock-uber-system-design/) | [[sources/docs/design-uber-driver-allocation-mock-interview]] | [[wiki/system-design-concepts/geospatial-indexing]], [[wiki/system-design-concepts/dispatch-and-matching]], [[wiki/theory/bloom-filters]], [[wiki/system-design-concepts/hot-key-write-contention]] |
 | self-youtube-shorts-design/ | [self-youtube-shorts-design/](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/self-youtube-shorts-design/) | [[sources/docs/design-youtube-shorts-self-interview]] | [[wiki/system-design-concepts/timeline-fanout-hybrid]], [[wiki/system-design-concepts/feed-cursor-stability]], [[wiki/system-design-concepts/video-delivery-read-path]], [[wiki/system-design-concepts/cache-stampede]], [[wiki/tech/cdn]]; extended [[wiki/system-design-concepts/hot-key-write-contention]] |
 | azure-storage-interview-loop.md | [azure-storage-interview-loop.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/azure-storage-interview-loop.md) | [[sources/docs/azure-storage-interview-loop]] | [[wiki/theory/concurrency-constructs]], [[wiki/coding-patterns/keyed-serial-executor]], [[wiki/behavioral/project-metadata-replication-scaling]] |
+| restaurant-reservation-design/ | [restaurant-reservation-design/](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/restaurant-reservation-design/) | [[sources/docs/azure-storage-blob-tiering-interview]] | [[wiki/system-design-concepts/double-booking-prevention]], [[wiki/system-design-concepts/hot-key-write-contention]] |
 
 ## Articles (external, ../sources/articles/)
 

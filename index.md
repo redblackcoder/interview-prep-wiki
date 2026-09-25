@@ -53,6 +53,7 @@
 - [[wiki/system-design-concepts/feed-cursor-stability]] — Snapshot-isolated pagination: why offset corrupts a mutating feed; snapshot ID + COW-on-change + TTL
 - [[wiki/system-design-concepts/video-delivery-read-path]] — Client prefetch + adaptive bitrate + segmentation; the <100ms budget is on the client; segment-per-S3-object trade-off
 - [[wiki/system-design-concepts/cache-stampede]] — Thundering herd on a cold/expired hot key: request coalescing, stale-while-revalidate, shield, TTL jitter, pre-warm
+- [[wiki/system-design-concepts/cache-eviction-policies]] — Which entry to drop: exact vs approximate LRU, Redis sampling, CLOCK, LFU, W-TinyLFU; the eviction/concurrency/memory axes
 - [[wiki/system-design-concepts/metrics-pull-vs-push]] — Scrape vs send: liveness/reachability/mergeability/exactness are the real forks; Prometheus vs StatsD/OTLP; hybrid edge-pull → remote_write-push
 - [[wiki/system-design-concepts/red-metrics-exposition]] — How RED is exposed; aggregation at event time means a 60s scrape is exact at 50k QPS; histogram→p99 math; StatsD/UDP sidecar + sampling variance
 - [[wiki/system-design-concepts/mergeable-metrics-and-quantiles]] — Never average p99s; aggregate-then-quantile; cumulative buckets vs DDSketch/native histograms; the observability face of commutative aggregation
@@ -98,12 +99,13 @@
 ### Coding Patterns
 - [[wiki/coding-patterns/fold-accumulator]] — Reduce a list via a threaded accumulator: naive → tail-recursive → fold
 - [[wiki/coding-patterns/keyed-serial-executor]] — Bounded concurrent executor: per-key serial queue + fixed pool + CAS admission + completion hand-off (complete code)
+- [[wiki/coding-patterns/concurrent-lru-cache]] — Thread-safe LRU ladder: single mutex (get-is-a-writer) → sharding → lock-free-read CLOCK; with code
 
 ### Behavioral
 - [[wiki/behavioral/disagreement-customer-proxy-connectivity]] — Disagreeing with senior architects on customer-proxy connectivity; proved a POC then argued against it; fast-pathed the durable fix
 - [[wiki/behavioral/project-metadata-replication-scaling]] — Metadata replication + 100K-tenant scaling deep dive; flags where the live telling went vague and how to tighten it
 
 ## Statistics
-- Total wiki pages: 83
-- Total sources: 22
+- Total wiki pages: 85
+- Total sources: 23
 - Last updated: 2026-09-14

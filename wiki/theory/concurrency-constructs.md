@@ -121,6 +121,7 @@ Every requirement of [[coding-patterns/keyed-serial-executor]] is one construct:
 - [[theory/actor-model-message-passing]] — the alternative to shared-memory synchronization: no locks, serialize by owning state in one actor's mailbox
 - [[system-design-concepts/dispatch-and-matching]] — the same atomic check-and-claim (CAS) idea at the distributed layer: "first-accept-wins behind a two-invariant claim"
 - [[system-design-concepts/exactly-once-semantics]] — idempotency/dedup is the distributed cousin of failure-isolation + safe retries here
+- [[coding-patterns/concurrent-lru-cache]] — a second worked problem: why a `ReadWriteLock` fails when `get` mutates, one-lock-owns-the-invariant, `Phaser`/CAS/volatile in a lock-free-read cache
 
 ## Sources
 - [[sources/docs/azure-storage-interview-loop]] — Part 2 (KeyedTaskExecutor); constructs extracted from the live coding exercise
