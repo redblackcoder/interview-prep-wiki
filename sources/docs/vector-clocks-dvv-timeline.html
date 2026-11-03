@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dotted Version Vectors — Sibling Creation Timeline</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --panel2:#fbfcfd; --ink:#1b2230; --muted:#5b6675;
+    --border:#e4e8ee; --accent:#4f46e5; --accent-soft:#eef0fe;
+    --r1:#2563eb; --r1-soft:#e8f0fe; --r2:#9333ea; --r2-soft:#f4e9fe;
+    --new:#0f766e; --new-soft:#e6f7f4;
+    --super:#b91c1c; --super-soft:#fdeceb;
+    --sib:#b45309; --sib-soft:#fdf3e3;
+    --shadow:0 1px 2px rgba(20,30,50,.06),0 8px 24px rgba(20,30,50,.06);
+  }
+  html[data-theme="dark"]{
+    --bg:#0e1320; --panel:#161d2c; --panel2:#121826; --ink:#e7eaf1; --muted:#9aa5b5;
+    --border:#28303f; --accent:#818cf8; --accent-soft:#1e2438;
+    --r1:#60a5fa; --r1-soft:#12213b; --r2:#c084fc; --r2-soft:#251536;
+    --new:#2dd4bf; --new-soft:#12332f;
+    --super:#f87171; --super-soft:#33191b;
+    --sib:#fbbf24; --sib-soft:#33290f;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme:dark){
+    html[data-theme="auto"]{
+      --bg:#0e1320; --panel:#161d2c; --panel2:#121826; --ink:#e7eaf1; --muted:#9aa5b5;
+      --border:#28303f; --accent:#818cf8; --accent-soft:#1e2438;
+      --r1:#60a5fa; --r1-soft:#12213b; --r2:#c084fc; --r2-soft:#251536;
+      --new:#2dd4bf; --new-soft:#12332f;
+      --super:#f87171; --super-soft:#33191b;
+      --sib:#fbbf24; --sib-soft:#33290f;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 20px 56px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+  header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:6px}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;max-width:74ch}
+  .sub b{color:var(--ink)}
+  .themebtn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink);
+    border-radius:9px;padding:7px 11px;font-size:13px;cursor:pointer}
+  .themebtn:hover{border-color:var(--accent)}
+  .actorkey{display:flex;gap:16px;margin:10px 0 0;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+  .actorkey b{color:var(--ink)}
+  .tagR1{color:var(--r1);font-weight:700}
+  .tagR2{color:var(--r2);font-weight:700}
+
+  /* progress rail */
+  .rail{display:flex;align-items:center;margin:20px 0 4px}
+  .node{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative}
+  .node .dotmark{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--panel);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;z-index:1}
+  .node .lbl{font-size:11px;color:var(--muted)}
+  .node.done .dotmark{border-color:var(--accent);color:var(--accent)}
+  .node.active .dotmark{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.12)}
+  .node.active .lbl{color:var(--ink);font-weight:600}
+  .node:not(:last-child)::after{content:"";position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+  .node.done:not(:last-child)::after{background:var(--accent)}
+
+  /* action banner */
+  .banner{margin:18px 0 12px;border:1px solid var(--border);border-left-width:4px;border-radius:10px;background:var(--panel);padding:11px 15px;box-shadow:var(--shadow)}
+  .banner .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .banner .action{font-size:16px;font-weight:600;margin-top:2px}
+  .banner.tag-partition{border-left-color:var(--super);background:var(--super-soft)}
+  .banner.tag-merge{border-left-color:var(--sib);background:var(--sib-soft)}
+  .banner.tag-normal{border-left-color:var(--accent)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+  .pill.p{background:var(--super);color:#fff}
+  .pill.m{background:var(--sib);color:#111}
+
+  /* client lane */
+  .lane{margin:0 0 16px;border:1px dashed var(--border);border-radius:12px;padding:12px 14px;background:var(--panel2)}
+  .lane.client{border-left:4px solid var(--accent)}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13.5px}
+  .who{font-weight:800;background:var(--accent);color:#fff;border-radius:8px;padding:3px 9px;font-size:13px}
+  .step-op{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:4px 9px;background:var(--panel)}
+  .step-op.get{border-color:var(--accent)}
+  .step-op.put{border-color:var(--new);background:var(--new-soft)}
+  .to-r1{color:var(--r1);font-weight:700} .to-r2{color:var(--r2);font-weight:700}
+  .rd{color:var(--muted)}
+  .rd .val{color:var(--ink);font-weight:600}
+  .sep{color:var(--muted)}
+  .newdot{margin-left:auto;font-size:12px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid var(--new);border-radius:20px;padding:3px 10px;white-space:nowrap}
+  .lane.system{display:flex;align-items:center;justify-content:center;gap:12px;border-style:solid;background:var(--panel);font-weight:700}
+  .lane.system .glyph{font-size:15px}
+  .lane.system.sync{border-color:var(--accent);color:var(--accent)}
+  .lane.system.merge{border-color:var(--sib);color:var(--sib)}
+  .lane .cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+
+  /* replicas */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+  .card.r1{border-top:3px solid var(--r1)} .card.r2{border-top:3px solid var(--r2)}
+  .card h2{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h2 .badge{font-size:11px;font-weight:700;color:#fff;border-radius:6px;padding:2px 7px}
+  .card.r1 .badge{background:var(--r1)} .card.r2 .badge{background:var(--r2)}
+  .card h2 .who-actor{font-size:11px;color:var(--muted);font-weight:500}
+  .seclabel{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px;cursor:help}
+  .ctx{display:flex;flex-wrap:wrap;gap:6px;min-height:24px}
+  .chip{font-size:12.5px;border:1px solid var(--border);border-radius:7px;padding:3px 8px;background:var(--panel2)}
+  .chip.changed{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .empty{color:var(--muted);font-size:12.5px;font-style:italic}
+
+  .dots{display:flex;flex-direction:column;gap:7px;min-height:30px}
+  .dot{display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:9px;padding:8px 10px;background:var(--panel2);transition:.15s}
+  .dot .tag{font-size:12.5px;font-weight:700;border-radius:6px;padding:2px 8px;white-space:nowrap}
+  .dot .arrow{color:var(--muted)}
+  .dot .val{font-weight:600}
+  .dot .vctx{font-size:11px;color:var(--muted);margin-left:2px}
+  .dot .flag{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:20px}
+  .dot--normal .tag{background:var(--border);color:var(--ink)}
+  .dot--new{border-color:var(--new);background:var(--new-soft)}
+  .dot--new .tag{background:var(--new);color:#fff}
+  .dot--new .flag{background:var(--new);color:#fff}
+  .dot--super{opacity:.6}
+  .dot--super .tag{background:var(--super-soft);color:var(--super);text-decoration:line-through}
+  .dot--super .val{text-decoration:line-through;color:var(--muted)}
+  .dot--super .flag{background:var(--super);color:#fff}
+  .dot--sibling{border-color:var(--sib);background:var(--sib-soft)}
+  .dot--sibling .tag{background:var(--sib);color:#111}
+  .dot--sibling .flag{background:var(--sib);color:#111}
+
+  .notes{margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+  .notes h3{margin:0 0 8px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .notes ul{margin:0;padding-left:18px}
+  .notes li{margin:5px 0}
+  .notes code{background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .notes .win{color:var(--sib);font-weight:700}
+
+  .controls{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:22px}
+  button.ctrl{border:1px solid var(--border);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  button.ctrl:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  button.ctrl.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.ctrl.primary:hover:not(:disabled){filter:brightness(1.08);color:#fff}
+  button.ctrl:disabled{opacity:.4;cursor:not-allowed}
+  .counter{min-width:110px;text-align:center;color:var(--muted);font-size:13px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:20px;font-size:12px;color:var(--muted)}
+  .legend .li{display:flex;align-items:center;gap:6px}
+  .legend .sw{width:13px;height:13px;border-radius:4px;border:1px solid var(--border)}
+  .sw.new{background:var(--new)} .sw.super{background:var(--super)} .sw.sib{background:var(--sib)}
+  .hint{text-align:center;color:var(--muted);font-size:12px;margin-top:12px}
+  kbd{border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Dotted Version Vectors — how a sibling is born</h1>
+      <div class="sub">One key, two replicas. The actor id in every dot is <b>the replica that coordinates the write</b>, and a replica increments <b>only its own</b> counter. Watch a stale-context write plus a partition produce two <em>concurrent</em> values a merge can't rank — so both survive.</div>
+      <div class="actorkey">
+        <span><span class="tagR1">R1</span> = actor <code class="mono">a</code> (only R1 bumps <span class="mono">a</span>)</span>
+        <span><span class="tagR2">R2</span> = actor <code class="mono">b</code> (only R2 bumps <span class="mono">b</span>)</span>
+        <span><b>Context</b> = version vector (per-actor max witnessed)</span>
+        <span><b>Dot</b> = the single event that authored a value</span>
+      </div>
+    </div>
+    <button class="themebtn" id="theme" title="Toggle light / dark / auto">◐ Theme</button>
+  </header>
+
+  <div class="rail" id="rail" role="tablist" aria-label="Timeline steps"></div>
+
+  <div class="banner tag-normal" id="banner" aria-live="polite">
+    <div class="k">Step</div>
+    <div class="action" id="action">—</div>
+  </div>
+
+  <div id="laneHost" aria-live="polite"></div>
+
+  <div class="grid">
+    <section class="card r1">
+      <h2><span class="badge">R1</span> Replica 1 <span class="who-actor">· actor a</span></h2>
+      <div class="seclabel" title="Version vector: per-actor max counter this replica has witnessed.">Context (version vector)</div>
+      <div class="ctx" id="r1ctx"></div>
+      <div class="seclabel" title="Live values, each tagged with the (actor,counter) dot that created it, and the causal context it was written with.">Values (dots)</div>
+      <div class="dots" id="r1dots"></div>
+    </section>
+    <section class="card r2">
+      <h2><span class="badge">R2</span> Replica 2 <span class="who-actor">· actor b</span></h2>
+      <div class="seclabel" title="Version vector: per-actor max counter this replica has witnessed.">Context (version vector)</div>
+      <div class="ctx" id="r2ctx"></div>
+      <div class="seclabel" title="Live values, each tagged with the (actor,counter) dot that created it, and the causal context it was written with.">Values (dots)</div>
+      <div class="dots" id="r2dots"></div>
+    </section>
+  </div>
+
+  <div class="notes" aria-live="polite">
+    <h3>Causal mechanism &amp; result</h3>
+    <ul id="notes"></ul>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl" id="prev">‹ Prev</button>
+    <div class="counter mono" id="counter"></div>
+    <button class="ctrl primary" id="next">Next ›</button>
+    <button class="ctrl" id="reset">↺ Reset</button>
+  </div>
+
+  <div class="legend">
+    <div class="li"><span class="sw new"></span> New value this step</div>
+    <div class="li"><span class="sw super"></span> Superseded (dominated → discarded)</div>
+    <div class="li"><span class="sw sib"></span> Concurrent sibling (survives)</div>
+  </div>
+  <div class="hint">Use <kbd>←</kbd> <kbd>→</kbd> or <kbd>Space</kbd> to step · click a node on the rail to jump</div>
+</div>
+
+<script>
+// actor a = R1, actor b = R2. Each replica increments ONLY its own counter.
+// value: {id, c, v, ctx:{...}, s:"new|normal|super|sibling"}   ctx = the causal context the value was written with
+const steps = [
+  {
+    t:"t1", tag:"normal",
+    action:'C1 writes "Sue" to R1',
+    client:{ who:"C1", get:"R1", read:{val:"∅ (nothing)", ctx:{}}, put:{val:"Sue", ctx:{}}, coord:"R1", dot:"(a,1)" },
+    r1:{ vv:{a:1,_ch:["a"]}, dots:[{id:"a",c:1,v:"Sue",ctx:{},s:"new"}] },
+    r2:{ vv:{}, dots:[] },
+    notes:[
+      'C1 does a GET on R1 → empty, so its causal context is <code>∅</code>.',
+      'C1 PUTs "Sue" with context <code>∅</code>. R1 coordinates, so it bumps <b>its own</b> actor <code>a</code>: 0→1.',
+      'The value gets dot <code>(a,1)</code>. Only R1 ever increments <code>a</code>.'
+    ]
+  },
+  {
+    t:"t2", tag:"normal",
+    action:'Replicate R1 → R2',
+    system:{ kind:"sync", text:"SYNC  R1 → R2", glyph:"⇒" },
+    r1:{ vv:{a:1}, dots:[{id:"a",c:1,v:"Sue",ctx:{},s:"normal"}] },
+    r2:{ vv:{a:1,_ch:["a"]}, dots:[{id:"a",c:1,v:"Sue",ctx:{},s:"new"}] },
+    notes:[
+      'Background anti-entropy copies "Sue" (dot <code>(a,1)</code>) from R1 to R2 — <b>no client involved</b>.',
+      'R2 merges the dot into its context → <code>{a:1}</code>. Both replicas now agree.'
+    ]
+  },
+  {
+    t:"t3", tag:"partition",
+    action:'Partition opens · C2 writes "Bob" to R2',
+    client:{ who:"C2", get:"R2", read:{val:"Sue", ctx:{a:1}}, put:{val:"Bob", ctx:{a:1}}, coord:"R2", dot:"(b,1)" },
+    r1:{ vv:{a:1}, dots:[{id:"a",c:1,v:"Sue",ctx:{},s:"normal"}] },
+    r2:{ vv:{a:1,b:1,_ch:["b"]}, dots:[{id:"b",c:1,v:"Bob",ctx:{a:1},s:"new"},{id:"a",c:1,v:"Sue",ctx:{},s:"super"}] },
+    notes:[
+      '<b>Partition opens</b> — R1 and R2 can no longer talk.',
+      'C2 GETs R2 → "Sue", context <code>{a:1}</code>, then PUTs "Bob" with that context.',
+      'R2 coordinates → bumps <b>its own</b> actor <code>b</code>: 0→1, dot <code>(b,1)</code>.',
+      'Bob\'s context <code>{a:1}</code> covers dot <code>(a,1)</code> → "Sue" is <b>superseded</b> on R2 and discarded.'
+    ]
+  },
+  {
+    t:"t4", tag:"partition",
+    action:'Still partitioned · C3 writes "Phil" to R1',
+    client:{ who:"C3", get:"R1", read:{val:"Sue", ctx:{a:1}}, put:{val:"Phil", ctx:{a:1}}, coord:"R1", dot:"(a,2)" },
+    r1:{ vv:{a:2,_ch:["a"]}, dots:[{id:"a",c:2,v:"Phil",ctx:{a:1},s:"new"},{id:"a",c:1,v:"Sue",ctx:{},s:"super"}] },
+    r2:{ vv:{a:1,b:1}, dots:[{id:"b",c:1,v:"Bob",ctx:{a:1},s:"normal"}] },
+    notes:[
+      'On the R1 side of the partition, C3 GETs R1 → "Sue" — <b>R1 has never seen Bob</b> — context <code>{a:1}</code>.',
+      'C3 PUTs "Phil". R1 bumps <code>a</code>: 1→2, dot <code>(a,2)</code>. Context <code>{a:1}</code> covers <code>(a,1)</code> → "Sue" superseded on R1.',
+      'The replicas have <b>diverged</b>: R1 holds Phil <code>(a,2)</code>, R2 holds Bob <code>(b,1)</code>.'
+    ]
+  },
+  {
+    t:"t5", tag:"partition",
+    action:'C4 writes "Babs" to R2 — R2 still has never seen Phil',
+    client:{ who:"C4", get:"R2", read:{val:"Bob", ctx:{a:1,b:1}}, put:{val:"Babs", ctx:{a:1,b:1}}, coord:"R2", dot:"(b,2)" },
+    r1:{ vv:{a:2}, dots:[{id:"a",c:2,v:"Phil",ctx:{a:1},s:"normal"}] },
+    r2:{ vv:{a:1,b:2,_ch:["b"]}, dots:[{id:"b",c:2,v:"Babs",ctx:{a:1,b:1},s:"new"},{id:"b",c:1,v:"Bob",ctx:{a:1},s:"super"}] },
+    notes:[
+      'C4 GETs R2 → "Bob", context <code>{a:1,b:1}</code>. <b>R2 still has no knowledge of Phil.</b>',
+      'C4 PUTs "Babs". R2 bumps <code>b</code>: 1→2, dot <code>(b,2)</code>. Context covers <code>(b,1)</code> → "Bob" <b>superseded</b>.',
+      'But that context is <code>{a:1,b:1}</code> — its <code>a:1</code> does <b>not</b> cover Phil\'s <code>(a,2)</code>. A write can only supersede what its author witnessed.'
+    ]
+  },
+  {
+    t:"t6", tag:"merge",
+    action:'Partition heals · MERGE R1 ⇄ R2',
+    system:{ kind:"merge", text:"MERGE  R1 ⇄ R2", glyph:"⇄" },
+    r1:{ vv:{a:2,b:2,_ch:["a","b"]}, dots:[{id:"a",c:2,v:"Phil",ctx:{a:1},s:"sibling"},{id:"b",c:2,v:"Babs",ctx:{a:1,b:1},s:"sibling"}] },
+    r2:{ vv:{a:2,b:2,_ch:["a","b"]}, dots:[{id:"a",c:2,v:"Phil",ctx:{a:1},s:"sibling"},{id:"b",c:2,v:"Babs",ctx:{a:1,b:1},s:"sibling"}] },
+    notes:[
+      'The replicas exchange values and reconcile pairwise by dot vs context.',
+      '<code>(b,2)</code> Babs vs <code>(a,2)</code> Phil: Babs\'s context <code>{a:1,b:1}</code> lacks <code>(a,2)</code>, and Phil\'s context <code>{a:1}</code> lacks <code>(b,2)</code> → <b>neither dominates</b>.',
+      '<span class="win">Concurrent siblings:</span> "Phil" <code>(a,2)</code> and "Babs" <code>(b,2)</code> <b>both survive</b> — no write is silently lost.',
+      'Note the asymmetry: Babs <b>superseded</b> Bob (C4 had read it) yet is <b>concurrent</b> with Phil (never witnessed). Bob and Sue are gone — cleanly dominated.'
+    ]
+  }
+];
+
+const $ = id => document.getElementById(id);
+let i = 0;
+
+function fmtVV(vv){
+  const keys = Object.keys(vv).filter(k=>k!=="_ch").sort();
+  if(!keys.length) return null;
+  return keys.map(k=>({k,c:vv[k],ch:(vv._ch||[]).includes(k)}));
+}
+function vvChips(vv){
+  const parts = fmtVV(vv);
+  if(!parts) return `<span class="empty">∅ (empty)</span>`;
+  return parts.map(p=>`<span class="chip${p.ch?' changed':''} mono">${p.k}:${p.c}</span>`).join("");
+}
+function ctxInline(ctx){
+  const keys=Object.keys(ctx).sort();
+  return keys.length ? `{${keys.map(k=>k+":"+ctx[k]).join(", ")}}` : "∅";
+}
+function flagText(s){ return s==="new"?"new":s==="super"?"discarded":s==="sibling"?"sibling":""; }
+function dotRow(d){
+  const flag=flagText(d.s);
+  return `<div class="dot dot--${d.s}">
+    <span class="tag mono">(${d.id},${d.c})</span>
+    <span class="arrow">→</span>
+    <span class="val">"${d.v}"</span>
+    <span class="vctx mono">ctx ${ctxInline(d.ctx)}</span>
+    ${flag?`<span class="flag">${flag}</span>`:``}
+  </div>`;
+}
+function renderReplica(pre,data){
+  $(pre+"ctx").innerHTML = vvChips(data.vv);
+  $(pre+"dots").innerHTML = data.dots.length ? data.dots.map(dotRow).join("")
+    : `<span class="empty">∅ (no value)</span>`;
+}
+function renderLane(s){
+  const host=$("laneHost");
+  if(s.system){
+    host.innerHTML = `<div class="lane system ${s.system.kind}"><span class="glyph">${s.system.glyph}</span> ${s.system.text}</div>`;
+    return;
+  }
+  const c=s.client, toClass = t=>t==="R1"?"to-r1":"to-r2";
+  host.innerHTML = `<div class="lane client">
+    <div class="cap">Client action</div>
+    <div class="flow">
+      <span class="who">${c.who}</span>
+      <span class="step-op get">GET <span class="${toClass(c.get)}">${c.get}</span></span>
+      <span class="rd">reads <span class="val">"${c.read.val}"</span> <span class="sep">·</span> ctx <span class="mono">${ctxInline(c.read.ctx)}</span></span>
+      <span class="sep">then</span>
+      <span class="step-op put">PUT <span class="val">"${c.put.val}"</span> <span class="sep">·</span> ctx <span class="mono">${ctxInline(c.put.ctx)}</span></span>
+      <span class="rd">→ coordinated by <span class="${toClass(c.coord)}">${c.coord}</span></span>
+      <span class="newdot mono">new dot ${c.dot}</span>
+    </div>
+  </div>`;
+}
+function renderRail(){
+  $("rail").innerHTML = steps.map((s,idx)=>{
+    const cls = idx===i?"active":(idx<i?"done":"");
+    return `<div class="node ${cls}" data-i="${idx}" role="tab" aria-selected="${idx===i}" tabindex="0">
+      <div class="dotmark">${idx+1}</div><div class="lbl mono">${s.t}</div></div>`;
+  }).join("");
+  document.querySelectorAll(".node").forEach(n=>{
+    const go=()=>{ i=+n.dataset.i; render(); };
+    n.onclick=go;
+    n.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
+  });
+}
+function render(){
+  const s=steps[i];
+  renderRail();
+  const b=$("banner");
+  b.className="banner tag-"+s.tag;
+  const pill = s.tag==="partition"?`<span class="pill p">PARTITION</span>`
+             : s.tag==="merge"?`<span class="pill m">MERGE</span>`:``;
+  $("action").innerHTML = `<span class="mono" style="color:var(--muted)">${s.t}</span> · ${s.action} ${pill}`;
+  renderLane(s);
+  renderReplica("r1",s.r1);
+  renderReplica("r2",s.r2);
+  $("notes").innerHTML = s.notes.map(n=>`<li>${n}</li>`).join("");
+  $("counter").textContent = `Step ${i+1} / ${steps.length}`;
+  $("prev").disabled = i===0;
+  $("next").disabled = i===steps.length-1;
+}
+$("next").onclick=()=>{ if(i<steps.length-1){i++;render();} };
+$("prev").onclick=()=>{ if(i>0){i--;render();} };
+$("reset").onclick=()=>{ i=0; render(); };
+document.addEventListener("keydown",e=>{
+  if(e.target.closest(".node")) return;
+  if(e.key==="ArrowRight"||e.key===" "){ e.preventDefault(); if(i<steps.length-1){i++;render();} }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); if(i>0){i--;render();} }
+  else if(e.key==="Home"){ e.preventDefault(); i=0; render(); }
+});
+const tbtn=$("theme"), root=document.documentElement, labels={auto:"◐ Auto",light:"☀ Light",dark:"☾ Dark"};
+tbtn.onclick=()=>{ const order=["auto","light","dark"]; const cur=root.getAttribute("data-theme");
+  const nxt=order[(order.indexOf(cur)+1)%order.length]; root.setAttribute("data-theme",nxt); tbtn.textContent=labels[nxt]; };
+tbtn.textContent=labels.auto;
+render();
+</script>
+</body>
+</html>
