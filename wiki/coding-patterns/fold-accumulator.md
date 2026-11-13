@@ -64,6 +64,6 @@ This is a recurring FP instinct: **push conditional logic to the structure (patt
 ## Sources
 - [[sources/docs/functional-programming-elm-study-guide]] — §5 Sample Problems and Comparative Solutions
 - Worked solutions in raw (pattern extracted here; full code there):
-  - [Problem 1: List Reversal](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/functional-programming-elm-study-guide.md#problem-1-list-reversal) — naive O(N²) → tail-recursive accumulator → `foldl (::)`. Runnable TEA app: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code](https://github.com/redblackcoder/interview-prep-raw/blob/main/code/elm-list-reversal/)
-  - [Problem 2: Guilt Calculator](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/functional-programming-elm-study-guide.md#problem-2-guilt-calculator) — map-then-fold → pipeline → single-pass fold
-  - [Problem 3: Path/Breadcrumb Builder](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/functional-programming-elm-study-guide.md#problem-3-pathbreadcrumb-builder) — the pattern-match-out-the-base-case sub-pattern
+  - [Problem 1: List Reversal](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-1-list-reversal) — naive O(N²) → tail-recursive accumulator → `foldl (::)`. Runnable TEA app: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/elm-list-reversal/)
+  - [Problem 2: Guilt Calculator](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-2-guilt-calculator) — map-then-fold → pipeline → single-pass fold
+  - [Problem 3: Path/Breadcrumb Builder](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-3-pathbreadcrumb-builder) — the pattern-match-out-the-base-case sub-pattern

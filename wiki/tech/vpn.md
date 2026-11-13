@@ -91,4 +91,4 @@ There are now **two independent encryption layers**: inner TLS gives true end-to
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §4 Building a VPN layer by layer (7 steps, protocol comparison, packet walkthrough, ZTNA)
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/networking-deep-dive/networking-study-guide.html) — full architecture SVG (client → internet → DMZ gateway → segmented internal servers)
+- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — full architecture SVG (client → internet → DMZ gateway → segmented internal servers)

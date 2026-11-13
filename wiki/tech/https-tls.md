@@ -70,4 +70,4 @@ The OS/browser ships a **trust store** of ~150 root CA public keys. Trust chains
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §2 HTTPS in full detail (handshakes, cipher suites, PKI, wire format)
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/networking-deep-dive/networking-study-guide.html) — sequence diagrams for TCP + TLS 1.2/1.3 and byte-level TLS record layout
+- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — sequence diagrams for TCP + TLS 1.2/1.3 and byte-level TLS record layout

@@ -48,4 +48,4 @@ Each rung is more expensive **and** more semantically powerful. The model naviga
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §6 Context assembly: the cost-tiered retrieval ladder
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes

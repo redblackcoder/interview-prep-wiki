@@ -1,6 +1,6 @@
 ---
 source: docs/linux-cpu-scheduling.md
-source_url: https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/linux-cpu-scheduling.md
+source_url: https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/linux-cpu-scheduling.md
 type: doc
 date_extracted: 2026-08-16
 topic: theory

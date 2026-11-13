@@ -68,5 +68,5 @@ The contract that makes crashes safe:
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §8 crash recovery, §9 durability glossary
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes
 - [[sources/docs/design-instagram-auction-mock-interview]] — RPO as a per-window dial (sync writes for an auction's last 30s); AZ-vs-region scoping; client-replay is a hint, not truth

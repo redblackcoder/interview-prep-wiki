@@ -51,4 +51,4 @@ Enforcement lives at the OS boundary; the **contract** at that boundary (read-on
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §7 Tool safety: containment over policy
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes

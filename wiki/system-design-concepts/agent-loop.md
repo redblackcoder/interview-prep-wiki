@@ -49,4 +49,4 @@ assemble context → gateway → stream tokens → on `tool_use`, check permissi
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §4 One turn end-to-end, §5 latency, §8 verification & convergence
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes

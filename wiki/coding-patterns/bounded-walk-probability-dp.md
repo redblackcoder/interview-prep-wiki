@@ -98,4 +98,4 @@ Reach for it whenever a problem is *"N random/possible steps on a bounded struct
 
 ## Sources
 - [[sources/problems/3d-board-walk-probability]] — the coding round: problem, solution path, the `[n]` vs `[n-1]` indexing bug, and the floating-point follow-up
-- Runnable code in raw (DP + recursion + exact BigInteger cross-check): [bounded-walk-probability/](https://github.com/redblackcoder/interview-prep-raw/blob/main/code/bounded-walk-probability/)
+- Runnable code in raw (DP + recursion + exact BigInteger cross-check): [bounded-walk-probability/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/bounded-walk-probability/)

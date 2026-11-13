@@ -62,4 +62,4 @@ Two independent encryption layers, each answering a different question. This is 
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §3 Why HTTPS isn't enough (six gaps + the concrete attack walkthrough)
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/networking-deep-dive/networking-study-guide.html) — attack kill-chain diagram
+- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — attack kill-chain diagram

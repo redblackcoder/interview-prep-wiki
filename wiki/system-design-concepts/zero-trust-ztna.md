@@ -43,4 +43,4 @@ Re-run the attack from [[system-design-concepts/network-security-layers]]: even 
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §4.6 Beyond VPN: Zero Trust (ZTNA)
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/networking-deep-dive/networking-study-guide.html) — VPN-vs-ZTNA comparison table
+- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — VPN-vs-ZTNA comparison table

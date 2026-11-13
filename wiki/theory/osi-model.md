@@ -61,4 +61,4 @@ The internet actually runs on the leaner 4-layer TCP/IP model:
 
 ## Sources
 - [[sources/docs/networking-deep-dive]] — §1 OSI 7-layer model, encapsulation, OSI vs TCP/IP, where TLS/VPN sit
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/networking-deep-dive/networking-study-guide.html) — full study guide with color-coded stack diagram and byte-level headers
+- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — full study guide with color-coded stack diagram and byte-level headers

@@ -49,4 +49,4 @@ A **shared immutable base + per-consumer delta** of only what changed; a read me
 
 ## Sources
 - [[sources/docs/local-coding-agent-system-design]] — §8 session state, scale & durability
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/main/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes

@@ -88,4 +88,4 @@ These three combine to make fold pipelines terse: `clues |> List.map .weight |> 
 
 ## Sources
 - [[sources/docs/functional-programming-elm-study-guide]] — §2 The Elm Architecture (TEA); §3 Elm Syntax and Features
-- Runnable example — a complete `Browser.sandbox` TEA program (Model/Msg/update/view) that reverses a comma-separated list: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code in raw](https://github.com/redblackcoder/interview-prep-raw/blob/main/code/elm-list-reversal/)
+- Runnable example — a complete `Browser.sandbox` TEA program (Model/Msg/update/view) that reverses a comma-separated list: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code in raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/elm-list-reversal/)
