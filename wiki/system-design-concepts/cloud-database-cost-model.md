@@ -34,7 +34,7 @@ Redis stores every byte in DRAM. A `cache.r6g.2xlarge` gives ~52.8 GiB usable fo
 | IO / requests | $0 (within baseline) | $0 |
 | **On-demand total** | **~$1,470/mo** | **~$3,600/mo** |
 
-Redis costs ~2.5× more here *and* gives a weaker durability guarantee and no ad-hoc queries — because you're renting 100 GB+ of DRAM to hold data Postgres keeps on cheap SSD. (The 500 GB sizing is deliberate: gp3 caps a small volume at 3,000 IOPS until it's ≥400 GiB — see [[tech/aws-rds-postgresql]].)
+Redis costs ~2.5× more here *and* gives a weaker durability guarantee and no ad-hoc queries — because you're renting 100 GB+ of DRAM to hold data Postgres keeps on cheap SSD. (The 500 GB sizing is deliberate: gp3 caps a small volume at 3,000 IOPS until it's ≥400 GiB — see [aws rds postgresql](../tech/aws-rds-postgresql.md).)
 
 ## Key points
 - Always name **all four axes** — a bill is instance + storage + IO + requests, plus backup and cross-AZ transfer.
@@ -48,11 +48,11 @@ Redis costs ~2.5× more here *and* gives a weaker durability guarantee and no ad
 > "I price a store on four axes — instance, storage, IO, requests — plus backup and cross-AZ transfer. The tell is that they concentrate differently: RDS spreads cost over compute, cheap SSD, and IO; node-based Redis puts almost everything in the node line because storage *is* RAM, so it has no IO or per-request charge; serverless Redis brings back a storage-GB-hour and a per-request ECPU charge to buy elasticity. The number that drives the design is the ~100–250× gap between DRAM and SSD per GB — that's why Redis is a hot-set cache and Postgres holds the bulk. Steady high load → provisioned nodes at $0/request; spiky → serverless."
 
 ## Connections
-- [[system-design-concepts/rds-vs-key-value-store]] — the decision this cost model feeds; the RAM-vs-SSD economics is the mental model
-- [[tech/aws-rds-postgresql]] — where the storage/IO axes live (gp3 vs io2, the small-volume IOPS trap)
-- [[tech/aws-elasticache-redis]] — where the node-vs-serverless and headroom costs live
-- [[system-design-concepts/preemption-economics]] — another "reason about the resource economics, not the feature" framing
+- [rds vs key value store](rds-vs-key-value-store.md) — the decision this cost model feeds; the RAM-vs-SSD economics is the mental model
+- [aws rds postgresql](../tech/aws-rds-postgresql.md) — where the storage/IO axes live (gp3 vs io2, the small-volume IOPS trap)
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — where the node-vs-serverless and headroom costs live
+- [preemption economics](preemption-economics.md) — another "reason about the resource economics, not the feature" framing
 
 ## Sources
-- [[sources/docs/rds-vs-kv-store-study-guide]] — §8 pricing model breakdown, §9 worked cost examples, §10 rate reference tables
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full itemized cost math and representative us-east-1 rates
+- [rds vs kv store study guide](../../sources/references/rds-vs-kv-store-study-guide.html) — §8 pricing model breakdown, §9 worked cost examples, §10 rate reference tables
+- [rds-vs-kv-store-study-guide.html](../../sources/references/rds-vs-kv-store-study-guide.html) — full itemized cost math and representative us-east-1 rates

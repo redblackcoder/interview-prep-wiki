@@ -21,7 +21,7 @@ scrape N   (t=0):  http_requests_total = 12,000,000
 scrape N+1 (t=60): http_requests_total = 12,300,000
 rate = (12,300,000 − 12,000,000)/60 = 5,000 req/s     ← exact window average
 ```
-`rate()` also auto-corrects counter resets (see [[system-design-concepts/counter-reset-and-restart-recovery]]). Fleet-wide:
+`rate()` also auto-corrects counter resets (see [counter reset and restart recovery](counter-reset-and-restart-recovery.md)). Fleet-wide:
 ```promql
 sum(rate(http_requests_total[5m]))                                   # 50,000 req/s
 sum(rate(http_requests_total{status=~"5.."}[5m]))
@@ -50,7 +50,7 @@ mean = _sum / _count
 ```promql
 histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
 ```
-The merge (summing buckets across instances) is exact; the interpolation is the only error (see [[system-design-concepts/mergeable-metrics-and-quantiles]]). **Why 60s is fine:** the histogram is 300k in-memory increments/instance/window; the scrape reads accumulated counts. Zero events sampled away.
+The merge (summing buckets across instances) is exact; the interpolation is the only error (see [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md)). **Why 60s is fine:** the histogram is 300k in-memory increments/instance/window; the scrape reads accumulated counts. Zero events sampled away.
 
 ## Push (UDP → sidecar → aggregate → push)
 
@@ -101,12 +101,12 @@ Naive nearest-rank on `[12,15,18,20,22,25,30,45,60,95]` (N=10, position `⌈p·N
 > "A 60s scrape is accurate at 50k QPS because the client library increments in-memory counters on every request — the histogram is 300k increments per window — and the scrape just reads the running totals. Nothing is sampled away; 60s only limits how finely I can slice time. For duration I expose cumulative bucket counters, sum them across instances, and interpolate p99 at query time. Push is symmetric: the sidecar aggregates per-event and flushes every 10s — but if I sample I inject ~1% variance, and I must ship a mergeable sketch, not a per-host percentile."
 
 ## Connections
-- [[system-design-concepts/mergeable-metrics-and-quantiles]] — why the duration histogram is exposed as buckets and how p99 is computed correctly across nodes
-- [[system-design-concepts/counter-reset-and-restart-recovery]] — what happens to these counters/histograms across process and agent restarts
-- [[system-design-concepts/metrics-pull-vs-push]] — the transport decision this exposition sits under
-- [[system-design-concepts/event-time-vs-processing-time]] — "temporal resolution" and windowing are the same event-vs-observation distinction
-- [[theory/latency-numbers]] — the ~ns atomic increment vs ~µs–ms network hop is why aggregation stays in-process/local before crossing the wire
+- [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md) — why the duration histogram is exposed as buckets and how p99 is computed correctly across nodes
+- [counter reset and restart recovery](counter-reset-and-restart-recovery.md) — what happens to these counters/histograms across process and agent restarts
+- [metrics pull vs push](metrics-pull-vs-push.md) — the transport decision this exposition sits under
+- [event time vs processing time](event-time-vs-processing-time.md) — "temporal resolution" and windowing are the same event-vs-observation distinction
+- [latency numbers](../theory/latency-numbers.md) — the ~ns atomic increment vs ~µs–ms network hop is why aggregation stays in-process/local before crossing the wire
 
 ## Sources
-- [[sources/docs/metrics-collection-observability-self-study]] — §3 RED exposition, scrape math, StatsD/UDP sidecar, sampling variance
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — §3 RED exposition, scrape math, StatsD/UDP sidecar, sampling variance
 </content>

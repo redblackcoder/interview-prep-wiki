@@ -76,12 +76,12 @@ Corollary: distrust any single memorized value. NVMe (~sub-10 µs) and RDMA-with
 > "I don't memorize the exact numbers, I memorize five anchors and the tier structure: L1 is ~1 ns, a RAM reference ~100 ns, a datacenter round trip ~500 µs, a disk seek ~10 ms, and a cross-Atlantic packet ~150 ms. Each tier boundary is about a thousand-fold. Two things drive design decisions: first, latency stalls while bandwidth keeps doubling, so sequential always beats random and batching always helps; second, some numbers are physics-bound — cross-region RTT is the speed of light and RAM latency has a hard floor — so you engineer around them with locality and batching rather than hoping hardware saves you. That's why a network hop costing ~5,000 memory references makes a chatty design fatal, and why blocking a thread on I/O is catastrophic."
 
 ## Connections
-- [[system-design-concepts/rds-vs-key-value-store]] — the RAM-vs-SSD latency gap (100 ns vs µs–ms) is exactly why an in-memory KV store beats an on-disk RDBMS for the hot set
-- [[system-design-concepts/cloud-database-cost-model]] — the *cost* counterpart: DRAM costs ~100–250× SSD per GB, the price you pay for the latency-tier jump
-- [[theory/concurrency-primitives]] — the ns→ms gap is why blocking a thread on I/O is so expensive, and why green threads exist for I/O-bound concurrency
-- [[theory/durability-math]] — write-path latency floors come from this ladder: fsync (disk) + replication ack (datacenter RTT) set the minimum durable-write latency
-- [[theory/consistent-hashing]] / [[system-design-concepts/hash-vs-range-partitioning]] — cross-node RTT (~500 µs) is the cost that partitioning and data locality exist to avoid
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — the RAM-vs-SSD latency gap (100 ns vs µs–ms) is exactly why an in-memory KV store beats an on-disk RDBMS for the hot set
+- [cloud database cost model](../system-design-concepts/cloud-database-cost-model.md) — the *cost* counterpart: DRAM costs ~100–250× SSD per GB, the price you pay for the latency-tier jump
+- [concurrency primitives](concurrency-primitives.md) — the ns→ms gap is why blocking a thread on I/O is so expensive, and why green threads exist for I/O-bound concurrency
+- [durability math](durability-math.md) — write-path latency floors come from this ladder: fsync (disk) + replication ack (datacenter RTT) set the minimum durable-write latency
+- [consistent hashing](consistent-hashing.md) / [hash vs range partitioning](../system-design-concepts/hash-vs-range-partitioning.md) — cross-node RTT (~500 µs) is the cost that partitioning and data locality exist to avoid
 
 ## Sources
-- [[sources/articles/latency-numbers-every-programmer-should-know]] — the ladder, the scaling model, and the latency-vs-bandwidth / physics-vs-engineering framing
+- [latency numbers every programmer should know](../reading-notes/latency-numbers-every-programmer-should-know.md) — the ladder, the scaling model, and the latency-vs-bandwidth / physics-vs-engineering framing
 - [Latency Numbers Every Programmer Should Know (interactive)](https://colin-scott.github.io/personal_website/research/interactive_latency.html) — Colin Scott's year-slider rebuild of Jeff Dean's list

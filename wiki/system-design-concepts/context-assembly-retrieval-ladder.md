@@ -33,19 +33,19 @@ Each rung is more expensive **and** more semantically powerful. The model naviga
 ## Key points
 - The ladder is **cost-ordered and recall-ordered**: cheap/exact first, expensive/fuzzy last and scoped.
 - **Background-warm the cheap deterministic tiers** (symbol index); keep embeddings lazy. Freshness via incremental re-parse + a git-checkout hook, *not* blind file-watching (`git checkout` flips thousands of files atomically). The index is a rebuildable, **stale-tolerant** cache → eventual consistency is fine.
-- Pull-based retrieval is also the **ingestion vector for prompt injection** — see [[system-design-concepts/agent-tool-sandboxing]].
+- Pull-based retrieval is also the **ingestion vector for prompt injection** — see [agent tool sandboxing](agent-tool-sandboxing.md).
 
 ## Interview angle
 
 > "The corpus is ~6B tokens; the window is <200K useful tokens. That gap is the design. I don't embed the whole thing — that's days of compute against constantly-churning code. I go pull-based: the model pulls context via tools, climbing a cost-tiered ladder — free structural priors and CLAUDE.md, then a symbol index (ctags/tree-sitter/LSP), then grep for literal anchors, and only lazily embed a hot subset when semantic search is unavoidable. The model navigates the repo like a new engineer; my job is to build the ladder, not the intelligence to climb it."
 
 ## Connections
-- [[system-design-concepts/agent-loop]] — retrieval happens *inside* the loop; the model pulls context via tool calls each turn
-- [[system-design-concepts/agent-tool-sandboxing]] — pull-based reads ingest repo files that can carry prompt injection; the two cores intersect here
-- [[theory/consistent-hashing]] — content-hash keying of chunks echoes stable identity-by-hash
-- [[theory/copy-on-write-vs-mvcc]] — a per-session index overlay keeps retrieval correct across branches/worktrees
-- [[system-design-concepts/work-distribution]] — one shared per-workspace index serving many sessions is itself a fan-out problem
+- [agent loop](agent-loop.md) — retrieval happens *inside* the loop; the model pulls context via tool calls each turn
+- [agent tool sandboxing](agent-tool-sandboxing.md) — pull-based reads ingest repo files that can carry prompt injection; the two cores intersect here
+- [consistent hashing](../theory/consistent-hashing.md) — content-hash keying of chunks echoes stable identity-by-hash
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — a per-session index overlay keeps retrieval correct across branches/worktrees
+- [work distribution](work-distribution.md) — one shared per-workspace index serving many sessions is itself a fan-out problem
 
 ## Sources
-- [[sources/docs/local-coding-agent-system-design]] — §6 Context assembly: the cost-tiered retrieval ladder
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local terminal coding agent](../problems/system-design/local-terminal-coding-agent.md) — §6 Context assembly: the cost-tiered retrieval ladder
+- [local-coding-agent-system-design.md](../../sources/references/local-coding-agent-system-design.md) — full mock-interview design notes

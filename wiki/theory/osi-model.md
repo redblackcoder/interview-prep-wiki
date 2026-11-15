@@ -31,7 +31,7 @@ Data flows **down** the stack on the sender and **up** on the receiver. Going do
 - **L5/6 TLS** — 5-byte record header + AEAD-encrypted payload.
 - **L7 HTTP** — the actual request/response.
 
-**The security-critical observation:** TLS wraps the HTTP payload but is itself wrapped by TCP/IP/Ethernet. So the IP and TCP headers — *who is talking to whom, on what port, how big, how often* — sit **outside** the encrypted envelope. This is exactly the gap that motivates [[system-design-concepts/network-security-layers]] and the reason a VPN adds a *second* encapsulation below IP.
+**The security-critical observation:** TLS wraps the HTTP payload but is itself wrapped by TCP/IP/Ethernet. So the IP and TCP headers — *who is talking to whom, on what port, how big, how often* — sit **outside** the encrypted envelope. This is exactly the gap that motivates [network security layers](../system-design-concepts/network-security-layers.md) and the reason a VPN adds a *second* encapsulation below IP.
 
 ## OSI vs the real-world TCP/IP model
 
@@ -55,10 +55,10 @@ The internet actually runs on the leaner 4-layer TCP/IP model:
 > "Seven layers, and data is encapsulated top-down — each layer wraps the one above in its own header, so the receiver's layer N only reads what the sender's layer N wrote. PDUs are Data, Segment, Packet, Frame, Bits. The security consequence that matters: TLS encrypts the L7 payload but sits *inside* the IP and TCP headers, so the addressing metadata stays in the clear — that's the seam a VPN closes by adding another encapsulation at L3."
 
 ## Connections
-- [[tech/https-tls]] — TLS operates at L5/6, encrypting the L7 payload while leaving L3/L4 headers exposed
-- [[tech/vpn]] — a VPN adds encapsulation + encryption at L3, hiding the inner IP header OSI shows is otherwise visible
-- [[system-design-concepts/network-security-layers]] — the payload-vs-envelope principle is a direct reading of the encapsulation model
+- [https tls](../tech/https-tls.md) — TLS operates at L5/6, encrypting the L7 payload while leaving L3/L4 headers exposed
+- [vpn](../tech/vpn.md) — a VPN adds encapsulation + encryption at L3, hiding the inner IP header OSI shows is otherwise visible
+- [network security layers](../system-design-concepts/network-security-layers.md) — the payload-vs-envelope principle is a direct reading of the encapsulation model
 
 ## Sources
-- [[sources/docs/networking-deep-dive]] — §1 OSI 7-layer model, encapsulation, OSI vs TCP/IP, where TLS/VPN sit
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — full study guide with color-coded stack diagram and byte-level headers
+- [networking deep dive](../reading-notes/networking-deep-dive.md) — §1 OSI 7-layer model, encapsulation, OSI vs TCP/IP, where TLS/VPN sit
+- [networking-study-guide.html](../../sources/references/networking-deep-dive/networking-study-guide.html) — full study guide with color-coded stack diagram and byte-level headers

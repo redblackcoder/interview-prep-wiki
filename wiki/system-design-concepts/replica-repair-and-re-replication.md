@@ -14,18 +14,18 @@ What a replicated storage system does **after** a node dies. Writing 3 copies is
 3. **Find what to repair.** The reverse index `storage_file → [(file_id, extent, replica#)]` gives the dead node's extents directly. Without it, you scan the whole file table. The alternative is GFS's approach: don't persist locations, and rebuild them from inventory reports (whatever nobody reports is under-replicated).
 4. **Prioritize.** A priority queue ordered by surviving copies: 1 left before 2 left. Extents on hot files go first within a tier.
 5. **Copy node → node.** Pick a surviving source and a target that satisfies placement (rack-diverse, same copyset). Bytes never pass through the metadata service.
-6. **Fenced metadata swap.** Replace the dead replica only if the replica set is unchanged: `UPDATE extent_replica … WHERE replica_set_version=:v`. A concurrent compaction or a second repair of the same extent then can't clobber the result ([[system-design-concepts/lease-and-fencing]]).
+6. **Fenced metadata swap.** Replace the dead replica only if the replica set is unchanged: `UPDATE extent_replica … WHERE replica_set_version=:v`. A concurrent compaction or a second repair of the same extent then can't clobber the result ([lease and fencing](lease-and-fencing.md)).
 7. **Throttle.** Cap repair bandwidth per node and globally so foreground reads keep their SLO. Raise the cap when an extent is down to its last copy.
 
 ## MTTR is set by scatter width
 - Rebuild time ≈ `data on dead node / (peers rebuilding × per-peer repair rate)`.
 - 300 TB from **100 peers** at 200 MB/s each ≈ 15,000 s ≈ **4 h**. From **2 peers** (mirrored pairs) it's ≈ 9 days.
-- The durability formula has loss ∝ `(MTTR/yr)^(RF−1)` ([[theory/durability-math]]), so spreading a node's data across many peers is worth more than a 4th replica.
-- The tension: many peers per node also means many node triples share data, which raises the chance that a correlated 3-node failure loses something. That trade-off is [[system-design-concepts/copysets]].
+- The durability formula has loss ∝ `(MTTR/yr)^(RF−1)` ([durability math](../theory/durability-math.md)), so spreading a node's data across many peers is worth more than a 4th replica.
+- The tension: many peers per node also means many node triples share data, which raises the chance that a correlated 3-node failure loses something. That trade-off is [copysets](copysets.md).
 
 ## Repair is a metadata write workload
 - A 300 TB node at ~1 GB extents is ~300K extents. At 4 MB/extent it's 75M. Each needs a placement decision plus a fenced metadata update.
-- Batch updates per target storage file. Budget repair writes against the metadata store's commit capacity ([[system-design-concepts/database-write-capacity]]).
+- Batch updates per target storage file. Budget repair writes against the metadata store's commit capacity ([database write capacity](database-write-capacity.md)).
 - **Compaction** (moving live extents out of storage files with holes) and **rebalancing** (onto new, empty nodes) use the same move-plus-fenced-swap path.
 
 ## Other repair triggers
@@ -37,19 +37,19 @@ What a replicated storage system does **after** a node dies. Writing 3 copies is
 - Write-time replication answers "don't lose data on write." Repair answers "don't lose data over a year." Interviewers ask about the second.
 - Don't let a flapping node cause repeated full repairs. Use the suspect/dead split, and cancel queued repairs if the node returns with its inventory intact.
 - Repair must never starve reads, except for last-copy extents.
-- Leaderless KV stores do the same job with anti-entropy (Merkle-tree diffing) instead of a central reverse index ([[system-design-concepts/anti-entropy-merkle-trees]]).
+- Leaderless KV stores do the same job with anti-entropy (Merkle-tree diffing) instead of a central reverse index ([anti entropy merkle trees](anti-entropy-merkle-trees.md)).
 
 ## Interview angle
 > "Nodes heartbeat with capacity and inventory. A few misses mark a node suspect, so we stop placing there and read around it. A longer timeout declares it dead and starts re-replication. The reverse index lists its extents, queued fewest-copies-first. Each extent is copied peer to peer into a rack-diverse target, then swapped in metadata with a fenced write. It's rate-limited against reads, and rebuilt from many peers in parallel, because MTTR is what sets durability."
 
 ## Connections
-- [[theory/durability-math]]: MTTR is the durability lever this page engineers
-- [[system-design-concepts/copysets]]: scatter width vs correlated-failure risk
-- [[system-design-concepts/distributed-file-system]]: the system this repairs
-- [[system-design-concepts/anti-entropy-merkle-trees]]: the leaderless equivalent of inventory diffing
-- [[system-design-concepts/lease-and-fencing]]: fenced replica-set swap
-- [[system-design-concepts/database-write-capacity]]: repair churn as metadata write load
-- [[system-design-concepts/replication-vs-erasure-coding]]: EC repair reads k fragments, which changes the repair budget
+- [durability math](../theory/durability-math.md): MTTR is the durability lever this page engineers
+- [copysets](copysets.md): scatter width vs correlated-failure risk
+- [distributed file system](distributed-file-system.md): the system this repairs
+- [anti entropy merkle trees](anti-entropy-merkle-trees.md): the leaderless equivalent of inventory diffing
+- [lease and fencing](lease-and-fencing.md): fenced replica-set swap
+- [database write capacity](database-write-capacity.md): repair churn as metadata write load
+- [replication vs erasure coding](replication-vs-erasure-coding.md): EC repair reads k fragments, which changes the repair budget
 
 ## Sources
-- [[sources/docs/design-distributed-file-system-interview]]: node-loss repair: reverse index, repair churn
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md): node-loss repair: reverse index, repair churn

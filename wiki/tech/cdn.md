@@ -44,7 +44,7 @@ Hit ratio ≈ **content popularity (Zipfian) × how cacheable you made the URLs.
 
 **Make the content maximally cacheable (mostly your job):**
 - **Immutable, versioned / content-addressed URLs.** A finished video encode never changes, so `max-age` can be effectively infinite → zero revalidation traffic. Never cache-bust with random query strings; normalize URLs so the same object = the same key.
-- **Segment the video (HLS/DASH).** The single biggest lever: a ~2–6s segment is an immutable object requested by *every* viewer who reaches that point — millions of requests collapse onto **one cache key**. (See [[system-design-concepts/video-delivery-read-path]].)
+- **Segment the video (HLS/DASH).** The single biggest lever: a ~2–6s segment is an immutable object requested by *every* viewer who reaches that point — millions of requests collapse onto **one cache key**. (See [video delivery read path](../system-design-concepts/video-delivery-read-path.md).)
 
 **Fight the long tail (this is what actually tanks hit ratio):**
 - The hot video is the *easy* case (popularity → near-100% hit → origin idle). The killer is the millions of rarely-watched videos whose misses all reach origin.
@@ -58,11 +58,11 @@ The danger is not steady viral traffic (that's a near-100% hit) — it's the **s
 - **stale-while-revalidate** so expiry never triggers a synchronized origin fetch.
 - **Pre-warm** if the spike is predictable.
 
-Full treatment: [[system-design-concepts/cache-stampede]].
+Full treatment: [cache stampede](../system-design-concepts/cache-stampede.md).
 
 ## What a CDN does *not* solve
 
-A CDN caches the **bytes**. Virality also makes the viral object's **metadata a hot read key** (every feed hydration reads it) and its **view counter a hot write key** (every view increments it) — both live in *your* services, not the edge. Handle those separately (replicate/edge-cache metadata; shard/approximate the counter). See [[system-design-concepts/hot-key-write-contention]].
+A CDN caches the **bytes**. Virality also makes the viral object's **metadata a hot read key** (every feed hydration reads it) and its **view counter a hot write key** (every view increments it) — both live in *your* services, not the edge. Handle those separately (replicate/edge-cache metadata; shard/approximate the counter). See [hot key write contention](../system-design-concepts/hot-key-write-contention.md).
 
 ## Key points
 
@@ -78,13 +78,13 @@ A CDN caches the **bytes**. Virality also makes the viral object's **metadata a 
 > "A CDN is just a fleet of reverse-proxy caches near users, plus routing to the nearest one. On a hit it serves locally; on a miss it goes edge → regional shield → origin, so origin sees O(number of shields), not O(number of edges). For video the whole game is cacheability: I give each encode an immutable, segmented URL — HLS/DASH chunks — so a 4-second segment is one cache key shared by every viewer at that point, and I can set effectively-infinite TTL because a finished encode never changes. Counterintuitively a viral video is the CDN's *easy* case: high popularity means high hit ratio and origin is idle. The hard case is the long tail of rarely-watched videos, which I handle with a shield tier and cache-on-2nd-hit admission. The one dangerous moment is a synchronized miss when a hot object is cold or its TTL expires — I defend that with request coalescing, an origin shield, and stale-while-revalidate. And I'm explicit that the CDN only saves the *bytes* — the viral video's metadata is still a hot read key and its view counter a hot write key, which I solve in my own services."
 
 ## Connections
-- [[system-design-concepts/video-delivery-read-path]] — segmentation + adaptive bitrate + client prefetch; segmentation is the CDN hit-ratio lever *and* the startup-latency lever
-- [[system-design-concepts/cache-stampede]] — the cold/expiry synchronized-miss failure and its defenses (coalescing, stale-while-revalidate, shield, pre-warm)
-- [[system-design-concepts/hot-key-write-contention]] — what the CDN does NOT save: viral metadata (hot read key) + view counter (hot write key)
-- [[system-design-concepts/timeline-fanout-hybrid]] — the feed returns CDN URLs for post IDs; the bytes never touch the feed path
-- [[theory/latency-numbers]] — why an edge hit (LAN/metro RTT) beats an origin fetch (cross-WAN) for a <100ms budget
-- [[system-design-concepts/read-side-fanout]] — the other read-scaling shape (live one→many push); a CDN is read-scaling for *static* bytes
-- [[tech/https-tls]] — TLS termination at the edge; connection reuse to origin
+- [video delivery read path](../system-design-concepts/video-delivery-read-path.md) — segmentation + adaptive bitrate + client prefetch; segmentation is the CDN hit-ratio lever *and* the startup-latency lever
+- [cache stampede](../system-design-concepts/cache-stampede.md) — the cold/expiry synchronized-miss failure and its defenses (coalescing, stale-while-revalidate, shield, pre-warm)
+- [hot key write contention](../system-design-concepts/hot-key-write-contention.md) — what the CDN does NOT save: viral metadata (hot read key) + view counter (hot write key)
+- [timeline fanout hybrid](../system-design-concepts/timeline-fanout-hybrid.md) — the feed returns CDN URLs for post IDs; the bytes never touch the feed path
+- [latency numbers](../theory/latency-numbers.md) — why an edge hit (LAN/metro RTT) beats an origin fetch (cross-WAN) for a <100ms budget
+- [read side fanout](../system-design-concepts/read-side-fanout.md) — the other read-scaling shape (live one→many push); a CDN is read-scaling for *static* bytes
+- [https tls](https-tls.md) — TLS termination at the edge; connection reuse to origin
 
 ## Sources
-- [[sources/docs/design-youtube-shorts-self-interview]] — the hot-video serving path; CDN crash course
+- [short video feed](../problems/system-design/short-video-feed.md) — the hot-video serving path; CDN crash course

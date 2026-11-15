@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ | Project-local Maven settings: route ALL artifact resolution straight to
+ | public Maven Central, ignoring any corporate proxy/mirror configured in the
+ | global ~/.m2/settings.xml. The wildcard mirror below overrides that global
+ | config, so builds work off-VPN over Central's publicly trusted TLS cert (no
+ | corporate CA needs importing into the JDK truststore).
+ |
+ | Applied automatically via .mvn/maven.config, which passes `-s settings.xml`.
+ |
+ | Note: this resolves PUBLIC artifacts only. If you ever add an internal
+ | artifact that lives solely on the corporate Nexus, delete settings.xml and
+ | .mvn/maven.config to fall back to your global ~/.m2/settings.xml.
+ -->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>maven-central-direct</id>
+      <name>Maven Central (direct, bypassing corporate proxy)</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>

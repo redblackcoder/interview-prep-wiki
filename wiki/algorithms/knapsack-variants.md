@@ -58,9 +58,9 @@ That's a width-`c_i` sliding-window maximum of the term `dp[i-1][…] − s·v`,
 > "All three knapsacks are the same `O(nW)` table; the only question is how many copies per item. The elegant fact is that 0/1 vs unbounded is *just loop direction* in the 1D array — capacity high-to-low reads the previous row so each item is used once, low-to-high reads the same row so you get unlimited copies. No inner count loop needed. Truly bounded — a cap `c_i` per item — is the real work: I'd binary-split each count into powers of two and run 0/1 for `O(nW log C)`, or use a monotonic-deque sliding-window max per residue class for optimal `O(nW)`. And if a cap exceeds `W/w`, it can't bind, so I treat that item as unbounded."
 
 ## Connections
-- [[coding-patterns/fold-accumulator]] — the 1D `dp[]` is a state accumulator threaded across items in a single pass; same "thread state, don't re-derive it" instinct
-- [[theory/folds-and-tail-recursion]] — DP tabulation is memoized recursion turned into a loop; the recursion→iteration move that page describes
-- [[algorithms/dynamic-programming]] — *(future hub)* memoization vs tabulation, state design, pseudo-polynomial complexity
+- [fold accumulator](../coding-patterns/fold-accumulator.md) — the 1D `dp[]` is a state accumulator threaded across items in a single pass; same "thread state, don't re-derive it" instinct
+- [folds and tail recursion](../theory/folds-and-tail-recursion.md) — DP tabulation is memoized recursion turned into a loop; the recursion→iteration move that page describes
+- dynamic programming — *(future hub)* memoization vs tabulation, state design, pseudo-polynomial complexity
 
 ## Sources
 - Distilled from a conceptual Q&A session (2026-09-06); no raw source extract yet. Run `/extract` to formalize one if a worked knapsack problem is added under `raw/`.

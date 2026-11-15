@@ -19,7 +19,7 @@ The elegance: **realtime complexity is transient** — the batch layer constantl
 
 ## How Kappa answers (Kreps/Akidau, "Streaming 101")
 
-Maintaining **two codebases** (batch + realtime) and merging them is the tax Lambda charges. Akidau's claim: a streaming engine with (1) **correctness** (strongly-consistent checkpointed state → exactly-once) and (2) **tools for reasoning about time** (see [[system-design-concepts/event-time-vs-processing-time]]) is a *strict superset* of batch. So:
+Maintaining **two codebases** (batch + realtime) and merging them is the tax Lambda charges. Akidau's claim: a streaming engine with (1) **correctness** (strongly-consistent checkpointed state → exactly-once) and (2) **tools for reasoning about time** (see [event time vs processing time](event-time-vs-processing-time.md)) is a *strict superset* of batch. So:
 
 - Keep **one** stream pipeline over a replayable log.
 - To reprocess (bug fix, new view), **replay the log** from the start into a new version of the job, then cut over — no separate batch system.
@@ -43,10 +43,10 @@ Maintaining **two codebases** (batch + realtime) and merging them is the tax Lam
 | **Best when** | batch & stream stacks already differ; huge historical corrections | replayable log exists; want one codebase |
 
 ## Key points
-- **Both rest on an immutable, replayable log** as the master dataset ([[system-design-concepts/the-log-abstraction]]) — they differ only in whether you keep a *separate* batch recompute.
+- **Both rest on an immutable, replayable log** as the master dataset ([the log abstraction](the-log-abstraction.md)) — they differ only in whether you keep a *separate* batch recompute.
 - The **"exact = recompute over the immutable log"** insight is shared by both — it's why exactness is a *batch/replay property*, not an online-dedup property (the key unlock in the tagged-counter mock).
 - Lambda's defining virtue is **human fault-tolerance via recompute**; its defining cost is **dual code + merge seam** (double-counting a late event at the batch/realtime boundary is the classic bug).
-- Kappa's cost moves to the **log**: you need enough retention to replay history, and genuine **exactly-once** stream state ([[system-design-concepts/exactly-once-semantics]]).
+- Kappa's cost moves to the **log**: you need enough retention to replay history, and genuine **exactly-once** stream state ([exactly once semantics](exactly-once-semantics.md)).
 - Real systems often keep a **batch escape hatch** for massive historical reprocessing even when nominally Kappa.
 
 ## Interview angle
@@ -54,15 +54,15 @@ Maintaining **two codebases** (batch + realtime) and merging them is the tax Lam
 > "Both solve the same problem — serve fast-approximate and exact-reproducible from one dataset — and both assume an immutable, replayable log as the source of truth. Lambda runs two pipelines: a batch layer that recomputes exact views and a realtime layer that covers the last few hours approximately, merged at query time; the batch layer overrides the realtime layer, so realtime mistakes self-heal. The cost is two codebases and a merge seam. Kappa says a good streaming engine — with exactly-once state and event-time tooling — is a superset of batch, so run one stream pipeline and 'recompute' by replaying the log. I'd map it straight to the tagged-counter: the dashboard is the realtime/approximate layer, billing is the batch/replay exact layer, and the key realization is that exactness comes from recomputing over the immutable log, not from a giant online dedup set."
 
 ## Connections
-- [[system-design-concepts/the-log-abstraction]] — the immutable replayable log both architectures are built on
-- [[system-design-concepts/event-time-vs-processing-time]] — Kappa's viability hinges on event-time + watermarks
-- [[system-design-concepts/exactly-once-semantics]] — Kappa needs exactly-once stream state to match batch exactness
-- [[system-design-concepts/table-log-duality]] — "recompute the view" = fold the log into a table
-- [[theory/consistency-models]] — Lambda delivers eventual consistency *without* read-repair by using immutable data
-- [[system-design-concepts/read-state-watermarking]] — sibling "approximate-now, exact-later" reconciliation pattern
+- [the log abstraction](the-log-abstraction.md) — the immutable replayable log both architectures are built on
+- [event time vs processing time](event-time-vs-processing-time.md) — Kappa's viability hinges on event-time + watermarks
+- [exactly once semantics](exactly-once-semantics.md) — Kappa needs exactly-once stream state to match batch exactness
+- [table log duality](table-log-duality.md) — "recompute the view" = fold the log into a table
+- [consistency models](../theory/consistency-models.md) — Lambda delivers eventual consistency *without* read-repair by using immutable data
+- [read state watermarking](read-state-watermarking.md) — sibling "approximate-now, exact-later" reconciliation pattern
 
 ## Sources
-- [[sources/docs/how-to-beat-the-cap-theorem]] — Nathan Marz's Lambda thesis (immutable master dataset, batch+realtime, human fault-tolerance)
-- [how-to-beat-the-cap-theorem.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/how-to-beat-the-cap-theorem.md) — Nathan Marz (2011)
-- [[sources/docs/streaming-101-world-beyond-batch]] — Akidau's Kappa rebuttal ("streaming ⊇ batch")
-- [streaming-101-world-beyond-batch.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/streaming-101-world-beyond-batch.md) — Tyler Akidau (2015)
+- [how to beat the cap theorem](../reading-notes/how-to-beat-the-cap-theorem.md) — Nathan Marz's Lambda thesis (immutable master dataset, batch+realtime, human fault-tolerance)
+- [how-to-beat-the-cap-theorem.md](../../sources/references/how-to-beat-the-cap-theorem.md) — Nathan Marz (2011)
+- [streaming 101 world beyond batch](../reading-notes/streaming-101-world-beyond-batch.md) — Akidau's Kappa rebuttal ("streaming ⊇ batch")
+- [streaming-101-world-beyond-batch.md](../../sources/references/streaming-101-world-beyond-batch.md) — Tyler Akidau (2015)

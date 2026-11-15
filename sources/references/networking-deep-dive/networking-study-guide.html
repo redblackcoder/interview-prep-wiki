@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Networking Study Guide — OSI, HTTPS &amp; VPN</title>
+<style>
+  /* ============================================================
+     THEME TOKENS
+     ============================================================ */
+  :root {
+    --bg:            #0d1117;
+    --bg-elev:       #161b22;
+    --bg-elev-2:     #1c2330;
+    --border:        #2b3441;
+    --border-soft:   #222a34;
+    --text:          #e6edf3;
+    --text-dim:      #9aa7b4;
+    --text-faint:    #6b7785;
+    --accent:        #58a6ff;
+    --accent-2:      #7ee787;
+    --accent-3:      #d2a8ff;
+    --warn:          #f0883e;
+    --danger:        #ff7b72;
+    --ok:            #3fb950;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* OSI layer colors (consistent across the whole doc) */
+    --L7: #ff7b72;  --L6: #f0883e;  --L5: #e3b341;
+    --L4: #3fb950;  --L3: #58a6ff;  --L2: #a371f7;  --L1: #db61a2;
+  }
+  [data-theme="light"] {
+    --bg:            #f6f8fa;
+    --bg-elev:       #ffffff;
+    --bg-elev-2:     #f0f3f6;
+    --border:        #d0d7de;
+    --border-soft:   #e2e7ec;
+    --text:          #1f2328;
+    --text-dim:      #57606a;
+    --text-faint:    #8b949e;
+    --accent:        #0969da;
+    --accent-2:      #1a7f37;
+    --accent-3:      #8250df;
+    --warn:          #bc4c00;
+    --danger:        #cf222e;
+    --ok:            #1a7f37;
+    --L7:#cf222e; --L6:#bc4c00; --L5:#9a6700;
+    --L4:#1a7f37; --L3:#0969da; --L2:#8250df; --L1:#bf3989;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.65;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  .layout { display: flex; max-width: 1600px; margin: 0 auto; }
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elev);
+    padding: 24px 18px;
+  }
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding: 48px 56px 120px;
+    max-width: 1080px;
+  }
+  @media (max-width: 1000px) {
+    .sidebar { display: none; }
+    .content { padding: 32px 20px 80px; }
+  }
+
+  /* ============================================================
+     SIDEBAR / TOC
+     ============================================================ */
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
+  .brand-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text); line-height:1.3; }
+  .toc { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+  .toc li { margin: 1px 0; }
+  .toc a {
+    display: block;
+    padding: 5px 10px;
+    border-radius: 6px;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: background .12s, color .12s;
+  }
+  .toc a:hover { background: var(--bg-elev-2); color: var(--text); }
+  .toc a.active { color: var(--accent); background: var(--bg-elev-2); border-left-color: var(--accent); font-weight: 600; }
+  .toc .sub a { padding-left: 24px; font-size: 13px; color: var(--text-faint); }
+  .toc .group-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); margin:16px 0 4px; padding-left:10px; font-weight:700;}
+
+  /* ============================================================
+     TYPOGRAPHY
+     ============================================================ */
+  h1 { font-size: 40px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02em; }
+  h2 { font-size: 30px; margin: 64px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border); letter-spacing: -0.01em; scroll-margin-top: 20px; }
+  h3 { font-size: 22px; margin: 40px 0 12px; color: var(--text); scroll-margin-top: 20px; }
+  h4 { font-size: 17px; margin: 28px 0 8px; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  p  { margin: 12px 0; color: var(--text); }
+  .lead { font-size: 19px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
+  a { color: var(--accent); }
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--bg-elev-2);
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--border-soft);
+    color: var(--accent-2);
+  }
+  strong { color: var(--text); font-weight: 700; }
+  em.term { color: var(--accent-3); font-style: normal; font-weight: 600; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 6px 0; }
+  .hr { height:1px; background:var(--border); border:0; margin:48px 0; }
+
+  /* ============================================================
+     COMPONENTS
+     ============================================================ */
+  pre {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  pre .c  { color: var(--text-faint); }   /* comment */
+  pre .k  { color: var(--accent-3); }      /* keyword */
+  pre .s  { color: var(--accent-2); }      /* string */
+  pre .n  { color: var(--warn); }          /* number/highlight */
+  pre .d  { color: var(--danger); }        /* danger */
+
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    background: var(--bg-elev);
+    font-size: 15px;
+  }
+  .callout .h { font-weight: 700; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
+  .callout.info    { border-left-color: var(--accent); }
+  .callout.info .h { color: var(--accent); }
+  .callout.good    { border-left-color: var(--ok); }
+  .callout.good .h { color: var(--ok); }
+  .callout.warn    { border-left-color: var(--warn); }
+  .callout.warn .h { color: var(--warn); }
+  .callout.danger    { border-left-color: var(--danger); }
+  .callout.danger .h { color: var(--danger); }
+  .callout.key    { border-left-color: var(--accent-3); background: linear-gradient(90deg, color-mix(in srgb, var(--accent-3) 8%, var(--bg-elev)), var(--bg-elev)); }
+  .callout.key .h { color: var(--accent-3); }
+
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--bg-elev-2); font-weight: 700; color: var(--text); }
+  td { background: var(--bg-elev); color: var(--text-dim); }
+  td strong { color: var(--text); }
+  tr:hover td { background: var(--bg-elev-2); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  @media (max-width: 760px){ .grid-2 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .card h4 { margin-top: 0; }
+
+  .pill { display:inline-block; font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--border); background:var(--bg-elev-2); color:var(--text-dim); margin:2px; }
+
+  /* Header bar */
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; }
+  .theme-toggle {
+    background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 20px; padding: 7px 16px; cursor: pointer; font-size: 13px; font-family: var(--sans);
+    display:flex; align-items:center; gap:6px;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ============================================================
+     OSI STACK
+     ============================================================ */
+  .osi { margin: 28px 0; }
+  .osi-row { display:flex; gap:10px; margin-bottom:8px; align-items:stretch; }
+  .osi-layer {
+    flex: 1; border-radius: 8px; padding: 12px 16px; color:#0d1117;
+    display:flex; justify-content:space-between; align-items:center; font-weight:600;
+    position:relative; overflow:hidden;
+  }
+  [data-theme="dark"] .osi-layer { color: #0d1117; }
+  .osi-num { font-family:var(--mono); font-size:22px; font-weight:800; opacity:.5; margin-right:14px; }
+  .osi-main { flex:1; }
+  .osi-name { font-size:17px; font-weight:800; }
+  .osi-desc { font-size:12.5px; font-weight:500; opacity:.85; }
+  .osi-meta { text-align:right; font-size:12px; font-weight:600; }
+  .osi-pdu { font-family:var(--mono); background:rgba(0,0,0,.22); padding:2px 8px; border-radius:5px; display:inline-block; }
+  .osi-proto { display:block; opacity:.85; margin-top:4px; font-weight:500; }
+
+  .osi-brace { width: 150px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text-faint); text-align:center; position:relative;}
+
+  /* Encapsulation nested boxes */
+  .encap { font-family: var(--mono); font-size: 13px; margin: 20px 0; }
+  .encap-box { border: 2px solid; border-radius: 8px; padding: 10px; margin: 0; }
+  .encap-hdr { display:inline-block; padding: 4px 10px; border-radius: 5px; font-weight:700; font-size:12px; color:#0d1117; margin-bottom: 8px; }
+  .encap-lbl { font-size:11px; color: var(--text-faint); float:right; }
+
+  /* ============================================================
+     SEQUENCE DIAGRAM
+     ============================================================ */
+  .seq { margin: 24px 0; }
+  .seq-actors { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .seq-actor { font-weight:700; font-size:14px; padding:8px 16px; background:var(--bg-elev-2); border:1px solid var(--border); border-radius:8px; }
+  .seq-actor.client { color: var(--accent); }
+  .seq-actor.server { color: var(--accent-2); }
+  .seq-body { border:1px solid var(--border); border-radius:10px; background:var(--bg-elev); padding: 4px 0; overflow:hidden; }
+  .seq-msg { display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; padding: 7px 20px; gap: 12px; font-size:13px; border-bottom:1px dashed var(--border-soft); }
+  .seq-msg:last-child { border-bottom:0; }
+  .seq-arrow { font-family:var(--mono); color:var(--text-faint); font-size:13px; white-space:nowrap; text-align:center; }
+  .seq-label { font-family: var(--mono); font-size: 12.5px; }
+  .seq-l { text-align:right; }
+  .seq-r { text-align:left; }
+  .seq-note { grid-column: 1 / -1; text-align:center; color:var(--text-faint); font-size:12px; font-style:italic; padding: 2px 0; }
+  .seq-phase { background: var(--bg-elev-2); padding: 6px 20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-3); border-bottom:1px solid var(--border); }
+  .dir-r { color: var(--accent-2); }
+  .dir-l { color: var(--accent); }
+
+  /* ============================================================
+     PACKET / BYTE TABLES
+     ============================================================ */
+  .bytes { font-family:var(--mono); font-size:12px; margin:20px 0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .bytes-title { background:var(--bg-elev-2); padding:8px 14px; font-weight:700; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+  .bytes-title .sz { color:var(--text-faint); font-weight:500; }
+  .byte-ruler { display:flex; background:var(--bg); border-bottom:1px solid var(--border); }
+  .byte-ruler div { flex:1; text-align:center; padding:3px 0; font-size:10px; color:var(--text-faint); border-right:1px solid var(--border-soft); }
+  .byte-field { display:flex; }
+  .byte-field > div { padding:8px 10px; border-right:1px solid var(--border-soft); border-bottom:1px solid var(--border-soft); font-size:11.5px; }
+  .bf-name { font-weight:600; color:var(--text); }
+  .bf-sz { color:var(--text-faint); font-size:10px; }
+  .byte-row { display:flex; border-bottom:1px solid var(--border-soft); }
+  .byte-row:last-child { border-bottom:0; }
+  .byte-cell { flex:1; padding:8px 6px; text-align:center; border-right:1px solid var(--border-soft); }
+  .byte-cell:last-child { border-right:0; }
+  .byte-cell .fn { display:block; color:var(--text); font-size:11px; font-weight:600; }
+  .byte-cell .fb { display:block; color:var(--text-faint); font-size:10px; }
+  .span-2 { flex:2; } .span-3 { flex:3; } .span-4 { flex:4; } .span-8{flex:8;}
+  .fld-accent { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .fld-green  { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .fld-purple { background: color-mix(in srgb, var(--accent-3) 14%, transparent); }
+  .fld-warn   { background: color-mix(in srgb, var(--warn) 14%, transparent); }
+
+  /* Topology diagram helpers */
+  .diagram { background: var(--bg-elev); border:1px solid var(--border); border-radius:12px; padding:20px; margin:24px 0; overflow-x:auto; }
+  .diagram svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+  .cap { font-size:13px; color:var(--text-faint); text-align:center; margin-top:10px; font-style:italic; }
+
+  /* Step build for VPN */
+  .step { border:1px solid var(--border); border-radius:12px; margin:24px 0; overflow:hidden; background:var(--bg-elev); }
+  .step-head { display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--bg-elev-2); border-bottom:1px solid var(--border); }
+  .step-n { font-family:var(--mono); font-weight:800; font-size:20px; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#0d1117; flex-shrink:0; }
+  .step-t { font-size:18px; font-weight:700; }
+  .step-sub { font-size:13px; color:var(--text-dim); }
+  .step-body { padding: 18px 22px; }
+
+  .kbd { font-family:var(--mono); font-size:12px; background:var(--bg); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px; padding:1px 6px; color:var(--text); }
+  .footnote { font-size:13px; color:var(--text-faint); border-top:1px solid var(--border); margin-top:64px; padding-top:20px; }
+  .anchor-h { scroll-margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- ============================ SIDEBAR ============================ -->
+  <nav class="sidebar">
+    <div class="brand">Interview Prep</div>
+    <div class="brand-title">Networking: OSI · HTTPS · VPN</div>
+    <ul class="toc" id="toc">
+      <li class="group-label">Foundations</li>
+      <li><a href="#osi">1. The OSI 7-Layer Model</a></li>
+      <li class="sub"><a href="#encap">1.1 Encapsulation</a></li>
+      <li class="sub"><a href="#tcpip">1.2 OSI vs TCP/IP</a></li>
+
+      <li class="group-label">Secure Transport</li>
+      <li><a href="#https">2. HTTPS in Full Detail</a></li>
+      <li class="sub"><a href="#https-dns">2.1 DNS &amp; TCP setup</a></li>
+      <li class="sub"><a href="#tls12">2.2 TLS 1.2 handshake</a></li>
+      <li class="sub"><a href="#tls13">2.3 TLS 1.3 handshake</a></li>
+      <li class="sub"><a href="#cipher">2.4 Cipher suites</a></li>
+      <li class="sub"><a href="#pki">2.5 PKI &amp; certificates</a></li>
+      <li class="sub"><a href="#headers">2.6 HTTP headers</a></li>
+      <li class="sub"><a href="#wire">2.7 On the wire (bytes)</a></li>
+
+      <li class="group-label">The Gap</li>
+      <li><a href="#insufficient">3. Why HTTPS Isn't Enough</a></li>
+      <li class="sub"><a href="#leaks">3.1 What TLS leaks</a></li>
+      <li class="sub"><a href="#attack">3.2 Concrete attack</a></li>
+
+      <li class="group-label">The Solution</li>
+      <li><a href="#vpn">4. Building a VPN</a></li>
+      <li class="sub"><a href="#vpn-why">4.1 The goal</a></li>
+      <li class="sub"><a href="#vpn-layers">4.2 Layer by layer</a></li>
+      <li class="sub"><a href="#vpn-protocols">4.3 IPsec/OpenVPN/WireGuard</a></li>
+      <li class="sub"><a href="#vpn-arch">4.4 Full architecture</a></li>
+      <li class="sub"><a href="#vpn-walk">4.5 Packet walkthrough</a></li>
+      <li class="sub"><a href="#ztna">4.6 Beyond VPN: ZTNA</a></li>
+    </ul>
+  </nav>
+
+  <!-- ============================ CONTENT ============================ -->
+  <main class="content">
+    <div class="topbar">
+      <div class="brand" style="margin:0;">Technical Study Guide</div>
+      <button class="theme-toggle" id="themeBtn">☀︎ Light</button>
+    </div>
+
+    <h1>Networking: OSI, HTTPS &amp; VPN</h1>
+    <p class="lead">A ground-up walkthrough of how a byte travels the network — from the 7-layer model, through the complete HTTPS handshake and wire format, to why encrypted transport still isn't enough, ending with a VPN built one layer at a time.</p>
+
+    <div class="callout info">
+      <div class="h">How to read this guide</div>
+      Each section builds on the previous one. The mental model to hold: <strong>every security property has to be placed at a specific layer</strong>. HTTPS secures the <em class="term">payload</em> at layers 5–7; a VPN secures the <em class="term">envelope</em> at layer 3. Understanding <em>which</em> layer owns <em>which</em> guarantee is the whole game.
+    </div>
+
+    <!-- =====================================================================
+         SECTION 1 — OSI
+         ===================================================================== -->
+    <h2 id="osi" class="anchor-h">1. The OSI 7-Layer Model</h2>
+    <p>The <strong>Open Systems Interconnection (OSI)</strong> model is a conceptual framework that splits network communication into seven layers. Each layer talks only to the layer directly above and below it, and each has a single well-defined job. This separation is why you can swap Wi-Fi for Ethernet (Layer 1/2) without rewriting your web app (Layer 7).</p>
+
+    <p>Data flows <strong>down</strong> the stack on the sender (each layer wraps the data in its own header — <em class="term">encapsulation</em>) and <strong>up</strong> the stack on the receiver (each layer strips its header — <em class="term">decapsulation</em>). A layer on the receiver only ever reads the header its <em>peer</em> layer wrote.</p>
+
+    <div class="osi">
+      <!-- L7 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L7)">
+          <span class="osi-num">7</span>
+          <div class="osi-main">
+            <div class="osi-name">Application</div>
+            <div class="osi-desc">Interface to the user/app; the actual message semantics</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Data</span><span class="osi-proto">HTTP · HTTPS · DNS · SMTP · gRPC</span></div>
+        </div>
+        <div class="osi-brace">“What is said”<br>(the message)</div>
+      </div>
+      <!-- L6 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L6)">
+          <span class="osi-num">6</span>
+          <div class="osi-main">
+            <div class="osi-name">Presentation</div>
+            <div class="osi-desc">Translation, serialization, compression &amp; <strong>encryption</strong></div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Data</span><span class="osi-proto">TLS/SSL · JPEG · ASCII · UTF-8</span></div>
+        </div>
+        <div class="osi-brace">Host<br>layers</div>
+      </div>
+      <!-- L5 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L5)">
+          <span class="osi-num">5</span>
+          <div class="osi-main">
+            <div class="osi-name">Session</div>
+            <div class="osi-desc">Sets up, maintains &amp; tears down conversations; auth state</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Data</span><span class="osi-proto">TLS session · NetBIOS · RPC · sockets</span></div>
+        </div>
+        <div class="osi-brace">(software,<br>in the OS/app)</div>
+      </div>
+      <!-- L4 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L4)">
+          <span class="osi-num">4</span>
+          <div class="osi-main">
+            <div class="osi-name">Transport</div>
+            <div class="osi-desc">End-to-end delivery, reliability, ordering, ports, flow control</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Segment / Datagram</span><span class="osi-proto">TCP · UDP · QUIC</span></div>
+        </div>
+        <div class="osi-brace">“How it’s<br>delivered”</div>
+      </div>
+      <!-- L3 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L3)">
+          <span class="osi-num">3</span>
+          <div class="osi-main">
+            <div class="osi-name">Network</div>
+            <div class="osi-desc">Logical addressing &amp; routing between networks (host-to-host)</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Packet</span><span class="osi-proto">IP · ICMP · IPsec · BGP</span></div>
+        </div>
+        <div class="osi-brace">Media<br>layers</div>
+      </div>
+      <!-- L2 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L2)">
+          <span class="osi-num">2</span>
+          <div class="osi-main">
+            <div class="osi-name">Data Link</div>
+            <div class="osi-desc">Framing &amp; delivery on one physical link; MAC addressing</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Frame</span><span class="osi-proto">Ethernet · Wi-Fi (802.11) · ARP · PPP</span></div>
+        </div>
+        <div class="osi-brace">(hardware/<br>drivers)</div>
+      </div>
+      <!-- L1 -->
+      <div class="osi-row">
+        <div class="osi-layer" style="background:var(--L1)">
+          <span class="osi-num">1</span>
+          <div class="osi-main">
+            <div class="osi-name">Physical</div>
+            <div class="osi-desc">Raw bits as electrical / optical / radio signals on the medium</div>
+          </div>
+          <div class="osi-meta"><span class="osi-pdu">Bits</span><span class="osi-proto">Ethernet PHY · fiber · copper · radio</span></div>
+        </div>
+        <div class="osi-brace">“The wire”</div>
+      </div>
+    </div>
+
+    <div class="callout key">
+      <div class="h">Mnemonic</div>
+      Top→bottom: <strong>A</strong>ll <strong>P</strong>eople <strong>S</strong>eem <strong>T</strong>o <strong>N</strong>eed <strong>D</strong>ata <strong>P</strong>rocessing. Bottom→top: <strong>P</strong>lease <strong>D</strong>o <strong>N</strong>ot <strong>T</strong>hrow <strong>S</strong>ausage <strong>P</strong>izza <strong>A</strong>way.
+    </div>
+
+    <table>
+      <thead><tr><th>Layer</th><th>Addressing</th><th>Device that operates here</th><th>Fails when…</th></tr></thead>
+      <tbody>
+        <tr><td><strong>7 Application</strong></td><td>URL / hostname</td><td>API gateway, WAF, proxy</td><td>App returns 500, bad JSON</td></tr>
+        <tr><td><strong>4 Transport</strong></td><td>Port (e.g. :443)</td><td>Load balancer (L4), firewall</td><td>Connection refused / reset</td></tr>
+        <tr><td><strong>3 Network</strong></td><td>IP address</td><td>Router, L3 switch</td><td>“Destination unreachable”, no route</td></tr>
+        <tr><td><strong>2 Data Link</strong></td><td>MAC address</td><td>Switch, bridge, NIC</td><td>ARP failure, VLAN misconfig</td></tr>
+        <tr><td><strong>1 Physical</strong></td><td>None (raw signal)</td><td>Hub, cable, transceiver</td><td>Cable unplugged, link down</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ENCAPSULATION -->
+    <h3 id="encap" class="anchor-h">1.1 Encapsulation — how the layers nest</h3>
+    <p>When you send an HTTPS request, the browser hands the HTTP message down. Each layer prepends (and Layer 2 also appends) its own header, treating everything above as an opaque <em class="term">payload</em>. By the time it hits the wire it's a set of Russian nesting dolls:</p>
+
+    <div class="encap">
+      <div class="encap-box" style="border-color:var(--L2)">
+        <span class="encap-hdr" style="background:var(--L2)">Ethernet Header (L2)</span><span class="encap-lbl">Frame · MAC src/dst, EtherType</span>
+        <div class="encap-box" style="border-color:var(--L3); margin-top:10px;">
+          <span class="encap-hdr" style="background:var(--L3)">IP Header (L3)</span><span class="encap-lbl">Packet · IP src/dst, TTL, proto</span>
+          <div class="encap-box" style="border-color:var(--L4); margin-top:10px;">
+            <span class="encap-hdr" style="background:var(--L4)">TCP Header (L4)</span><span class="encap-lbl">Segment · ports, seq/ack, flags</span>
+            <div class="encap-box" style="border-color:var(--L5); margin-top:10px;">
+              <span class="encap-hdr" style="background:var(--L5)">TLS Record (L5/6)</span><span class="encap-lbl">encrypted envelope</span>
+              <div class="encap-box" style="border-color:var(--L7); margin-top:10px;">
+                <span class="encap-hdr" style="background:var(--L7)">HTTP Request (L7)</span><span class="encap-lbl">GET /path · Host: · Cookie:</span>
+                <div style="padding:10px; color:var(--text-dim);">“<strong>the actual data</strong>” — your JSON body, form fields, etc.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right; margin-top:8px; color:var(--L2); font-size:11px;">+ Ethernet FCS trailer (checksum)</div>
+      </div>
+    </div>
+    <p>Notice where TLS sits: it wraps the HTTP layer but is itself wrapped by TCP/IP/Ethernet. <strong>This is the crux of Section 3</strong> — the IP and TCP headers (who's talking to whom, on what port) are <em>outside</em> the encrypted envelope and are visible to everyone on the path.</p>
+
+    <!-- OSI vs TCP/IP -->
+    <h3 id="tcpip" class="anchor-h">1.2 OSI vs the real-world TCP/IP model</h3>
+    <p>OSI is the teaching model; the internet actually runs on the leaner <strong>TCP/IP model</strong>. The mapping:</p>
+    <table>
+      <thead><tr><th>OSI (7 layers)</th><th>TCP/IP (4 layers)</th><th>Real protocols</th></tr></thead>
+      <tbody>
+        <tr><td>7 App · 6 Presentation · 5 Session</td><td><strong>Application</strong></td><td>HTTP, TLS, DNS, gRPC</td></tr>
+        <tr><td>4 Transport</td><td><strong>Transport</strong></td><td>TCP, UDP, QUIC</td></tr>
+        <tr><td>3 Network</td><td><strong>Internet</strong></td><td>IP, ICMP, IPsec</td></tr>
+        <tr><td>2 Data Link · 1 Physical</td><td><strong>Link (Network Access)</strong></td><td>Ethernet, Wi-Fi, ARP</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <div class="h">Where does TLS live?</div>
+      TLS is the classic "it depends" answer. Functionally it provides <strong>Presentation (6)</strong> services (encryption) and <strong>Session (5)</strong> services (session establishment/resumption), while running <em>over</em> TCP at Layer 4. In interviews: "TLS sits between the transport layer and the application, providing session + presentation duties (L5/6)." QUIC blurs this further by folding TLS 1.3 directly into an L4 transport over UDP.
+    </div>
+
+    <!-- =====================================================================
+         SECTION 2 — HTTPS
+         ===================================================================== -->
+    <h2 id="https" class="anchor-h">2. HTTPS in Full Detail</h2>
+    <p><strong>HTTPS = HTTP over TLS.</strong> The HTTP semantics are unchanged; every byte is simply carried inside an encrypted TLS tunnel running over TCP (port 443). TLS delivers three guarantees:</p>
+    <div class="grid-2">
+      <div class="card"><h4 style="color:var(--ok)">Confidentiality</h4>An eavesdropper sees only ciphertext. Achieved with a symmetric cipher (AES-GCM, ChaCha20) using a key negotiated during the handshake.</div>
+      <div class="card"><h4 style="color:var(--accent)">Integrity</h4>Tampering is detected. An AEAD cipher produces an authentication tag over every record; a flipped bit fails verification.</div>
+      <div class="card"><h4 style="color:var(--accent-3)">Authentication</h4>You're really talking to <code>bank.com</code>, not an impostor. Proven by an X.509 certificate signed by a trusted CA.</div>
+      <div class="card"><h4 style="color:var(--warn)">Forward secrecy</h4>Ephemeral (EC)DHE keys mean a stolen server private key <em>cannot</em> decrypt yesterday's captured traffic.</div>
+    </div>
+
+    <h3 id="https-dns" class="anchor-h">2.1 Before TLS: DNS resolution &amp; the TCP 3-way handshake</h3>
+    <p>Typing <code>https://bank.com</code> triggers three sub-steps before a single byte of application data moves:</p>
+    <p><strong>① DNS lookup (L7 over UDP/53):</strong> resolve <code>bank.com</code> → <code>203.0.113.10</code>. Note: classic DNS is <em>plaintext</em> — the first leak we'll revisit in §3.</p>
+    <p><strong>② TCP 3-way handshake (L4):</strong> establish a reliable byte stream. <code>SEQ</code> numbers synchronize both directions.</p>
+
+    <div class="seq">
+      <div class="seq-actors">
+        <div class="seq-actor client">Client (browser)</div>
+        <div class="seq-actor server">Server :443</div>
+      </div>
+      <div class="seq-body">
+        <div class="seq-msg"><div class="seq-l seq-label dir-r">SYN · seq=x</div><div class="seq-arrow">──────▶</div><div class="seq-r" style="color:var(--text-faint)">"I want to talk, my seq starts at x"</div></div>
+        <div class="seq-msg"><div class="seq-l" style="color:var(--text-faint)">"OK, my seq=y, I ack x+1"</div><div class="seq-arrow">◀──────</div><div class="seq-r seq-label dir-l">SYN-ACK · seq=y, ack=x+1</div></div>
+        <div class="seq-msg"><div class="seq-l seq-label dir-r">ACK · ack=y+1</div><div class="seq-arrow">──────▶</div><div class="seq-r" style="color:var(--text-faint)">"Got it — connection open"</div></div>
+        <div class="seq-msg"><div class="seq-note">TCP connection ESTABLISHED — now TLS begins inside it</div></div>
+      </div>
+    </div>
+    <p><strong>③ TLS handshake:</strong> negotiate a protocol version + cipher, authenticate the server, and agree on symmetric keys. This is where the interesting work happens.</p>
+
+    <!-- TLS 1.2 -->
+    <h3 id="tls12" class="anchor-h">2.2 TLS 1.2 handshake (2 round trips)</h3>
+    <p>TLS 1.2 is worth understanding in full because it makes every step explicit. It costs <strong>2 RTTs</strong> before application data flows.</p>
+
+    <div class="seq">
+      <div class="seq-actors">
+        <div class="seq-actor client">Client</div>
+        <div class="seq-actor server">Server</div>
+      </div>
+      <div class="seq-body">
+        <div class="seq-phase">Round trip 1 — Hello &amp; negotiation</div>
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">ClientHello</div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">max TLS version, <strong>list of cipher suites</strong>, client random (32B), <strong>SNI</strong>=bank.com, supported curves</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">picks version + cipher, server random (32B)</div><div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">ServerHello</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">the X.509 chain (leaf → intermediate)</div><div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">Certificate</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">server's ephemeral ECDHE public key, <strong>signed</strong> by cert key</div><div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">ServerKeyExchange</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)"></div><div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">ServerHelloDone</div>
+        </div>
+        <div class="seq-phase">Round trip 2 — Key agreement &amp; finish</div>
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">ClientKeyExchange</div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">client's ephemeral ECDHE public key</div>
+        </div>
+        <div class="seq-msg"><div class="seq-note">↓ both sides now derive the same shared secret → master secret → session keys ↓</div></div>
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">ChangeCipherSpec</div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">"everything after this is encrypted"</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">Finished 🔒</div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">encrypted hash of the whole handshake (proves nothing was tampered)</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">verifies + replies in kind</div><div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">🔒 ChangeCipherSpec + Finished</div>
+        </div>
+        <div class="seq-msg"><div class="seq-note">✅ Secure channel ready — HTTP request finally sent (encrypted)</div></div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="h">Why ephemeral keys (ECDHE)?</div>
+      The <code>*KeyExchange</code> messages carry <strong>ephemeral</strong> Diffie-Hellman public keys generated fresh for this connection. The shared secret is computed independently by each side and never transmitted. Because the private halves are thrown away afterward, capturing the traffic + later stealing the server key still won't decrypt it — this is <em class="term">forward secrecy</em>. The certificate's RSA/ECDSA key is used only to <em>sign</em> the exchange, proving the server owns it — not to encrypt the secret.
+    </div>
+
+    <!-- TLS 1.3 -->
+    <h3 id="tls13" class="anchor-h">2.3 TLS 1.3 handshake (1 round trip)</h3>
+    <p>TLS 1.3 (RFC 8446, 2018) is the modern default. It cut the handshake to <strong>1 RTT</strong> by making the client guess the key-exchange parameters up front, and it removed every legacy/insecure option (static RSA key exchange, RC4, CBC MACs, compression, renegotiation).</p>
+
+    <div class="seq">
+      <div class="seq-actors">
+        <div class="seq-actor client">Client</div>
+        <div class="seq-actor server">Server</div>
+      </div>
+      <div class="seq-body">
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">ClientHello + <strong>key_share</strong></div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">ciphers + client already sends an ECDHE public key (guessing the curve)</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">picks cipher, sends its key_share; from here on <strong>everything is encrypted</strong></div>
+          <div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">ServerHello + key_share</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l" style="color:var(--text-faint)">🔒 {EncryptedExtensions, Certificate, CertVerify, Finished}</div>
+          <div class="seq-arrow">◀──────</div>
+          <div class="seq-r seq-label dir-l">🔒 encrypted flight</div>
+        </div>
+        <div class="seq-msg">
+          <div class="seq-l seq-label dir-r">🔒 Finished + <strong>HTTP request</strong></div><div class="seq-arrow">──────▶</div>
+          <div class="seq-r" style="color:var(--text-faint)">client can send app data in the very same flight</div>
+        </div>
+        <div class="seq-msg"><div class="seq-note">✅ 1-RTT to secure. With 0-RTT resumption, app data rides in the first packet.</div></div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Property</th><th>TLS 1.2</th><th>TLS 1.3</th></tr></thead>
+      <tbody>
+        <tr><td>Handshake latency</td><td>2 RTT</td><td><strong>1 RTT</strong> (0-RTT on resume)</td></tr>
+        <tr><td>Key exchange</td><td>RSA or (EC)DHE</td><td><strong>(EC)DHE only</strong> — forward secrecy mandatory</td></tr>
+        <tr><td>Cipher suite names</td><td>Kx+Auth+Enc+MAC bundled</td><td>Just AEAD+hash (Kx/Auth negotiated separately)</td></tr>
+        <tr><td>Certificate visible on wire?</td><td>Yes (plaintext)</td><td><strong>No</strong> — encrypted after ServerHello</td></tr>
+        <tr><td>Weak crypto (RC4, CBC, SHA-1, RSA-Kx)</td><td>Present</td><td><strong>Removed</strong></td></tr>
+      </tbody>
+    </table>
+
+    <!-- Cipher suites -->
+    <h3 id="cipher" class="anchor-h">2.4 Anatomy of a cipher suite</h3>
+    <p>A TLS 1.2 cipher suite name encodes every cryptographic choice. Decoding one:</p>
+    <pre><span class="c"># TLS 1.2 cipher suite</span>
+TLS_<span class="k">ECDHE</span>_<span class="s">RSA</span>_WITH_<span class="n">AES_128_GCM</span>_<span class="d">SHA256</span>
+    │      │         │            │
+    │      │         │            └─ <span class="d">SHA256</span>  : hash for HKDF / handshake MAC
+    │      │         └────────────── <span class="n">AES-128-GCM</span> : bulk cipher (AEAD, symmetric)
+    │      └──────────────────────── <span class="s">RSA</span>    : authentication (how the server proves identity)
+    └─────────────────────────────── <span class="k">ECDHE</span>  : key exchange (Elliptic-Curve Diffie-Hellman Ephemeral)
+
+<span class="c"># TLS 1.3 — only the symmetric parts remain (Kx &amp; auth negotiated via extensions)</span>
+TLS_<span class="n">AES_256_GCM</span>_<span class="d">SHA384</span>
+TLS_<span class="n">CHACHA20_POLY1305</span>_<span class="d">SHA256</span>   <span class="c"># preferred on mobile / no AES hardware</span></pre>
+
+    <!-- PKI -->
+    <h3 id="pki" class="anchor-h">2.5 PKI &amp; the certificate chain of trust</h3>
+    <p>Authentication rests on <strong>Public Key Infrastructure</strong>. Your OS/browser ships with a <em class="term">trust store</em> of ~150 root Certificate Authority (CA) public keys. Trust chains downward:</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 720 250" width="720" role="img" aria-label="Certificate chain of trust">
+        <defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="var(--text-dim)"/></marker></defs>
+        <!-- Root -->
+        <rect x="20" y="95" width="180" height="60" rx="10" fill="var(--bg-elev-2)" stroke="var(--accent-3)" stroke-width="2"/>
+        <text x="110" y="120" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="sans-serif">Root CA</text>
+        <text x="110" y="140" text-anchor="middle" fill="var(--text-dim)" font-size="11" font-family="sans-serif">self-signed · in trust store</text>
+        <!-- arrow -->
+        <line x1="200" y1="125" x2="268" y2="125" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#ah)"/>
+        <text x="234" y="116" text-anchor="middle" fill="var(--text-faint)" font-size="10" font-family="sans-serif">signs</text>
+        <!-- Intermediate -->
+        <rect x="270" y="95" width="180" height="60" rx="10" fill="var(--bg-elev-2)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="360" y="120" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="sans-serif">Intermediate CA</text>
+        <text x="360" y="140" text-anchor="middle" fill="var(--text-dim)" font-size="11" font-family="sans-serif">sent by server</text>
+        <line x1="450" y1="125" x2="518" y2="125" stroke="var(--text-dim)" stroke-width="2" marker-end="url(#ah)"/>
+        <text x="484" y="116" text-anchor="middle" fill="var(--text-faint)" font-size="10" font-family="sans-serif">signs</text>
+        <!-- Leaf -->
+        <rect x="520" y="95" width="180" height="60" rx="10" fill="var(--bg-elev-2)" stroke="var(--ok)" stroke-width="2"/>
+        <text x="610" y="120" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="sans-serif">Leaf cert</text>
+        <text x="610" y="140" text-anchor="middle" fill="var(--text-dim)" font-size="11" font-family="sans-serif">CN/SAN = bank.com</text>
+        <!-- labels -->
+        <text x="110" y="55" text-anchor="middle" fill="var(--text-faint)" font-size="11" font-family="sans-serif">🔒 private key offline</text>
+        <text x="610" y="200" text-anchor="middle" fill="var(--text-faint)" font-size="11" font-family="sans-serif">key pair lives on the web server</text>
+        <line x1="610" y1="185" x2="610" y2="158" stroke="var(--text-faint)" stroke-width="1" stroke-dasharray="3"/>
+      </svg>
+      <div class="cap">The browser verifies each signature up the chain until it reaches a root it already trusts.</div>
+    </div>
+
+    <p>What the browser actually checks when it receives the <code>Certificate</code> message:</p>
+    <ol>
+      <li><strong>Signature chain</strong> — each cert is signed by the next one up; the leaf ultimately chains to a trusted root.</li>
+      <li><strong>Hostname match</strong> — the requested host appears in the cert's <em class="term">Subject Alternative Name</em> (SAN). (The old Common Name field is deprecated.)</li>
+      <li><strong>Validity window</strong> — <code>notBefore</code> ≤ now ≤ <code>notAfter</code>.</li>
+      <li><strong>Revocation</strong> — not revoked, via OCSP / OCSP stapling / CRL.</li>
+      <li><strong>Proof of possession</strong> — in the handshake the server signs with the cert's private key (TLS 1.3 <code>CertificateVerify</code>), proving it truly owns the cert, not just a copy of it.</li>
+    </ol>
+
+    <div class="callout danger">
+      <div class="h">The trust model's soft underbelly (preview of §3)</div>
+      You trust <strong>every</strong> CA in the store equally. If <em>any one</em> of ~150 CAs is compromised or coerced, it can mint a valid <code>bank.com</code> certificate. This has happened (DigiNotar, 2011). Mitigations: Certificate Transparency logs, CAA records, HSTS, and public-key pinning.
+    </div>
+
+    <!-- Headers -->
+    <h3 id="headers" class="anchor-h">2.6 The HTTP layer: request &amp; response headers</h3>
+    <p>Once the tunnel is up, ordinary HTTP flows inside it. A request is a start-line, headers, a blank line, then an optional body:</p>
+    <pre><span class="c">━━━ REQUEST (client → server, encrypted inside TLS) ━━━</span>
+<span class="k">POST</span> /api/transfer <span class="k">HTTP/2</span>
+<span class="s">Host</span>: bank.com                      <span class="c"># which vhost (also in TLS SNI)</span>
+<span class="s">Authorization</span>: Bearer eyJhbGc...      <span class="c"># credentials</span>
+<span class="s">Cookie</span>: session=3a7f...               <span class="c"># session state</span>
+<span class="s">Content-Type</span>: application/json
+<span class="s">Content-Length</span>: 47
+<span class="s">User-Agent</span>: Mozilla/5.0 ...
+
+{<span class="s">"to"</span>:<span class="s">"acct-99"</span>,<span class="s">"amount"</span>:<span class="n">5000</span>}       <span class="c"># body</span>
+
+<span class="c">━━━ RESPONSE (server → client) ━━━</span>
+<span class="k">HTTP/2</span> <span class="n">200</span> OK
+<span class="s">Content-Type</span>: application/json
+<span class="s">Set-Cookie</span>: session=9b2e...; <span class="d">Secure; HttpOnly; SameSite=Strict</span>
+<span class="s">Strict-Transport-Security</span>: max-age=31536000; includeSubDomains  <span class="c"># HSTS: force HTTPS</span>
+<span class="s">Content-Security-Policy</span>: default-src 'self'
+<span class="s">X-Content-Type-Options</span>: nosniff
+
+{<span class="s">"status"</span>:<span class="s">"ok"</span>,<span class="s">"txn"</span>:<span class="s">"T-1023"</span>}</pre>
+
+    <table>
+      <thead><tr><th>Security header</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>Strict-Transport-Security</code></td><td>Browser must use HTTPS for this domain — blocks SSL-strip downgrade.</td></tr>
+        <tr><td><code>Set-Cookie: Secure; HttpOnly; SameSite</code></td><td>Cookie only over HTTPS, unreadable by JS, not sent cross-site (CSRF defense).</td></tr>
+        <tr><td><code>Content-Security-Policy</code></td><td>Whitelist of allowed script/style origins — mitigates XSS.</td></tr>
+        <tr><td><code>X-Content-Type-Options: nosniff</code></td><td>Stops MIME-type guessing attacks.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- On the wire -->
+    <h3 id="wire" class="anchor-h">2.7 On the wire — byte-level structures</h3>
+    <p>That HTTP request is wrapped by four headers on its way out. Here are the real field layouts, outermost-last.</p>
+
+    <h4>TLS Record (wraps the HTTP bytes)</h4>
+    <div class="bytes">
+      <div class="bytes-title"><span>TLS Record Header</span><span class="sz">5-byte header + encrypted payload</span></div>
+      <div class="byte-row">
+        <div class="byte-cell fld-purple"><span class="fn">Content Type</span><span class="fb">1 byte · 23=application_data</span></div>
+        <div class="byte-cell fld-purple span-2"><span class="fn">Version</span><span class="fb">2 bytes · 0x0303</span></div>
+        <div class="byte-cell fld-purple span-2"><span class="fn">Length</span><span class="fb">2 bytes · ≤ 16 KB</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell fld-green span-8"><span class="fn">Encrypted payload + AEAD auth tag</span><span class="fb">the ciphertext of your HTTP request; tag detects tampering</span></div>
+      </div>
+    </div>
+
+    <h4>TCP Segment (L4 — ports, reliability)</h4>
+    <div class="bytes">
+      <div class="bytes-title"><span>TCP Header</span><span class="sz">20 bytes (min)</span></div>
+      <div class="byte-row">
+        <div class="byte-cell fld-green"><span class="fn">Source Port</span><span class="fb">2 B · e.g. 51514</span></div>
+        <div class="byte-cell fld-green"><span class="fn">Dest Port</span><span class="fb">2 B · 443</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell fld-green span-2"><span class="fn">Sequence Number</span><span class="fb">4 B · byte offset in stream</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell fld-green span-2"><span class="fn">Acknowledgment Number</span><span class="fb">4 B · next expected byte</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell"><span class="fn">Data Offset + Flags</span><span class="fb">SYN ACK FIN RST PSH URG</span></div>
+        <div class="byte-cell"><span class="fn">Window</span><span class="fb">2 B · flow control</span></div>
+        <div class="byte-cell"><span class="fn">Checksum + Urgent</span><span class="fb">4 B</span></div>
+      </div>
+    </div>
+
+    <h4>IPv4 Packet (L3 — routing between hosts)</h4>
+    <div class="bytes">
+      <div class="bytes-title"><span>IPv4 Header</span><span class="sz">20 bytes (min)</span></div>
+      <div class="byte-row">
+        <div class="byte-cell"><span class="fn">Ver/IHL</span><span class="fb">1 B</span></div>
+        <div class="byte-cell"><span class="fn">DSCP/ECN</span><span class="fb">1 B · QoS</span></div>
+        <div class="byte-cell span-2"><span class="fn">Total Length</span><span class="fb">2 B</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell span-2"><span class="fn">Identification</span><span class="fb">2 B · fragmentation</span></div>
+        <div class="byte-cell span-2"><span class="fn">Flags + Fragment Offset</span><span class="fb">2 B</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell"><span class="fn">TTL</span><span class="fb">1 B · hop limit</span></div>
+        <div class="byte-cell"><span class="fn">Protocol</span><span class="fb">1 B · 6=TCP</span></div>
+        <div class="byte-cell span-2"><span class="fn">Header Checksum</span><span class="fb">2 B</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell fld-accent span-2"><span class="fn">Source IP Address</span><span class="fb">4 B · 198.51.100.5 (your public IP)</span></div>
+        <div class="byte-cell fld-accent span-2"><span class="fn">Destination IP Address</span><span class="fb">4 B · 203.0.113.10 (bank.com)</span></div>
+      </div>
+    </div>
+
+    <h4>Ethernet Frame (L2 — one physical link)</h4>
+    <div class="bytes">
+      <div class="bytes-title"><span>Ethernet II Frame</span><span class="sz">14-byte header + 4-byte FCS trailer</span></div>
+      <div class="byte-row">
+        <div class="byte-cell fld-warn span-3"><span class="fn">Destination MAC</span><span class="fb">6 B · next hop (your router)</span></div>
+        <div class="byte-cell fld-warn span-3"><span class="fn">Source MAC</span><span class="fb">6 B · your NIC</span></div>
+        <div class="byte-cell span-2"><span class="fn">EtherType</span><span class="fb">2 B · 0x0800=IPv4</span></div>
+      </div>
+      <div class="byte-row">
+        <div class="byte-cell span-4" style="flex:6"><span class="fn">Payload (the IP packet above)</span><span class="fb">46–1500 bytes (MTU)</span></div>
+        <div class="byte-cell span-2"><span class="fn">FCS</span><span class="fb">4 B · CRC checksum</span></div>
+      </div>
+    </div>
+
+    <div class="callout key">
+      <div class="h">The one sentence to remember from §2</div>
+      Everything from the <span style="color:var(--L4)">TCP header</span> outward — <strong>your IP, the server's IP, the port, packet sizes and timing</strong> — is <em>plaintext metadata</em>. TLS encrypts only the innermost payload. Hold that thought.
+    </div>
+
+    <!-- =====================================================================
+         SECTION 3 — WHY HTTPS ISN'T ENOUGH
+         ===================================================================== -->
+    <h2 id="insufficient" class="anchor-h">3. Why HTTPS Isn't Enough</h2>
+    <p>HTTPS is excellent at what it does — but it secures a <strong>single application session's payload</strong>, nothing more. It was never designed to be an access-control or network-security system. Companies add private networks + VPNs because HTTPS leaves five gaps:</p>
+
+    <h3 id="leaks" class="anchor-h">3.1 What TLS does <em>not</em> protect</h3>
+    <div class="grid-2">
+      <div class="card"><h4 style="color:var(--danger)">1 · Metadata &amp; the envelope</h4>The IP/TCP headers are outside the encryption. Anyone on-path (your ISP, coffee-shop Wi-Fi, a transit AS, a nation-state) sees <strong>who you talk to, when, how often, and how much</strong> — even if not <em>what</em>.</div>
+      <div class="card"><h4 style="color:var(--danger)">2 · Hostname leakage</h4>Plaintext <strong>DNS</strong> queries and the TLS <strong>SNI</strong> field both reveal <code>bank.com</code> before encryption kicks in. (DoH/DoT and Encrypted ClientHello help, but aren't universal.)</div>
+      <div class="card"><h4 style="color:var(--danger)">3 · No network access control</h4>TLS authenticates the <em>server to the client</em>. It does <strong>nothing</strong> to stop the entire internet from <em>reaching</em> your internal admin panel, database port, or staging box. If it has a public IP, it's being scanned right now.</div>
+      <div class="card"><h4 style="color:var(--danger)">4 · Fragile trust anchors</h4>The ~150-CA trust model, corporate TLS-inspection proxies, or a single mis-issued cert can enable a valid-looking MITM. TLS trusts any CA equally.</div>
+      <div class="card"><h4 style="color:var(--danger)">5 · Per-service, not per-network</h4>Every service must implement, configure, patch, and correctly enforce TLS + authn/authz on its own. Miss one — a legacy service, an internal metrics endpoint, a misconfigured mTLS — and it's exposed.</div>
+      <div class="card"><h4 style="color:var(--warn)">6 · Endpoints &amp; the app itself</h4>TLS protects data <em>in transit</em>, not a compromised client, a phished credential, XSS, or a malicious server. "The lock icon" ≠ "safe."</div>
+    </div>
+
+    <div class="callout info">
+      <div class="h">The reframing</div>
+      HTTPS answers <em>"is this conversation private and is the server who it claims to be?"</em> It never answers <em>"should this person even be allowed to reach this server at all?"</em> That second question is a <strong>network</strong> question — and it belongs at Layer 3, which is exactly where a VPN operates.
+    </div>
+
+    <!-- ATTACK -->
+    <h3 id="attack" class="anchor-h">3.2 A concrete attack scenario</h3>
+    <p>Let's make gap #3 painfully concrete. <strong>Acme Corp</strong> runs an internal Kibana dashboard for engineers. It's "secured" — served over HTTPS with a valid cert and a login page. To let staff use it from home, ops assigned it a public IP and opened <code>:443</code>. HTTPS is on, so it's safe… right?</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 760 340" width="760" role="img" aria-label="Attack scenario">
+        <defs><marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="var(--danger)"/></marker>
+          <marker id="ag" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="var(--ok)"/></marker></defs>
+        <!-- attacker -->
+        <rect x="20" y="30" width="150" height="70" rx="10" fill="var(--bg-elev-2)" stroke="var(--danger)" stroke-width="2"/>
+        <text x="95" y="60" text-anchor="middle" fill="var(--danger)" font-size="14" font-weight="700" font-family="sans-serif">Attacker</text>
+        <text x="95" y="80" text-anchor="middle" fill="var(--text-dim)" font-size="11" font-family="sans-serif">anywhere on Earth</text>
+        <!-- internet cloud -->
+        <ellipse cx="380" cy="65" rx="120" ry="45" fill="var(--bg-elev-2)" stroke="var(--border)" stroke-width="2"/>
+        <text x="380" y="62" text-anchor="middle" fill="var(--text-dim)" font-size="13" font-weight="700" font-family="sans-serif">Public Internet</text>
+        <text x="380" y="80" text-anchor="middle" fill="var(--text-faint)" font-size="11" font-family="sans-serif">no gatekeeper</text>
+        <!-- server -->
+        <rect x="590" y="30" width="150" height="70" rx="10" fill="var(--bg-elev-2)" stroke="var(--warn)" stroke-width="2"/>
+        <text x="665" y="56" text-anchor="middle" fill="var(--warn)" font-size="13" font-weight="700" font-family="sans-serif">Kibana :443</text>
+        <text x="665" y="74" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="sans-serif">public IP · valid TLS</text>
+        <text x="665" y="88" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="sans-serif">login page</text>
+        <!-- arrows across -->
+        <line x1="170" y1="65" x2="258" y2="65" stroke="var(--danger)" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="500" y1="65" x2="588" y2="65" stroke="var(--danger)" stroke-width="2" marker-end="url(#ar)"/>
+        <!-- attack steps -->
+        <text x="30" y="150" fill="var(--text)" font-size="12.5" font-family="sans-serif" font-weight="700">The kill chain — every step rides valid HTTPS:</text>
+        <text x="30" y="178" fill="var(--text-dim)" font-size="12" font-family="monospace">① Recon:   mass-scan IPv4 :443 (Shodan/masscan) → finds the host</text>
+        <text x="30" y="200" fill="var(--text-dim)" font-size="12" font-family="monospace">② Fingerprint: TLS cert SAN + HTTP title leak "Kibana 7.6.2" (internal!)</text>
+        <text x="30" y="222" fill="var(--text-dim)" font-size="12" font-family="monospace">③ Exploit: CVE for that version → auth bypass / RCE, all over TLS</text>
+        <text x="30" y="244" fill="var(--text-dim)" font-size="12" font-family="monospace">④ Foothold: shell on the box; it sits INSIDE the flat corporate LAN</text>
+        <text x="30" y="266" fill="var(--text-dim)" font-size="12" font-family="monospace">⑤ Pivot: reach the DB, S3 creds, other unpatched hosts — lateral move</text>
+        <text x="30" y="288" fill="var(--danger)" font-size="12" font-family="monospace" font-weight="700">⑥ Exfil:  dump data out over HTTPS/443 — looks like normal web traffic</text>
+        <text x="30" y="318" fill="var(--text-faint)" font-size="11.5" font-family="sans-serif" font-style="italic">Every arrow was encrypted. The padlock was green the entire time.</text>
+      </svg>
+    </div>
+
+    <p>Walk through why HTTPS was irrelevant at each step:</p>
+    <ol>
+      <li><strong>Discovery (①–②):</strong> A public IP is discoverable in minutes — the entire IPv4 space is scanned continuously. TLS even <em>helps</em> the attacker: the certificate's SAN and the response reveal the hostname and software version. Encryption doesn't hide <em>existence</em>.</li>
+      <li><strong>Exploitation (③):</strong> The vulnerability is in the <em>application</em>, above TLS. The attacker completes a perfectly valid TLS handshake and sends a malicious request <em>inside</em> the encrypted tunnel. TLS faithfully protects the attacker's packets from eavesdropping — it has no opinion on their content.</li>
+      <li><strong>Lateral movement (④–⑤):</strong> This is the real damage. Because the box lives on a flat internal network with no segmentation, one foothold reaches the database, secrets, and neighboring hosts. HTTPS operates per-connection; it has zero concept of "this actor shouldn't be inside my network."</li>
+      <li><strong>Exfiltration (⑥):</strong> Data leaves over <code>:443</code>, indistinguishable from legitimate web traffic — and encrypted, so payload-inspecting defenses see nothing.</li>
+    </ol>
+
+    <div class="callout danger">
+      <div class="h">Root cause</div>
+      The server was <strong>reachable by everyone</strong>. HTTPS secured the pipe but never asked <em>"who is allowed to open a pipe at all?"</em> The fix isn't more encryption — it's <strong>removing the service from the public internet</strong> and forcing every connection through an authenticated network gateway. That gateway is a VPN.
+    </div>
+
+    <div class="callout good">
+      <div class="h">The two principles a VPN restores</div>
+      <strong>1 · Network-level access control</strong> — internal services get <em>private</em> IPs, unreachable from the internet; you must first be <em>on the network</em> to reach them. <strong>2 · Confidential + authenticated transport for the whole IP flow</strong> — not per-app, but for every packet, including the metadata HTTPS leaks.
+    </div>
+
+    <!-- =====================================================================
+         SECTION 4 — VPN
+         ===================================================================== -->
+    <h2 id="vpn" class="anchor-h">4. Building a VPN, Layer by Layer</h2>
+
+    <h3 id="vpn-why" class="anchor-h">4.1 The goal</h3>
+    <p>A <strong>Virtual Private Network</strong> creates a <em class="term">virtual</em> private link across the shared, untrusted public internet, so that a remote client behaves as if it were physically plugged into the corporate LAN. We want:</p>
+    <ul>
+      <li>A remote laptop to reach <strong>private internal servers</strong> (<code>10.0.0.0/8</code>) that have <em>no public IP at all</em>.</li>
+      <li>Every packet — headers included — <strong>encrypted &amp; authenticated</strong> as it crosses ISPs.</li>
+      <li>Only <strong>authenticated, authorized devices</strong> to get onto the network.</li>
+      <li>Optionally, the client's <strong>public internet</strong> traffic to also route through the corporate egress (full tunnel).</li>
+    </ul>
+    <p>We'll construct this from nothing, adding one capability per layer. Each step exists to defeat a specific threat.</p>
+
+    <h3 id="vpn-layers" class="anchor-h">4.2 The build</h3>
+
+    <!-- STEP 1 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">1</div><div><div class="step-t">Tunneling / Encapsulation</div><div class="step-sub">Threat solved: private IPs aren't routable on the internet</div></div></div>
+      <div class="step-body">
+        <p>Our internal server is <code>10.1.2.3</code> — an <strong>RFC 1918 private address</strong> that no internet router will forward. So we <em class="term">encapsulate</em>: wrap the client's original IP packet (destined for <code>10.1.2.3</code>) as the <em>payload</em> inside a new "outer" packet addressed to the VPN gateway's <em>public</em> IP.</p>
+        <div class="encap">
+          <div class="encap-box" style="border-color:var(--L3)">
+            <span class="encap-hdr" style="background:var(--L3)">OUTER IP header</span><span class="encap-lbl">src=client public IP → dst=VPN gateway public IP</span>
+            <div class="encap-box" style="border-color:var(--warn); margin-top:10px;">
+              <span class="encap-hdr" style="background:var(--warn)">VPN/tunnel header</span><span class="encap-lbl">(ESP / WireGuard / etc.)</span>
+              <div class="encap-box" style="border-color:var(--L3); margin-top:10px; opacity:.9">
+                <span class="encap-hdr" style="background:var(--L3)">INNER IP header</span><span class="encap-lbl">src=10.8.0.2 → dst=10.1.2.3</span>
+                <div style="padding:8px; color:var(--text-dim)">original TCP/TLS/HTTP payload…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p>The public internet only ever sees the outer packet: "traffic from a client to the gateway." The private destination is hidden inside. This is the single most important VPN concept — <strong>a packet within a packet</strong>. But right now the inner packet is plaintext. On to encryption.</p>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">2</div><div><div class="step-t">Encryption — confidentiality</div><div class="step-sub">Threat solved: ISPs / on-path attackers reading the tunnel</div></div></div>
+      <div class="step-body">
+        <p>Before encapsulating, we <strong>encrypt the entire inner packet</strong> with a symmetric AEAD cipher (AES-256-GCM or ChaCha20-Poly1305). Now the outer packet's payload is ciphertext. Crucially — unlike HTTPS — this hides the <em>inner</em> IP header too. An observer sees only <code>client → gateway</code>; the real source, destination, ports, and data are all inside the encrypted blob.</p>
+        <div class="callout good"><div class="h">This directly closes HTTPS gap #1 &amp; #2</div>The metadata that TLS leaked (which internal host, which port) is now encrypted, because it's part of the <em>payload</em> of the outer packet.</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">3</div><div><div class="step-t">Authentication &amp; Integrity</div><div class="step-sub">Threat solved: forged packets, tampering, replay</div></div></div>
+      <div class="step-body">
+        <p>Encryption alone doesn't prove <em>who</em> sent a packet or that it wasn't altered. We add:</p>
+        <ul>
+          <li><strong>Message authentication (AEAD tag / HMAC)</strong> over each packet — a modified bit fails verification and the packet is dropped.</li>
+          <li><strong>Peer authentication</strong> — the gateway must prove the client is an enrolled device (and vice-versa) using pre-shared keys, certificates, or public keys.</li>
+          <li><strong>Anti-replay</strong> — a sliding sequence-number window rejects captured-and-resent packets.</li>
+        </ul>
+        <p>Together, confidentiality + integrity + authentication is the same triad as TLS — but applied to <strong>whole IP packets at Layer 3</strong>, for every protocol, not just one app's stream.</p>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">4</div><div><div class="step-t">Key Exchange</div><div class="step-sub">Threat solved: agreeing on keys over an open channel + forward secrecy</div></div></div>
+      <div class="step-body">
+        <p>Where do the symmetric keys come from? An authenticated <strong>Diffie-Hellman</strong> exchange, exactly like TLS. IPsec calls this phase <strong>IKE</strong> (Internet Key Exchange); WireGuard uses a fixed <strong>Noise-protocol</strong> handshake.</p>
+        <ul>
+          <li><strong>Ephemeral (EC)DH</strong> → forward secrecy: compromising a long-term key doesn't decrypt past sessions.</li>
+          <li><strong>Periodic rekeying</strong> → limits how much data any single key protects.</li>
+          <li>The peers' long-term identity keys <em>authenticate</em> the DH exchange, binding "this key material" to "this enrolled device."</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">5</div><div><div class="step-t">Virtual Interface (TUN/TAP)</div><div class="step-sub">Making the OS actually send traffic into the tunnel</div></div></div>
+      <div class="step-body">
+        <p>For applications to transparently use the VPN, the OS needs a network interface that <em>looks</em> real but pipes packets into our encrypt-encapsulate engine. That's a <strong>TUN</strong> device (a virtual L3 interface, e.g. <code>utun0</code>/<code>wg0</code>).</p>
+        <pre><span class="c"># the client gets a virtual interface with a private VPN-network IP</span>
+utun0: inet <span class="n">10.8.0.2</span>  <span class="c"># assigned by the gateway on connect</span>
+
+<span class="c"># flow of one packet:</span>
+app → kernel routing → <span class="k">utun0</span> → VPN process: <span class="k">encrypt + encapsulate</span>
+    → real NIC (eth0) → internet → gateway → <span class="k">decap + decrypt</span> → internal LAN</pre>
+        <p><span class="pill">TUN = L3 (IP packets)</span> <span class="pill">TAP = L2 (Ethernet frames)</span> — TUN is the norm for remote-access VPNs.</p>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">6</div><div><div class="step-t">Routing — split vs full tunnel</div><div class="step-sub">Decide which traffic enters the tunnel</div></div></div>
+      <div class="step-body">
+        <p>The gateway pushes routes to the client, controlling what goes through the VPN:</p>
+        <div class="grid-2">
+          <div class="card"><h4 style="color:var(--accent)">Split tunnel</h4>Only corporate subnets (<code>10.0.0.0/8</code>) route through the VPN; Netflix/personal traffic goes direct. Faster, less gateway load — but the endpoint straddles two networks (a risk).
+          <pre style="margin-top:10px"><span class="c"># route only internal ranges</span>
+10.0.0.0/8   → utun0
+0.0.0.0/0    → eth0 (direct)</pre></div>
+          <div class="card"><h4 style="color:var(--warn)">Full tunnel</h4><em>All</em> traffic (<code>0.0.0.0/0</code>) goes through the gateway, which becomes the client's egress. Enables uniform monitoring/filtering &amp; hides the client's real IP — the requirement for "route public traffic through corporate too."
+          <pre style="margin-top:10px"><span class="c"># default route captured</span>
+0.0.0.0/0    → utun0
+&lt;gateway IP&gt; → eth0 (so the tunnel itself can reach out)</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="step">
+      <div class="step-head"><div class="step-n">7</div><div><div class="step-t">The Gateway, DMZ &amp; segmentation</div><div class="step-sub">Where the tunnel terminates — and what it's allowed to reach</div></div></div>
+      <div class="step-body">
+        <p>The <strong>VPN gateway (concentrator)</strong> is the only public-facing piece. It sits in a <strong>DMZ</strong> behind the edge firewall, which permits <em>only</em> the VPN port inbound (e.g. UDP/51820) and drops everything else. After decryption the gateway forwards inner packets to the internal network — but a hardened design does <em>not</em> grant flat access:</p>
+        <ul>
+          <li><strong>Firewall / ACLs</strong> restrict which internal subnets &amp; ports a VPN client may reach (defeats the lateral-movement step from §3.2).</li>
+          <li><strong>Microsegmentation</strong> — the finance VPN pool can't touch the k8s control plane, etc.</li>
+          <li><strong>NAT</strong> — internal replies are routed back to the client's VPN IP.</li>
+          <li><strong>DNS</strong> — the gateway pushes internal resolvers so <code>wiki.corp.internal</code> resolves (and internal DNS never leaks to public resolvers).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- PROTOCOLS -->
+    <h3 id="vpn-protocols" class="anchor-h">4.3 The real protocols that implement this</h3>
+    <table>
+      <thead><tr><th></th><th>IPsec (IKEv2)</th><th>OpenVPN</th><th>WireGuard</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Layer</strong></td><td>L3 (kernel)</td><td>L3/L4 (userspace over TLS)</td><td>L3 (kernel)</td></tr>
+        <tr><td><strong>Transport</strong></td><td>ESP (proto 50) + IKE/UDP 500/4500</td><td>UDP or TCP (often 1194/443)</td><td>UDP (single port)</td></tr>
+        <tr><td><strong>Encapsulation</strong></td><td>ESP header wraps encrypted packet</td><td>TLS record wraps packet</td><td>Minimal custom header</td></tr>
+        <tr><td><strong>Key exchange</strong></td><td>IKEv2 (DH)</td><td>TLS handshake</td><td>Noise_IK (Curve25519)</td></tr>
+        <tr><td><strong>Crypto</strong></td><td>Negotiable (AES-GCM…)</td><td>Negotiable (OpenSSL)</td><td><strong>Fixed</strong> modern suite</td></tr>
+        <tr><td><strong>Codebase</strong></td><td>Large</td><td>~100k LOC</td><td><strong>~4k LOC</strong> (auditable)</td></tr>
+        <tr><td><strong>Best for</strong></td><td>Site-to-site, native OS clients</td><td>Firewall traversal (looks like HTTPS on 443)</td><td>Speed, simplicity, modern default</td></tr>
+      </tbody>
+    </table>
+    <div class="callout info"><div class="h">Mapping back to the build</div>Every protocol implements the same seven steps — they differ in <em>how</em>. IPsec's <strong>ESP</strong> = steps 1–3, its <strong>IKE</strong> = step 4. OpenVPN reuses the TLS machinery from §2 as its step-3/4 engine (which is why it can hide on port 443). WireGuard hard-codes steps 2–4 into a tiny fixed handshake.</div>
+
+    <!-- ARCHITECTURE -->
+    <h3 id="vpn-arch" class="anchor-h">4.4 The full architecture</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 900 470" width="900" role="img" aria-label="Full VPN architecture">
+        <defs>
+          <marker id="tun" markerWidth="12" markerHeight="12" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="var(--ok)"/></marker>
+          <marker id="pln" markerWidth="12" markerHeight="12" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7" fill="var(--text-faint)"/></marker>
+        </defs>
+
+        <!-- client -->
+        <rect x="20" y="180" width="150" height="110" rx="10" fill="var(--bg-elev-2)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="95" y="208" text-anchor="middle" fill="var(--accent)" font-size="14" font-weight="700" font-family="sans-serif">Remote Client</text>
+        <text x="95" y="230" text-anchor="middle" fill="var(--text-dim)" font-size="10.5" font-family="sans-serif">laptop @ home</text>
+        <text x="95" y="250" text-anchor="middle" fill="var(--text-dim)" font-size="10.5" font-family="monospace">utun0: 10.8.0.2</text>
+        <text x="95" y="268" text-anchor="middle" fill="var(--text-dim)" font-size="10.5" font-family="monospace">eth0: 198.51.100.5</text>
+
+        <!-- internet -->
+        <ellipse cx="340" cy="235" rx="105" ry="70" fill="none" stroke="var(--border)" stroke-width="2" stroke-dasharray="5"/>
+        <text x="340" y="230" text-anchor="middle" fill="var(--text-dim)" font-size="13" font-weight="700" font-family="sans-serif">Public Internet</text>
+        <text x="340" y="250" text-anchor="middle" fill="var(--text-faint)" font-size="10.5" font-family="sans-serif">ISPs · untrusted</text>
+
+        <!-- encrypted tunnel line -->
+        <line x1="170" y1="225" x2="520" y2="225" stroke="var(--ok)" stroke-width="3" marker-end="url(#tun)"/>
+        <rect x="250" y="150" width="180" height="24" rx="12" fill="var(--bg-elev)" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="340" y="167" text-anchor="middle" fill="var(--ok)" font-size="11" font-weight="700" font-family="monospace">🔒 encrypted tunnel</text>
+
+        <!-- edge firewall -->
+        <rect x="520" y="30" width="360" height="410" rx="12" fill="none" stroke="var(--danger)" stroke-width="2" stroke-dasharray="4"/>
+        <text x="700" y="24" text-anchor="middle" fill="var(--danger)" font-size="11" font-weight="700" font-family="sans-serif">CORPORATE PERIMETER</text>
+
+        <!-- DMZ -->
+        <rect x="535" y="185" width="150" height="110" rx="10" fill="var(--bg-elev-2)" stroke="var(--warn)" stroke-width="2"/>
+        <text x="610" y="150" text-anchor="middle" fill="var(--warn)" font-size="11" font-weight="700" font-family="sans-serif">DMZ</text>
+        <text x="610" y="212" text-anchor="middle" fill="var(--warn)" font-size="13" font-weight="700" font-family="sans-serif">VPN Gateway</text>
+        <text x="610" y="232" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="sans-serif">terminates tunnel</text>
+        <text x="610" y="248" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="sans-serif">decrypt · authN</text>
+        <text x="610" y="264" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="sans-serif">firewall · NAT</text>
+        <text x="610" y="280" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="monospace">:51820 only open</text>
+
+        <!-- internal firewall gate -->
+        <line x1="700" y1="185" x2="700" y2="295" stroke="var(--danger)" stroke-width="2"/>
+        <text x="713" y="242" fill="var(--danger)" font-size="16" font-family="sans-serif">🔥</text>
+        <text x="705" y="315" text-anchor="middle" fill="var(--text-faint)" font-size="9" font-family="sans-serif">segmentation ACLs</text>
+
+        <!-- internal servers -->
+        <rect x="720" y="60" width="145" height="70" rx="10" fill="var(--bg-elev-2)" stroke="var(--ok)" stroke-width="2"/>
+        <text x="792" y="88" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="700" font-family="sans-serif">App server</text>
+        <text x="792" y="107" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="monospace">10.1.2.3</text>
+
+        <rect x="720" y="200" width="145" height="70" rx="10" fill="var(--bg-elev-2)" stroke="var(--ok)" stroke-width="2"/>
+        <text x="792" y="228" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="700" font-family="sans-serif">Database</text>
+        <text x="792" y="247" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="monospace">10.1.9.7 · no public IP</text>
+
+        <rect x="720" y="340" width="145" height="70" rx="10" fill="var(--bg-elev-2)" stroke="var(--ok)" stroke-width="2"/>
+        <text x="792" y="368" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="700" font-family="sans-serif">Internal DNS</text>
+        <text x="792" y="387" text-anchor="middle" fill="var(--text-dim)" font-size="10" font-family="monospace">*.corp.internal</text>
+
+        <!-- plaintext internal links -->
+        <line x1="685" y1="215" x2="718" y2="100" stroke="var(--text-faint)" stroke-width="1.5" marker-end="url(#pln)"/>
+        <line x1="685" y1="235" x2="718" y2="235" stroke="var(--text-faint)" stroke-width="1.5" marker-end="url(#pln)"/>
+        <line x1="685" y1="255" x2="718" y2="370" stroke="var(--text-faint)" stroke-width="1.5" marker-end="url(#pln)"/>
+
+        <!-- egress for full tunnel -->
+        <path d="M610 295 C610 400, 400 400, 340 305" fill="none" stroke="var(--accent-3)" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#pln)"/>
+        <text x="470" y="410" text-anchor="middle" fill="var(--accent-3)" font-size="10" font-family="sans-serif">full-tunnel egress → internet</text>
+      </svg>
+      <div class="cap">Internal servers have no public IP. The gateway is the sole entry point; segmentation ACLs limit reach even after authentication.</div>
+    </div>
+
+    <!-- PACKET WALKTHROUGH -->
+    <h3 id="vpn-walk" class="anchor-h">4.5 End-to-end packet walkthrough</h3>
+    <p>The remote laptop opens the internal wiki, <code>https://wiki.corp.internal</code>. Watch a single request — note that <strong>HTTPS and the VPN operate simultaneously at different layers</strong>:</p>
+    <pre><span class="c">① App (L7):   browser builds  GET / HTTP/2  Host: wiki.corp.internal</span>
+<span class="c">② TLS (L5/6): wraps it in a TLS record  🔒(app-layer encryption — the §2 tunnel)</span>
+<span class="c">③ TCP (L4):   segment  src:51522 → dst:443</span>
+<span class="c">④ IP  (L3):   INNER packet  src:10.8.0.2 → dst:10.1.5.4  (private! not routable)</span>
+              │
+              ▼  handed to utun0 → VPN engine
+<span class="k">⑤ VPN encrypt+auth:</span> the ENTIRE inner packet (④, incl. its header) is
+              encrypted 🔒🔒 and an auth tag added        <span class="c"># step 2+3 of the build</span>
+<span class="k">⑥ VPN encapsulate:</span> prepend OUTER IP header
+              OUTER  src:198.51.100.5 → dst:&lt;gateway public IP&gt;, UDP:51820
+              │
+              ▼  this is all the internet sees:
+<span class="n">   [OUTER IP | UDP | WireGuard | 🔒🔒 ciphertext( INNER IP | TCP | 🔒 TLS | HTTP ) ]</span>
+              │
+              ▼  routed across ISPs to the gateway
+<span class="k">⑦ Gateway:</span> authenticates peer, strips outer header, decrypts →
+              recovers inner packet  dst:10.1.5.4
+<span class="k">⑧ Firewall/ACL:</span> "is VPN pool allowed to reach 10.1.5.4:443?" ✅ forward
+<span class="c">⑨ Internal LAN: packet delivered to wiki server (still carrying the §2 TLS!)</span>
+<span class="c">⑩ wiki server terminates the ORIGINAL TLS, sees the HTTP request, responds —</span>
+<span class="c">   the whole path runs in reverse.</span></pre>
+
+    <div class="callout key">
+      <div class="h">The payoff: defense in depth</div>
+      There are now <strong>two independent encryption layers</strong>. The inner <span style="color:var(--L7)">TLS</span> gives true end-to-end app security (even the VPN gateway can't read the HTTP body). The outer <span style="color:var(--warn)">VPN</span> gives network-level access control + metadata privacy + authenticated admission. Re-run the §3.2 attack now: the attacker scanning the internet finds only the gateway's single hardened UDP port — <code>10.1.5.4</code> doesn't exist to them. No admission → no application to exploit → no lateral movement.
+    </div>
+
+    <!-- ZTNA -->
+    <h3 id="ztna" class="anchor-h">4.6 Beyond the VPN: Zero Trust (ZTNA)</h3>
+    <p>The classic VPN has one weakness: it's <strong>perimeter-based</strong>. Once you're on the tunnel, you're "inside," and segmentation is the only thing limiting you. If a laptop is compromised, the attacker inherits broad network access. Modern architectures evolve the model:</p>
+    <table>
+      <thead><tr><th></th><th>Traditional VPN</th><th>Zero Trust Network Access (ZTNA)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Trust model</strong></td><td>Trust the network: "inside = trusted"</td><td>"Never trust, always verify" — no implicit trust</td></tr>
+        <tr><td><strong>Grants</strong></td><td>Access to network <em>subnets</em></td><td>Access to specific <em>applications</em> only</td></tr>
+        <tr><td><strong>Check frequency</strong></td><td>Once, at connect time</td><td>Every request: identity + device posture + context</td></tr>
+        <tr><td><strong>Exposure</strong></td><td>Gateway is a known public endpoint</td><td>Apps hidden behind an identity-aware proxy/broker</td></tr>
+        <tr><td><strong>Lateral movement</strong></td><td>Possible within reachable segment</td><td>Denied by default — each app is isolated</td></tr>
+      </tbody>
+    </table>
+    <p>ZTNA (e.g. identity-aware proxies, mTLS service meshes, "BeyondCorp") applies the <em>same layered discipline</em> we built — encapsulate, encrypt, authenticate, authorize — but shifts the authorization decision from "which network are you on" to "who are you, on what device, requesting which specific app, right now." It's the logical endpoint of this guide: <strong>security must be enforced explicitly at every layer, per request — not assumed from position.</strong></p>
+
+    <div class="hr"></div>
+    <h3>Interview one-liners</h3>
+    <div class="grid-2">
+      <div class="card"><h4>OSI</h4>7 layers; data encapsulated top-down, each layer adds a header. Know PDU names: Data→Segment→Packet→Frame→Bits.</div>
+      <div class="card"><h4>HTTPS</h4>HTTP over TLS. TLS 1.3 = 1-RTT, mandatory forward secrecy via ECDHE, cert authenticates server, AEAD gives confidentiality+integrity.</div>
+      <div class="card"><h4>HTTPS gap</h4>Encrypts payload, not the envelope. Leaks metadata/SNI, provides no network access control — a public service is still attackable over valid TLS.</div>
+      <div class="card"><h4>VPN</h4>Encapsulate (packet-in-packet) + encrypt + authenticate at L3. Private services get no public IP; the gateway is the single authenticated door. ZTNA is the per-app evolution.</div>
+    </div>
+
+    <div class="footnote">
+      Networking Study Guide · OSI · HTTPS · VPN — self-contained HTML, no external dependencies.
+      Toggle theme with the button top-right. Diagrams are inline SVG; the whole document prints cleanly.
+    </div>
+  </main>
+</div>
+
+<script>
+  /* ---- Theme toggle ---- */
+  const root = document.documentElement;
+  const btn = document.getElementById('themeBtn');
+  function setTheme(t){
+    root.setAttribute('data-theme', t);
+    btn.textContent = t === 'dark' ? '☀︎ Light' : '☾ Dark';
+    try { localStorage.setItem('nsg-theme', t); } catch(e){}
+  }
+  btn.addEventListener('click', () => {
+    setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+  try {
+    const saved = localStorage.getItem('nsg-theme');
+    if (saved) setTheme(saved);
+  } catch(e){}
+
+  /* ---- Scroll-spy for TOC ---- */
+  const links = Array.from(document.querySelectorAll('#toc a'));
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) map.set(el, a);
+  });
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = map.get(entry.target);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+  map.forEach((_, el) => observer.observe(el));
+</script>
+</body>
+</html>

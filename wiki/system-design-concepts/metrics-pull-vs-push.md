@@ -21,7 +21,7 @@ A design lens for the collection tier of a metrics/observability system: does th
 
 **Pros:** handles ephemeral / event-driven work (Lambda, batch, CI, browser/mobile) the monitor can't reach; crosses NAT/firewalls outbound (why SaaS vendors are push); higher event-level resolution + true per-event semantics; producer controls emission + can buffer across backend outages; discovery-free (producers just show up) → scales to huge heterogeneous fleets.
 
-**Cons:** down-vs-idle ambiguity (must build heartbeats); backpressure / thundering-herd risk — UDP StatsD drops packets *silently* under load, losing data exactly when you need it; endpoint + write creds on every producer (mitigated by a local agent as indirection); harder local debug; aggregation-correctness pitfalls if you push non-mergeable percentiles (see [[system-design-concepts/mergeable-metrics-and-quantiles]]).
+**Cons:** down-vs-idle ambiguity (must build heartbeats); backpressure / thundering-herd risk — UDP StatsD drops packets *silently* under load, losing data exactly when you need it; endpoint + write creds on every producer (mitigated by a local agent as indirection); harder local debug; aggregation-correctness pitfalls if you push non-mergeable percentiles (see [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md)).
 
 ## Real-world architectures
 
@@ -50,18 +50,18 @@ A design lens for the collection tier of a metrics/observability system: does th
 > "I don't pick pull or push dogmatically. I place the boundary on constraints. Pull where I own the network and have good discovery — Kubernetes, where the API server is the registry — because a missed scrape is my liveness signal and I get natural backpressure. Push across NAT/firewall boundaries, for ephemeral or event-driven work Prometheus can't reach, and where I need per-event resolution. In practice it's hybrid: scrape at the edge, then `remote_write` push into Mimir/Thanos for durable storage, with an OTel Collector as the seam. And I'm careful that whatever I push for latency is a *mergeable* structure — bucket counts or a sketch — never a per-host percentile."
 
 ## Connections
-- [[system-design-concepts/red-metrics-exposition]] — how Requests/Errors/Duration are actually exposed and why a 60s scrape stays accurate at 50k QPS
-- [[system-design-concepts/mergeable-metrics-and-quantiles]] — the aggregation-correctness pitfall that bites push (and pull) if you ship percentiles instead of buckets/sketches
-- [[system-design-concepts/counter-reset-and-restart-recovery]] — how each model survives process/agent restarts
-- [[system-design-concepts/the-log-abstraction]] — the durable queue (Kafka) that fronts a push pipeline for buffering/replay
-- [[system-design-concepts/global-rate-limiting]] — the same "central-scrape vs local-emit" tension appears in distributed counting
-- [[tech/kafka]] — the ingestion buffer that absorbs push backpressure
-- [[theory/latency-numbers]] — cross-node RTT is why aggregation is pushed to a local agent before it crosses the network
-- [[system-design-concepts/sidecar-vs-daemonset]] — where the local agent/scrape-target actually runs (one-per-pod vs one-per-node)
-- [[system-design-concepts/local-ipc-transports]] — the app→agent hop for a push model: UDP/UDS load-shedding vs HTTP backpressure
-- [[system-design-concepts/edge-shed-vs-core-durability]] — push chooses where to shed (edge) and where to persist (core queue); pull sheds implicitly by scrape interval
-- [[system-design-concepts/queue-placement]] — for a push pipeline: whether/where the ingestion queue sits relative to the collector
+- [red metrics exposition](red-metrics-exposition.md) — how Requests/Errors/Duration are actually exposed and why a 60s scrape stays accurate at 50k QPS
+- [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md) — the aggregation-correctness pitfall that bites push (and pull) if you ship percentiles instead of buckets/sketches
+- [counter reset and restart recovery](counter-reset-and-restart-recovery.md) — how each model survives process/agent restarts
+- [the log abstraction](the-log-abstraction.md) — the durable queue (Kafka) that fronts a push pipeline for buffering/replay
+- [global rate limiting](global-rate-limiting.md) — the same "central-scrape vs local-emit" tension appears in distributed counting
+- [kafka](../tech/kafka.md) — the ingestion buffer that absorbs push backpressure
+- [latency numbers](../theory/latency-numbers.md) — cross-node RTT is why aggregation is pushed to a local agent before it crosses the network
+- [sidecar vs daemonset](sidecar-vs-daemonset.md) — where the local agent/scrape-target actually runs (one-per-pod vs one-per-node)
+- [local ipc transports](local-ipc-transports.md) — the app→agent hop for a push model: UDP/UDS load-shedding vs HTTP backpressure
+- [edge shed vs core durability](edge-shed-vs-core-durability.md) — push chooses where to shed (edge) and where to persist (core queue); pull sheds implicitly by scrape interval
+- [queue placement](queue-placement.md) — for a push pipeline: whether/where the ingestion queue sits relative to the collector
 
 ## Sources
-- [[sources/docs/metrics-collection-observability-self-study]] — §1 pull-vs-push, pros/cons, real architectures, when-to-use
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — §1 pull-vs-push, pros/cons, real architectures, when-to-use
 </content>

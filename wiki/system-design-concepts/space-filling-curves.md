@@ -14,7 +14,7 @@ B-tree) directly. A space-filling curve fixes this: assign each cell its positio
 2. **A bounding-box query becomes a few contiguous key ranges** (`WHERE key BETWEEN lo AND hi`) — *only* because the curve
    preserves locality. Without it, a box would scatter across the whole key space.
 3. **Lakehouse data-skipping works** — sort/cluster Parquet by the curve value and each file's **min/max covers a compact
-   spatial patch**, so Iceberg/Delta prune 90%+ of files by metadata alone. See [[system-design-concepts/hash-vs-range-partitioning]].
+   spatial patch**, so Iceberg/Delta prune 90%+ of files by metadata alone. See [hash vs range partitioning](hash-vs-range-partitioning.md).
 
 ## Z-order (Morton) vs Hilbert
 
@@ -90,11 +90,11 @@ accepted an inexact hierarchy as the price.
 > geometry (analytics)."
 
 ## Connections
-- [[system-design-concepts/geospatial-indexing]] — the cell schemes (geohash/quadtree/S2/H3) whose 1-D keys these curves produce; the read/write paths and hot-cell crux
-- [[system-design-concepts/hash-vs-range-partitioning]] — a curve value is the **range key** that makes geohash prefixes and Iceberg min/max pruning work; contrast with hash sharding
-- [[system-design-concepts/commutative-aggregation]] — distributed kNN merges per-file **local top-k** (a mergeable monoid) after curve-clustered files are pruned by zone maps
-- [[system-design-concepts/cache-stampede]] — cache spatial queries by quantizing q to a fixed-level cell key (geohash prefix, or a truncated quadtree quadrant-path = Morton code)
-- [[theory/bloom-filters]] — another "encode structure into a compact key/summary to skip work" idea
+- [geospatial indexing](geospatial-indexing.md) — the cell schemes (geohash/quadtree/S2/H3) whose 1-D keys these curves produce; the read/write paths and hot-cell crux
+- [hash vs range partitioning](hash-vs-range-partitioning.md) — a curve value is the **range key** that makes geohash prefixes and Iceberg min/max pruning work; contrast with hash sharding
+- [commutative aggregation](commutative-aggregation.md) — distributed kNN merges per-file **local top-k** (a mergeable monoid) after curve-clustered files are pruned by zone maps
+- [cache stampede](cache-stampede.md) — cache spatial queries by quantizing q to a fixed-level cell key (geohash prefix, or a truncated quadtree quadrant-path = Morton code)
+- [bloom filters](../theory/bloom-filters.md) — another "encode structure into a compact key/summary to skip work" idea
 
 ## Sources
-- [[sources/docs/knn-geospatial-search-explainer]] — interactive kNN explainer: brute force → ANN → trees → grids → Z-order/Hilbert curves → S2/H3 exact-vs-approximate nesting → caching
+- [knn geospatial search explainer](../reading-notes/knn-geospatial-search-explainer.md) — interactive kNN explainer: brute force → ANN → trees → grids → Z-order/Hilbert curves → S2/H3 exact-vs-approximate nesting → caching

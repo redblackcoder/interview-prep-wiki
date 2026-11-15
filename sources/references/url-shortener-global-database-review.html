@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global URL Shortener — Database and Consistency Review</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #536174;
+      --line: #cfd6df;
+      --soft: #f3f5f7;
+      --accent: #174ea6;
+      --warning: #744210;
+      --warning-bg: #fff8e6;
+      --info-bg: #eef5ff;
+      --success-bg: #edf8f1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: #e6e9ed; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e6e9ed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.42;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 18px;
+      color: white;
+      background: #202938;
+    }
+
+    .toolbar button {
+      border: 1px solid #d7dee8;
+      border-radius: 5px;
+      padding: 7px 14px;
+      color: #172033;
+      background: white;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .document { padding: 18px 0 36px; }
+
+    .page {
+      position: relative;
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto 18px;
+      padding: 0.52in 0.62in 0.48in;
+      background: white;
+      box-shadow: 0 2px 12px rgb(24 33 48 / 12%);
+      break-after: page;
+    }
+
+    .page:last-child { break-after: auto; }
+
+    .page-number {
+      position: absolute;
+      right: 0.62in;
+      bottom: 0.25in;
+      color: var(--muted);
+      font-size: 8.5pt;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--accent);
+      font-size: 8.5pt;
+      font-weight: 750;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 5px;
+      font-size: 21pt;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      margin: 17px 0 6px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13.5pt;
+      line-height: 1.2;
+    }
+
+    h3 {
+      margin: 12px 0 4px;
+      font-size: 10.5pt;
+      line-height: 1.25;
+    }
+
+    p { margin: 5px 0 8px; }
+
+    ul, ol {
+      margin: 5px 0 9px;
+      padding-left: 20px;
+    }
+
+    li { margin: 2px 0; }
+
+    code {
+      padding: 0.08em 0.28em;
+      border-radius: 3px;
+      background: var(--soft);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 7px 0 10px;
+      padding: 10px 12px;
+      overflow-wrap: normal;
+      white-space: pre-wrap;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: #152238;
+      background: #f7f8fa;
+      font: 8.2pt/1.38 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      font-size: inherit;
+    }
+
+    a { color: var(--accent); text-decoration: underline; }
+
+    .subtitle {
+      margin: 0 0 13px;
+      color: var(--muted);
+      font-size: 10pt;
+    }
+
+    .callout {
+      margin: 10px 0 12px;
+      padding: 9px 11px;
+      border-left: 3px solid var(--accent);
+      background: var(--info-bg);
+    }
+
+    .callout.warning {
+      border-left-color: #b7791f;
+      color: var(--warning);
+      background: var(--warning-bg);
+    }
+
+    .callout.success {
+      border-left-color: #27834a;
+      background: var(--success-bg);
+    }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .term {
+      margin: 7px 0;
+      padding-bottom: 7px;
+      border-bottom: 1px solid #e3e7ec;
+    }
+
+    .term:last-child { border-bottom: 0; }
+    .term strong { display: block; margin-bottom: 1px; }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 8px 0 5px;
+    }
+
+    .flow span {
+      padding: 5px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--soft);
+      font-size: 8.7pt;
+      font-weight: 650;
+    }
+
+    .flow b {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .comparison {
+      width: 100%;
+      margin: 8px 0 10px;
+      border-collapse: collapse;
+      font-size: 8.6pt;
+    }
+
+    .comparison th,
+    .comparison td {
+      padding: 5px 6px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .comparison th { background: var(--soft); }
+
+    .sources {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 7.8pt;
+      line-height: 1.3;
+    }
+
+    .sources p { margin: 2px 0; }
+    .url { overflow-wrap: anywhere; }
+
+    @media (max-width: 900px) {
+      .page {
+        width: calc(100% - 24px);
+        min-height: auto;
+        padding: 28px;
+      }
+      .columns { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      @page { size: Letter portrait; margin: 0; }
+
+      html, body {
+        background: white;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .toolbar { display: none; }
+      .document { padding: 0; }
+
+      .page {
+        width: 8.5in;
+        min-height: 11in;
+        margin: 0;
+        padding: 0.48in 0.58in 0.44in;
+        box-shadow: none;
+        break-after: page;
+      }
+
+      .page:last-child { break-after: auto; }
+      a { color: var(--ink); }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>Global URL Shortener — six-page print edition</span>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <main class="document">
+    <section class="page">
+      <p class="eyebrow">Page 1 · Foundations</p>
+      <h1>Problem model and consistency vocabulary</h1>
+      <p class="subtitle">Separate uniqueness, read freshness, durability, and physical replication before selecting a database.</p>
+
+      <div class="callout">
+        <strong>Central conclusion</strong>
+        A permanent region prefix plus a region-unique suffix creates disjoint primary-key spaces. If that invariant is reliable, global coordination is unnecessary for collision prevention. A global database then solves redirect freshness, latency, and disaster recovery.
+      </div>
+
+      <h2>Your proposed write path</h2>
+      <div class="flow">
+        <span>Generate candidate</span><b>→</b><span>Insert if absent</span><b>→</b><span>Commit locally</span><b>→</b><span>Return slug</span>
+      </div>
+      <p>Suppose Region A owns <code>use1_</code> and Region B owns <code>euw1_</code>. The complete keys cannot collide across those regions even when suffixes match. Within Region A, two concurrent requests can still produce <code>use1_aB3x9Q</code>; an atomic database operation must select exactly one owner.</p>
+
+      <div class="callout warning">
+        <strong>A hash is not collision-free</strong>
+        A finite hash is probabilistically unique. Deterministic uniqueness requires a suffix allocated exactly once within its region—for example, an atomic regional sequence or correctly partitioned Snowflake-style ID. Otherwise retain database collision detection.
+      </div>
+
+      <div class="columns">
+        <div>
+          <h2>Four distinct guarantees</h2>
+          <div class="term">
+            <strong>Atomic uniqueness</strong>
+            Concurrent creators cannot both reserve the same complete slug. A SQL unique constraint or DynamoDB conditional write supplies this.
+          </div>
+          <div class="term">
+            <strong>Read-after-write consistency</strong>
+            After creation succeeds, a later read is guaranteed to observe the mapping rather than an older or missing value.
+          </div>
+          <div class="term">
+            <strong>Durability and RPO</strong>
+            An acknowledged mapping survives failures. Recovery Point Objective (RPO) zero means failover loses no acknowledged writes.
+          </div>
+          <div class="term">
+            <strong>Replica convergence</strong>
+            Every physical replica has eventually applied the write. This is not the same as a strong read being logically able to observe it.
+          </div>
+        </div>
+
+        <div>
+          <h2>What “globally available” means</h2>
+          <p><strong>Asynchronous replication:</strong> the source commits first; another region can temporarily return a missing or old mapping.</p>
+          <p><strong>Quorum replication:</strong> commit waits for enough voting replicas, but not necessarily every replica. A strong read at a lagging copy may coordinate or wait.</p>
+          <p>Therefore there is no single universal “global propagation latency.” Ask which measurement is required:</p>
+          <ul>
+            <li>Time until a strong read can observe the write.</li>
+            <li>Time until an eventual local read observes it.</li>
+            <li>Time until every physical replica applies it.</li>
+          </ul>
+
+          <h2>Routing design improvement</h2>
+          <p>Encode a logical shard or namespace ID rather than a physical region. Keep a small replicated map from logical shard to current owner. This allows evacuation or migration without changing old URLs.</p>
+        </div>
+      </div>
+
+      <div class="sources">
+        <p><strong>Reading note:</strong> Vendor guarantees and links are cited on the relevant pages. Research snapshot: August 27, 2026.</p>
+      </div>
+      <span class="page-number">1 / 6</span>
+    </section>
+
+    <section class="page">
+      <p class="eyebrow">Page 2 · DynamoDB local correctness</p>
+      <h1>DynamoDB as an atomic slug registry</h1>
+      <p class="subtitle">A conditional <code>PutItem</code> is the key-value equivalent of inserting under a unique primary-key constraint.</p>
+
+      <h2>Table shape</h2>
+      <p>Use <code>slug</code> as the complete partition key. Store the long URL and immutable metadata in the item. DynamoDB hashes the partition-key value internally, so high-cardinality Base62 slugs distribute naturally. Do not use a low-cardinality field such as region or date as the sole partition key.</p>
+
+      <h2>Atomic insert-if-absent command</h2>
+      <pre><code>aws dynamodb put-item \
+  --table-name UrlMappings \
+  --item '{
+    "slug":       {"S":"use1_aB3x9Q"},
+    "destination":{"S":"https://example.com/long/path"},
+    "createdAt":  {"S":"2026-08-27T22:14:00Z"},
+    "requestId":  {"S":"req-93f07"}
+  }' \
+  --condition-expression "attribute_not_exists(#slug)" \
+  --expression-attribute-names '{"#slug":"slug"}' \
+  --return-values-on-condition-check-failure ALL_OLD \
+  --region us-east-1</code></pre>
+
+      <h2>What happens under concurrency</h2>
+      <ol>
+        <li>Two requests issue this write for the same absent key.</li>
+        <li>DynamoDB evaluates each condition as part of the write; there is no application-side gap.</li>
+        <li>One insertion succeeds.</li>
+        <li>The other receives <code>ConditionalCheckFailedException</code>.</li>
+        <li>The losing request generates another candidate and retries.</li>
+      </ol>
+      <p>Do not perform <code>GetItem</code> followed by an unconditional <code>PutItem</code>. Both callers could observe absence and then overwrite one another. Also avoid unconditional <code>UpdateItem</code> for immutable mappings.</p>
+
+      <div class="columns">
+        <div>
+          <h2>Safe retry logic</h2>
+          <pre><code>for attempt in 0..MAX_ATTEMPTS:
+  slug = prefix + encode(hash(url, attempt))
+  try:
+    PutItem(
+      key = slug,
+      value = { url, requestId },
+      condition = attribute_not_exists(slug)
+    )
+    return slug
+  catch ConditionalCheckFailedException:
+    continue
+  catch TimeoutOrServerError:
+    item = StrongGet(slug)
+    if item.requestId == requestId:
+      return slug
+    raise</code></pre>
+        </div>
+        <div>
+          <h2>Error interpretation</h2>
+          <p><strong>ConditionalCheckFailedException:</strong> the candidate is occupied; try another candidate.</p>
+          <p><strong>Timeout or HTTP 5xx:</strong> the result is ambiguous. The item might have committed before the response was lost. Strongly read and compare <code>requestId</code>.</p>
+          <p><strong>Throttling:</strong> retry with exponential backoff and jitter; it does not imply a key collision.</p>
+          <p><strong>ALL_OLD:</strong> can return the item that caused the failed condition without a separate read.</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>ConsistentRead is separate</strong>
+        <code>ConsistentRead=true</code> belongs to reads such as <code>GetItem</code>. The write condition already executes atomically. Strong reads are supported on a base table and local secondary index, not on global secondary indexes or DynamoDB Streams.
+      </div>
+
+      <p>If the table uses a composite key, existence applies to the complete partition-key and sort-key pair. Two records with different sort keys are different items. A simple <code>slug</code> partition key avoids this loophole.</p>
+
+      <div class="sources">
+        <p><strong>Source:</strong> AWS, PutItem API — <a class="url" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html</a></p>
+        <p><strong>Source:</strong> AWS, condition expressions — <a class="url" href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html">https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html</a></p>
+      </div>
+      <span class="page-number">2 / 6</span>
+    </section>
+
+    <section class="page">
+      <p class="eyebrow">Page 3 · DynamoDB global behavior</p>
+      <h1>Global Tables: MREC versus MRSC</h1>
+      <p class="subtitle"><strong>MREC</strong> means multi-Region eventual consistency. <strong>MRSC</strong> means multi-Region strong consistency.</p>
+
+      <div class="columns">
+        <div>
+          <h2>MREC: asynchronous active-active</h2>
+          <p>Each region has a writable replica. A successful write does not wait for other regions. DynamoDB asynchronously copies changes to all replicas, typically within one second or less, but AWS provides no replication-latency SLA.</p>
+          <div class="flow"><span>Write A</span><b>→</b><span>Local success</span><b>→</b><span>Async copy</span><b>→</b><span>Region B</span></div>
+          <ul>
+            <li>A strong read in B can still be stale relative to a write made in A.</li>
+            <li>A conditional write evaluates the item version currently in its receiving region.</li>
+            <li>Same-item writes in two regions can both initially succeed.</li>
+            <li>Conflicts converge with last-writer-wins using internal timestamps.</li>
+            <li>CloudWatch <code>ReplicationLatency</code> measures source/destination lag; it is not a guarantee.</li>
+            <li>MREC transactions are atomic only in their invocation region and replicate item-by-item.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>MRSC: synchronous global authority</h2>
+          <p>Before returning success, DynamoDB synchronously replicates the item to at least one other region. Strong reads on any replica return the globally latest item. Conditional writes evaluate globally current state.</p>
+          <div class="flow"><span>Write A</span><b>→</b><span>Cross-region quorum</span><b>→</b><span>Success</span></div>
+          <ul>
+            <li>Same-item cross-region races can return <code>ReplicatedWriteConflictException</code>; retry with backoff.</li>
+            <li>Acknowledged writes have RPO zero.</li>
+            <li>Exactly three regions: three full replicas, or two replicas plus a non-serving witness.</li>
+            <li>Regions must be within one supported US, EU, or Asia-Pacific region set.</li>
+            <li>Transactions, TTL, and local secondary indexes are unsupported.</li>
+            <li>The consistency mode cannot be changed after creation.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout success">
+        <strong>Why MREC remains correct for your design</strong>
+        If Region A can create only its permanent prefix and Region B only a different prefix, they never write the same DynamoDB item. MREC’s cross-region conflict rule is never exercised. A local conditional write handles same-region races.
+      </div>
+
+      <h2>The remaining issue: temporary remote misses</h2>
+      <p>Immediately after Region A returns a slug, Region B may not yet have it. Treat the first local miss as “possibly replicating,” not as a definitive 404.</p>
+      <pre><code>item = LocalReplica.GetItem(slug)
+if item exists:
+  return HTTP 302 Location: item.destination
+
+homeShard = decodePrefix(slug)
+item = ReadFromCurrentOwner(homeShard, slug)
+if item exists:
+  populateLocalCache(item)
+  return HTTP 302 Location: item.destination
+
+return HTTP 404</code></pre>
+      <p>Do not negative-cache until both local and authoritative reads miss. After propagation or cache population, future redirects remain local.</p>
+
+      <table class="comparison">
+        <thead><tr><th>Decision</th><th>Use MREC</th><th>Use MRSC</th></tr></thead>
+        <tbody>
+          <tr><td>Primary reason</td><td>Low-latency local writes and broad region choice</td><td>Immediate global strong reads and RPO zero</td></tr>
+          <tr><td>Key ownership</td><td>Best with disjoint or single-writer keys</td><td>Can coordinate same-key writers globally</td></tr>
+          <tr><td>Remote freshness</td><td>Eventual; use origin fallback</td><td>Strong when requesting a strong read</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sources">
+        <p><strong>Source:</strong> AWS, Global Tables consistency modes — <a class="url" href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html">https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html</a></p>
+        <p><strong>Source:</strong> AWS, Global Tables design — <a class="url" href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-global-table-design.html">https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-global-table-design.html</a></p>
+      </div>
+      <span class="page-number">3 / 6</span>
+    </section>
+
+    <section class="page">
+      <p class="eyebrow">Page 4 · Google Cloud</p>
+      <h1>Cloud Spanner</h1>
+      <p class="subtitle">Global SQL with external consistency and synchronous Paxos replication, but normally leader-centric writes.</p>
+
+      <div class="callout">
+        <strong>Consistency guarantee</strong>
+        With default serializable isolation, Spanner provides external consistency: transactions appear serial, and their order agrees with the real-time order in which clients observe commits. A strong read observes every transaction committed before the read began.
+      </div>
+
+      <div class="columns">
+        <div>
+          <h2>How a write commits</h2>
+          <p>Spanner divides ordered primary-key space into ranges called splits. Each split has a Paxos replica group and an elected leader.</p>
+          <div class="flow"><span>Client</span><b>→</b><span>Split leader</span><b>→</b><span>Voting quorum</span><b>→</b><span>Commit</span></div>
+          <ol>
+            <li>The leader logs the mutation.</li>
+            <li>Voting replicas receive it in parallel.</li>
+            <li>A majority accepts the write.</li>
+            <li>The transaction commits.</li>
+            <li>Remaining full replicas can apply it afterward.</li>
+          </ol>
+          <p>A successful commit is quorum-durable, not proof every replica has physically applied it.</p>
+
+          <h2>Strong remote reads</h2>
+          <p>A strong read can reach a read-write or read-only replica. A non-leader replica may consult the leader to establish a safe timestamp and wait for required mutations. The application therefore receives fresh data even while physical convergence continues.</p>
+        </div>
+
+        <div>
+          <h2>Latency implications</h2>
+          <div class="term">
+            <strong>Writer near the leader</strong>
+            Avoids an extra client-to-leader WAN path, but still waits for a geographically distributed voting quorum.
+          </div>
+          <div class="term">
+            <strong>Writer in another region</strong>
+            Is routed toward the leader. Disjoint keys reduce contention but do not remove WAN routing and quorum latency.
+          </div>
+          <div class="term">
+            <strong>Strong remote read</strong>
+            May require leader timestamp negotiation. A sufficiently stale read can usually remain at a nearby replica.
+          </div>
+          <div class="term">
+            <strong>No universal milliseconds</strong>
+            Latency depends on region geometry, leader location, quorum response, load, indexes, transaction range count, and read policy.
+          </div>
+        </div>
+      </div>
+
+      <h2>Uniqueness and regional ownership</h2>
+      <p>Use the slug as the primary key. A normal <code>INSERT</code> fails on a duplicate key; unique indexes are checked at commit. Concurrent creators cannot commit two destinations for one slug. Handle the duplicate result or use an insert-if-absent form whose return semantics are clear.</p>
+      <p>Standard multi-region Spanner does <em>not</em> automatically give each application region a local write leader. Split leaders normally reside in one configured default leader region. “Writes can originate from multiple regions” means requests are accepted globally, not that they commit independently in each region.</p>
+
+      <h2>Geo-partitioning and hotspots</h2>
+      <p>Geo-partitioning can place subsets of rows into separate instance partitions with placement-specific leaders while retaining global transactions. As of this research it is Preview, and global indexes can reintroduce distant-quorum latency.</p>
+      <div class="callout warning">
+        <strong>Ordered-key hotspot</strong>
+        Spanner stores rows lexicographically. A region prefix followed by an increasing sequence creates one moving hot edge per region. Prefer random high-entropy suffixes or a leading distribution hash. Monotonic secondary indexes can hotspot independently.
+      </div>
+
+      <div class="sources">
+        <p><strong>Source:</strong> Spanner external consistency — <a class="url" href="https://cloud.google.com/spanner/docs/true-time-external-consistency">https://cloud.google.com/spanner/docs/true-time-external-consistency</a></p>
+        <p><strong>Source:</strong> Spanner replication — <a class="url" href="https://cloud.google.com/spanner/docs/replication">https://cloud.google.com/spanner/docs/replication</a></p>
+        <p><strong>Source:</strong> Instance configurations — <a class="url" href="https://cloud.google.com/spanner/docs/instance-configurations">https://cloud.google.com/spanner/docs/instance-configurations</a></p>
+      </div>
+      <span class="page-number">4 / 6</span>
+    </section>
+
+    <section class="page">
+      <p class="eyebrow">Page 5 · Amazon Aurora</p>
+      <h1>Aurora Global Database</h1>
+      <p class="subtitle">A single-writer relational architecture with asynchronous global read replicas.</p>
+
+      <div class="callout warning">
+        <strong>Aurora Global Database is not active-active</strong>
+        There is one primary cluster in one AWS region. Regional secondary clusters are readers. Global write forwarding sends SQL from a secondary to the primary; it does not create an independent regional writer.
+      </div>
+
+      <div class="flow">
+        <span>Client in B</span><b>→</b><span>Secondary endpoint</span><b>→</b><span>Primary in A</span><b>→</b><span>Commit</span><b>→</b><span>Async copy to B</span>
+      </div>
+
+      <div class="columns">
+        <div>
+          <h2>Replication and write latency</h2>
+          <p>Aurora uses storage-level asynchronous replication from the primary cluster to as many as five secondary regional clusters. Primary commits do not wait for those secondary regions. AWS describes replication latency as typically under one second; this is neither a bound nor an SLA.</p>
+          <p>A writer connected in a secondary region pays network travel to the primary and waits for the forwarded SQL result. If it subsequently reads at the secondary under a stronger consistency mode, it may wait again for replication to return.</p>
+
+          <h2>URL-shortener behavior</h2>
+          <p>Primary-key and unique-index constraints remain correct because all writes commit at the primary. Disjoint keyspaces improve concurrency but do not make commits local.</p>
+          <p>A redirect in an unrelated session is not protected by session consistency. It must use global consistency, query the primary, or tolerate a local miss and fall back.</p>
+        </div>
+
+        <div>
+          <h2>Secondary read consistency</h2>
+          <div class="term">
+            <strong>EVENTUAL</strong>
+            The query does not wait. It may return old or new data depending on current replication lag.
+          </div>
+          <div class="term">
+            <strong>SESSION</strong>
+            The secondary waits for writes forwarded by that same session. It does not include unrelated sessions.
+          </div>
+          <div class="term">
+            <strong>GLOBAL</strong>
+            Each query waits until the secondary is caught up with all primary commits that existed when the query began.
+          </div>
+          <p>Stronger modes convert replica lag into query latency; they do not make underlying replication synchronous.</p>
+        </div>
+      </div>
+
+      <h2>Failure behavior</h2>
+      <table class="comparison">
+        <thead><tr><th>Event</th><th>Behavior</th><th>Data-loss implication</th></tr></thead>
+        <tbody>
+          <tr><td>Planned switchover</td><td>Synchronize, then promote a secondary</td><td>Can provide RPO zero, with temporary unavailability</td></tr>
+          <tr><td>Unplanned failover</td><td>Promote the selected secondary</td><td>Unreplicated primary commits can be lost; RPO depends on lag</td></tr>
+          <tr><td>Ordinary secondary read</td><td>Served from asynchronously replicated storage</td><td>May be stale unless configured to wait</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>When Aurora is reasonable</strong>
+        Choose it when PostgreSQL/MySQL compatibility is important, writes can be centralized, and worldwide traffic is dominated by reads. It is not the closest match to independently writable regional namespaces.
+      </div>
+
+      <div class="sources">
+        <p><strong>Source:</strong> Aurora Global Database replication — <a class="url" href="https://docs.aws.amazon.com/prescriptive-guidance/latest/aurora-replication-options/aurora-global-database.html">https://docs.aws.amazon.com/prescriptive-guidance/latest/aurora-replication-options/aurora-global-database.html</a></p>
+        <p><strong>Source:</strong> Write forwarding — <a class="url" href="https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-write-forwarding.html">https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-write-forwarding.html</a></p>
+        <p><strong>Source:</strong> PostgreSQL consistency modes — <a class="url" href="https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-write-forwarding-apg.html">https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-write-forwarding-apg.html</a></p>
+      </div>
+      <span class="page-number">5 / 6</span>
+    </section>
+
+    <section class="page">
+      <p class="eyebrow">Page 6 · CockroachDB and decision</p>
+      <h1>CockroachDB and the recommended design</h1>
+      <p class="subtitle">CockroachDB offers explicit table locality; the final database choice follows from your required remote-read behavior.</p>
+
+      <div class="columns">
+        <div>
+          <h2>CockroachDB guarantees</h2>
+          <p>CockroachDB defaults to serializable isolation. Each key range is replicated through Raft and has a leaseholder that coordinates writes and ordinarily serves fresh reads. A successful commit is persisted on a majority of replicas for each affected range.</p>
+          <p>Applications must retry serialization failures. An ambiguous commit result must be resolved instead of assumed to have failed.</p>
+          <pre><code>INSERT INTO url_mappings (slug, destination)
+VALUES ($1, $2)
+ON CONFLICT (slug) DO NOTHING
+RETURNING slug;</code></pre>
+          <p>One returned row means success; no row means occupied. Do not use <code>DO UPDATE</code> merely to simplify retries—it can change an existing slug’s destination.</p>
+        </div>
+
+        <div>
+          <h2>Table locality choices</h2>
+          <div class="term">
+            <strong>REGIONAL BY TABLE</strong>
+            One home region for the entire table. Fresh writes and reads are best there.
+          </div>
+          <div class="term">
+            <strong>REGIONAL BY ROW</strong>
+            Every row has a home region. This matches encoded ownership: local writes and fresh home reads; remote fresh reads may cross regions.
+          </div>
+          <div class="term">
+            <strong>GLOBAL</strong>
+            Fresh reads use a consistent local replica in every configured region. Writes pay cross-region replication and commit-wait.
+          </div>
+          <div class="term">
+            <strong>Follower read</strong>
+            A fast local historical read. A newly created mapping can be absent until the selected historical timestamp passes its commit.
+          </div>
+        </div>
+      </div>
+
+      <p>There is no fixed global-write latency: gateway-to-leaseholder distance, voter placement, quorum distance, survival goal, clock settings, number of ranges, and load all matter. Region prefixes followed by increasing counters can create hot index tails; use random suffixes or hash-sharded indexes. For <code>REGIONAL BY ROW</code>, set home region explicitly so failover routing does not misplace rows.</p>
+
+      <div class="callout success">
+        <strong>Recommended interview answer</strong>
+        Use DynamoDB Global Tables MREC for the immutable slug-to-destination mapping. Regional prefixes make keyspaces provably disjoint. Reserve with local conditional <code>PutItem</code>. Redirect from the local replica; on a miss, decode the logical home shard, perform one authoritative fallback read, and populate regional/CDN cache.
+      </div>
+
+      <table class="comparison">
+        <thead>
+          <tr><th>Choice</th><th>Remote freshness after acknowledged write</th><th>Writer model</th><th>Best fit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DynamoDB MREC</td><td>Eventual; typically ≤1 s, no SLA</td><td>Active-active local</td><td>Disjoint keys + origin fallback</td></tr>
+          <tr><td>DynamoDB MRSC</td><td>Strong read sees latest</td><td>Three-region coordinated</td><td>Global key authority, RPO zero</td></tr>
+          <tr><td>Spanner</td><td>Strongly visible after commit</td><td>Normally default-leader-centric</td><td>Externally consistent global SQL</td></tr>
+          <tr><td>Aurora Global</td><td>Async; GLOBAL reads wait</td><td>One primary writer</td><td>Centralized relational writes</td></tr>
+          <tr><td>Cockroach GLOBAL</td><td>Fresh local reads</td><td>Raft quorum + commit-wait</td><td>Global SQL with local fresh reads</td></tr>
+          <tr><td>Cockroach RBR</td><td>Fresh at home; remote may cross WAN</td><td>Row-level home regions</td><td>Explicit regional ownership</td></tr>
+        </tbody>
+      </table>
+
+      <h2>When to pay for global coordination</h2>
+      <ul>
+        <li>The product requires immediate read-after-write in every region with no fallback.</li>
+        <li>The same slug may be created or modified concurrently in multiple regions.</li>
+        <li>RPO zero across regional failure is mandatory.</li>
+        <li>Multi-row SQL transactions are central to URL creation.</li>
+      </ul>
+
+      <div class="sources">
+        <p><strong>CockroachDB:</strong> <a class="url" href="https://www.cockroachlabs.com/docs/stable/transactions">Transactions</a> · <a class="url" href="https://www.cockroachlabs.com/docs/stable/table-localities">Table localities</a> · <a class="url" href="https://www.cockroachlabs.com/docs/stable/topology-follower-reads">Follower reads</a></p>
+        <p><strong>All claims:</strong> based on the official vendor documentation linked on pages 2–6. “Typical” latency statements are vendor observations, not contractual upper bounds.</p>
+      </div>
+      <span class="page-number">6 / 6</span>
+    </section>
+  </main>
+</body>
+</html>

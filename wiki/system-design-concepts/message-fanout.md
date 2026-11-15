@@ -14,7 +14,7 @@ Instead of the origin process sending to every remote PID directly:
 **Linearizability is preserved** because deterministic hashing routes a given PID to the *same* worker every time, so its messages never reorder. Net effect: CPU cost of fan-out spread across cores *and* nodes, and cross-node network traffic sharply reduced. (Open-sourced as [Manifold](https://github.com/discordapp/manifold).)
 
 ## Fix 2 — FastGlobal: share read-only state without copying
-Fan-out needs a routing ring ([[theory/consistent-hashing]]) that every session reads constantly. The bottleneck *evolved* as each obvious fix hit a new wall:
+Fan-out needs a routing ring ([consistent hashing](../theory/consistent-hashing.md)) that every session reads constantly. The bottleneck *evolved* as each obvious fix hit a new wall:
 
 | Approach | Wall hit | Time |
 |---|---|---|
@@ -22,10 +22,10 @@ Fan-out needs a routing ring ([[theory/consistent-hashing]]) that every session 
 | Pure Elixir + ETS | ETS allows concurrent reads but **deep-copies** the term out on every read (~7μs, huge for a big ring) | ~17.5 s |
 | **FastGlobal / mochiglobal** | Compile the ring into a module as a **constant** → VM keeps code literals in a **read-only shared heap**, read with no copy (~0.3μs) | ~0.75 s |
 
-The trick: a function that always returns the same constant lets the VM store the data in a shared, copy-free heap. Trade-off — rebuilding the module costs ~1s, so it's only for **rarely-mutated** data (the ring changes seldom). (See [[theory/actor-model-message-passing]] for *why* ETS copies: isolation. FastGlobal is the sanctioned escape, like the >64B binary heap.) Open-sourced as [FastGlobal](https://github.com/discordapp/fastglobal).
+The trick: a function that always returns the same constant lets the VM store the data in a shared, copy-free heap. Trade-off — rebuilding the module costs ~1s, so it's only for **rarely-mutated** data (the ring changes seldom). (See [actor model message passing](../theory/actor-model-message-passing.md) for *why* ETS copies: isolation. FastGlobal is the sanctioned escape, like the >64B binary heap.) Open-sourced as [FastGlobal](https://github.com/discordapp/fastglobal).
 
 ## Fix 3 — Semaphore: gate the caller before a doomed request
-Removing the slow-lookup bottleneck removed its accidental back-pressure, so ~5M sessions could **stampede** ~10 registry processes ([[system-design-concepts/rate-limiting|thundering herd]]): timeouts queue → clients retry → mailboxes balloon → OOM → cascading outage. Fix: a **node-local semaphore** so a session bails *before* issuing a request that's bound to time out. Implemented with `:ets.update_counter/4` — atomic, `write_concurrency`, a BIF running in user space (<1μs), *not* a syscall and *not* a coordinating process. Chosen over a **circuit breaker** because a breaker trips fully open (zero attempts for a window); a semaphore *shapes* traffic to a safe concurrency instead. (Open-sourced as [Semaphore](https://github.com/discordapp/semaphore).)
+Removing the slow-lookup bottleneck removed its accidental back-pressure, so ~5M sessions could **stampede** ~10 registry processes ([thundering herd](rate-limiting.md)): timeouts queue → clients retry → mailboxes balloon → OOM → cascading outage. Fix: a **node-local semaphore** so a session bails *before* issuing a request that's bound to time out. Implemented with `:ets.update_counter/4` — atomic, `write_concurrency`, a BIF running in user space (<1μs), *not* a syscall and *not* a coordinating process. Chosen over a **circuit breaker** because a breaker trips fully open (zero attempts for a window); a semaphore *shapes* traffic to a safe concurrency instead. (Open-sourced as [Semaphore](https://github.com/discordapp/semaphore).)
 
 **Recovery-time math:** with N processes needing to reconnect and a concurrency limit C, recovery ≈ `(N / C) × T_trip`. E.g. 10,000 / 10 × 2ms = 2s to drain safely — bounded, and the downstream is never overwhelmed.
 
@@ -44,15 +44,15 @@ Removing the slow-lookup bottleneck removed its accidental back-pressure, so ~5M
 > "Fan-out to N subscribers naively means N serial sends from one process, and on an actor runtime that process is single-threaded, so a 30k-member broadcast took seconds. The fix is to stop funneling through one process, three ways. Manifold groups recipients by node so you send once per node, then a per-node partitioner hashes recipients across cores — and because the hash is deterministic, ordering is preserved. FastGlobal handles the shared routing table: instead of copying it out of ETS on every read, you compile it into a module constant so the VM serves it from a read-only shared heap, copy-free. And a node-local ETS semaphore sheds load before a doomed request so a stampede can't OOM the box — a semaphore not a circuit breaker, because you want to shape traffic, not stop it dead."
 
 ## Connections
-- [[system-design-concepts/timeline-fanout-hybrid]] — a *different* fan-out sharing the word: precompute-vs-compute for a **stored feed** (Twitter/Shorts timeline), not real-time delivery to live sockets
-- [[system-design-concepts/read-side-fanout]] — the one→many *live-value* fan-out (coalesce a ticking value over a bus); this page is the delivery mechanics underneath it
-- [[system-design-concepts/work-distribution]] — Manifold is fan-out's version of "partition work across a fleet without a central bottleneck"
-- [[theory/consistent-hashing]] — the routing ring FastGlobal serves, and the `phash2` hashing Manifold's partitioner uses
-- [[theory/actor-model-message-passing]] — why `send/2` copies and why ETS reads copy; FastGlobal is the sanctioned copy-free escape
-- [[theory/concurrency-primitives]] — "single-threaded per process" + reduction-count de-scheduling is why one process can't fan out fast
-- [[system-design-concepts/rate-limiting]] — the semaphore is back-pressure/load-shedding; the stampede is a thundering herd, and the recovery formula sharpens it
-- [[system-design-concepts/read-state-watermarking]] — the other half of Discord's real-time design: making the delivered messages durable and multi-device-consistent
+- [timeline fanout hybrid](timeline-fanout-hybrid.md) — a *different* fan-out sharing the word: precompute-vs-compute for a **stored feed** (Twitter/Shorts timeline), not real-time delivery to live sockets
+- [read side fanout](read-side-fanout.md) — the one→many *live-value* fan-out (coalesce a ticking value over a bus); this page is the delivery mechanics underneath it
+- [work distribution](work-distribution.md) — Manifold is fan-out's version of "partition work across a fleet without a central bottleneck"
+- [consistent hashing](../theory/consistent-hashing.md) — the routing ring FastGlobal serves, and the `phash2` hashing Manifold's partitioner uses
+- [actor model message passing](../theory/actor-model-message-passing.md) — why `send/2` copies and why ETS reads copy; FastGlobal is the sanctioned copy-free escape
+- [concurrency primitives](../theory/concurrency-primitives.md) — "single-threaded per process" + reduction-count de-scheduling is why one process can't fan out fast
+- [rate limiting](rate-limiting.md) — the semaphore is back-pressure/load-shedding; the stampede is a thundering herd, and the recovery formula sharpens it
+- [read state watermarking](read-state-watermarking.md) — the other half of Discord's real-time design: making the delivered messages durable and multi-device-consistent
 
 ## Sources
-- [[sources/articles/discord-scaling-elixir-5m-concurrent]] — "Message Fanout", "Fast Access Shared Data", "Limited Concurrency" + companion deep-dive §1, §3, §5
+- [discord scaling elixir 5m concurrent](../reading-notes/discord-scaling-elixir-5m-concurrent.md) — "Message Fanout", "Fast Access Shared Data", "Limited Concurrency" + companion deep-dive §1, §3, §5
 - [How Discord Scaled Elixir to 5,000,000 Concurrent Users](https://discord.com/blog/how-discord-scaled-elixir-to-5-000-000-concurrent-users) — original article; libraries: [Manifold](https://github.com/discordapp/manifold), [FastGlobal](https://github.com/discordapp/fastglobal), [Semaphore](https://github.com/discordapp/semaphore)

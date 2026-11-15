@@ -55,12 +55,12 @@ A Spark task's "register file" is its multi-GB working set. There is no cheap sn
 > "OS scheduling time-slices *fixed* resources among *elastic, cheap-to-preserve* work; cluster scheduling allocates *elastic* resources among *lumpy, expensive-to-preserve* work. Preemption is only worth it when saving and restoring state is cheap relative to the work done between preemptions — true for a KB register file, catastrophic for a multi-GB shuffle. So the OS's preempt-and-resume context switch is replaced by queueing, elastic scaling, and kill-and-recompute. CPU is the one exception: it's compressible, so cgroups/CFS still time-slice it underneath."
 
 ## Connections
-- [[system-design-concepts/compressible-vs-incompressible-resources]] — the CPU exception: the one resource the cluster still time-slices, and why memory can't be
-- [[system-design-concepts/work-distribution]] — queueing, backpressure, and starvation-avoidance are the admission layer's tools; this page explains *when* work is allowed to start at all
-- [[theory/cpu-scheduler-goals]] — the OS-layer goal tradeoffs (responsiveness vs throughput vs fairness) this page inherits and inverts one layer up
-- [[theory/cfs-completely-fair-scheduler]] — the CFS + cgroup shares/quota machinery that time-slices executor threads *underneath* every Spark/k8s workload
-- [[theory/eevdf-scheduler]] — the current (6.6+) OS executor beneath the cluster layer; the round-robin (response time) vs SJF/FIFO (turnaround) tradeoff in its modern form
-- [[theory/concurrency-primitives]] — the context-switch *cost* (TLB flush vs mode switch vs user-space) is exactly what makes preemption cheap or expensive at each layer
+- [compressible vs incompressible resources](compressible-vs-incompressible-resources.md) — the CPU exception: the one resource the cluster still time-slices, and why memory can't be
+- [work distribution](work-distribution.md) — queueing, backpressure, and starvation-avoidance are the admission layer's tools; this page explains *when* work is allowed to start at all
+- [cpu scheduler goals](../theory/cpu-scheduler-goals.md) — the OS-layer goal tradeoffs (responsiveness vs throughput vs fairness) this page inherits and inverts one layer up
+- [cfs completely fair scheduler](../theory/cfs-completely-fair-scheduler.md) — the CFS + cgroup shares/quota machinery that time-slices executor threads *underneath* every Spark/k8s workload
+- [eevdf scheduler](../theory/eevdf-scheduler.md) — the current (6.6+) OS executor beneath the cluster layer; the round-robin (response time) vs SJF/FIFO (turnaround) tradeoff in its modern form
+- [concurrency primitives](../theory/concurrency-primitives.md) — the context-switch *cost* (TLB flush vs mode switch vs user-space) is exactly what makes preemption cheap or expensive at each layer
 
 ## Sources
-- [[sources/docs/os-scheduling-to-distributed-scheduling]] — extends the OSTEP CFS chapter (incl. the Kanev et al. datacenter-tax finding) into Spark/YARN/k8s/EMR scheduling
+- [os scheduling to distributed scheduling](../reading-notes/os-scheduling-to-distributed-scheduling.md) — extends the OSTEP CFS chapter (incl. the Kanev et al. datacenter-tax finding) into Spark/YARN/k8s/EMR scheduling

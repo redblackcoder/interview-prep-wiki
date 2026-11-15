@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Why a heap keyed by raw edge weight breaks Dijkstra</title>
+<style>
+  :root {
+    --bg: #0f1218; --panel: #171b24; --ink: #e6e9ef; --muted: #8b93a7;
+    --edge: #4a5163; --hot: #ffb020; --ok: #3ecf8e; --bad: #ff5c6c; --done: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  main { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 32px 0 10px; }
+  p, li { color: #cfd4df; }
+  code { background: #232838; padding: 1px 6px; border-radius: 4px; font-size: 13.5px; }
+  .sub { color: var(--muted); margin-top: 0; }
+  .callout { background: #1d2230; border-left: 4px solid var(--hot); padding: 12px 16px; border-radius: 6px; margin: 16px 0; }
+  .callout.bad { border-color: var(--bad); }
+  .callout.ok { border-color: var(--ok); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { background: var(--panel); border-radius: 10px; padding: 14px 16px; border: 1px solid #252a37; }
+  .panel h3 { margin: 0 0 4px; font-size: 16px; }
+  .panel .key { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  svg { width: 100%; height: auto; display: block; }
+  .controls { display: flex; gap: 10px; align-items: center; margin: 18px 0 6px; }
+  button { background: #2a3142; color: var(--ink); border: 1px solid #3a4258; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  button:hover { background: #343c51; }
+  button:disabled { opacity: .4; cursor: default; }
+  .stepno { color: var(--muted); margin-left: 8px; }
+  .log { font: 13px/1.5 ui-monospace, Menlo, monospace; background: #11141b; border-radius: 6px; padding: 8px 10px; min-height: 62px; margin-top: 8px; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font: 13px ui-monospace, Menlo, monospace; }
+  th, td { border: 1px solid #2a3040; padding: 4px 8px; text-align: center; }
+  th { color: var(--muted); font-weight: 500; }
+  td.wrong { color: var(--bad); font-weight: 700; }
+  td.right { color: var(--ok); font-weight: 700; }
+  td.changed { background: #3a2f12; }
+  .heap { font: 13px ui-monospace, Menlo, monospace; margin-top: 8px; }
+  .heap span { display: inline-block; background: #232838; border: 1px solid #343b4f; border-radius: 4px; padding: 2px 7px; margin: 2px 4px 2px 0; }
+  .heap span.top { border-color: var(--hot); color: var(--hot); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  pre.code { background: #11141b; border-radius: 8px; padding: 12px 14px; font: 13px/1.5 ui-monospace, Menlo, monospace; overflow-x: auto; }
+  .diff-bad { color: var(--bad); }
+  .diff-ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Your algorithm vs Dijkstra: the counterexample</h1>
+  <p class="sub">Heap of edges keyed by raw weight <code>w</code>, relax with <code>dist[u] + w</code>, add a node to the set the first time an edge reaches it.</p>
+
+  <div class="callout bad">
+    <b>The bug:</b> the heap pops edges in order of <i>raw weight</i>, which has nothing to do with order of <i>distance from S</i>.
+    So a node can join the "done" set while its distance is still too big. Its outgoing edges then get popped using that
+    too-big <code>dist[u]</code>. When the node's distance gets fixed later, nobody pushes its outgoing edges again,
+    so the nodes after it keep the wrong value.
+  </div>
+
+  <h2>The graph</h2>
+  <p>
+    Edges (directed): <code>S→X = 2</code>, <code>X→A = 2</code>, <code>S→A = 3</code>, <code>A→T = 1</code>.<br>
+    True shortest distances: <code>X = 2</code>, <code>A = 3</code> (direct edge), <code>T = 4</code> (S→A→T).
+  </p>
+  <p>The trap: the direct edge S→A (3) is heavier than <i>each</i> edge on the detour S→X→A (2, 2), but lighter than their <i>sum</i> (4).
+     Sorting by raw weight takes the detour first.</p>
+
+  <div class="controls">
+    <button id="reset">⟲ Reset</button>
+    <button id="prev">◀ Prev</button>
+    <button id="next">Next ▶</button>
+    <button id="play">▶ Play</button>
+    <span class="stepno" id="stepno"></span>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--done)"></span>in "done" set</span>
+    <span><span class="dot" style="background:var(--hot)"></span>edge just popped</span>
+    <span><span class="dot" style="background:var(--bad)"></span>wrong final distance</span>
+    <span><span class="dot" style="background:var(--ok)"></span>correct final distance</span>
+  </div>
+
+  <div class="grid" style="margin-top:10px">
+    <div class="panel">
+      <h3>Your algorithm</h3>
+      <div class="key">heap key = <code class="diff-bad">w</code></div>
+      <div id="svgA"></div>
+      <div class="heap" id="heapA"></div>
+      <div class="log" id="logA"></div>
+      <div id="tblA"></div>
+    </div>
+    <div class="panel">
+      <h3>Dijkstra (same edge heap, one change)</h3>
+      <div class="key">heap key = <code class="diff-ok">dist[u] + w</code></div>
+      <div id="svgB"></div>
+      <div class="heap" id="heapB"></div>
+      <div class="log" id="logB"></div>
+      <div id="tblB"></div>
+    </div>
+  </div>
+
+  <h2>The one-line fix</h2>
+<pre class="code">for (v, w) in adj[u]:
+<span class="diff-bad">-    heap.push((w,           u, v))   # your version: order by edge weight</span>
+<span class="diff-ok">+    heap.push((dist[u] + w, u, v))   # Dijkstra: order by distance from S</span>
+...
+(key, u, v) = heap.pop()
+if v in done: continue                # stale entry, v already has its final distance
+dist[v] = key; done.add(v)</pre>
+  <p>Once the key is <code>dist[u] + w</code>, keys come out of the heap in non-decreasing order. With non-negative weights,
+     the first time you pop an edge into <code>v</code> its key really is the shortest distance to <code>v</code>.
+     That guarantee is the whole proof of Dijkstra. Raw weights don't give you that guarantee, so the "done" set can lock in a wrong value.</p>
+
+  <h2>Why it worked on the GeeksforGeeks graph</h2>
+  <p>On that graph, the edge that first reaches each node is already on that node's shortest path. So no node is ever locked in too early,
+     and the bug never shows. To break it you need all three of these:</p>
+  <ol>
+    <li>A node <b>A</b> first reached by a path of several <i>small</i> edges whose <i>sum</i> is large (S→X→A = 2+2).</li>
+    <li>A shorter path to A that uses a <i>heavier single edge</i> (S→A = 3), so it gets popped later.</li>
+    <li>A cheap edge out of A (A→T = 1) that gets popped <i>between</i> those two events, which carries the wrong <code>dist[A]</code> forward.</li>
+  </ol>
+
+  <h2>Why Gemini's counterexample didn't work</h2>
+  <div class="callout">
+    <ul style="margin:0; padding-left:18px">
+      <li><b>It changed your algorithm.</b> It said you were "running Prim's". But Prim's stores <code>key[v] = w</code> and never adds up a path.
+          You do add up <code>dist[u] + w</code>. What you wrote is a mix: <i>Prim's pop order</i> with <i>Dijkstra's relaxation</i>. That is a different algorithm.</li>
+      <li><b>It never ran its own example.</b> In the S/A/B/C graph, C is first reached through its true shortest path (S→A→C = 2).
+          Condition 1 above never happens, so nothing breaks. The answer it gave was fine; it just said "it can force detours" without showing one. You caught that.</li>
+      <li><b>It gave the textbook answer to a different question.</b> "Dijkstra vs Prim" is the usual confusion, so it explained that, instead of tracing what you described.
+          Free/Flash-tier models tend to do this. They don't check a claimed counterexample by stepping through it, and they rarely build an
+          adversarial input. Its second reply ("you've reinvented Dijkstra exactly") and its third ("it's Prim's") also contradict each other.</li>
+    </ul>
+  </div>
+  <p><b>Tip for next time:</b> paste your algorithm as code and ask it to <i>"give a graph where this returns a wrong distance, and trace the heap step by step to prove it."</i>
+     Asking for a trace makes it check the example.</p>
+
+  <h2>Side note: "just re-push A's edges when dist[A] improves"</h2>
+  <p>That gives correct answers, because every improvement eventually reaches the nodes after it. But it is now a label-correcting algorithm, like Bellman-Ford/SPFA, not Dijkstra.
+     A node can be improved many times, and on bad inputs the work can blow up exponentially. Ordering by <code>dist[u] + w</code> fixes it properly:
+     each node is settled once, in O(E log V).</p>
+</main>
+
+<script>
+const NODES = { S: [70, 190], X: [250, 60], A: [430, 190], T: [600, 190] };
+const EDGES = [ ['S','X',2], ['X','A',2], ['S','A',3], ['A','T',1] ];
+const TRUE = { S: 0, X: 2, A: 3, T: 4 };
+const adj = {}; for (const n in NODES) adj[n] = [];
+for (const [u, v, w] of EDGES) adj[u].push([v, w]);
+
+// Heap with stable tie-break on insertion order.
+function popMin(heap) {
+  let bi = 0;
+  for (let i = 1; i < heap.length; i++)
+    if (heap[i].key < heap[bi].key || (heap[i].key === heap[bi].key && heap[i].seq < heap[bi].seq)) bi = i;
+  return heap.splice(bi, 1)[0];
+}
+const sorted = h => [...h].sort((a, b) => a.key - b.key || a.seq - b.seq);
+const snap = (o) => JSON.parse(JSON.stringify(o));
+
+function runUser() {
+  const dist = { S: 0, X: Infinity, A: Infinity, T: Infinity };
+  const done = { S: true }; let seq = 0; const heap = [];
+  for (const [v, w] of adj.S) heap.push({ key: w, u: 'S', v, w, seq: seq++ });
+  const steps = [{ dist: snap(dist), done: snap(done), heap: sorted(heap), popped: null, changed: null,
+    msg: 'Start: dist[S]=0. Push S\'s edges keyed by raw weight.' }];
+  while (heap.length) {
+    const e = popMin(heap);
+    const cand = dist[e.u] + e.w; let msg = `pop (${e.key}, ${e.u}→${e.v})  cand = dist[${e.u}]+${e.w} = ${cand}`;
+    let changed = null;
+    if (cand < dist[e.v]) { msg += `  → dist[${e.v}] = ${cand}`; dist[e.v] = cand; changed = e.v; }
+    else msg += `  ≥ dist[${e.v}]=${dist[e.v]}, no change`;
+    if (!done[e.v]) {
+      done[e.v] = true;
+      const outs = adj[e.v];
+      for (const [x, w] of outs) heap.push({ key: w, u: e.v, v: x, w, seq: seq++ });
+      msg += `\n${e.v} joins done set; push ${outs.length ? outs.map(([x, w]) => `(${w}, ${e.v}→${x})`).join(', ') : 'nothing (no out-edges)'}`;
+    } else {
+      msg += `\n${e.v} already done → its out-edges are NOT pushed again.`;
+      if (changed === 'A') msg += `\n✗ A→T was already used with dist[A]=4. T stays 5, true answer is 4.`;
+    }
+    steps.push({ dist: snap(dist), done: snap(done), heap: sorted(heap), popped: e, changed, msg });
+  }
+  return steps;
+}
+
+function runDijkstra() {
+  const dist = { S: 0, X: Infinity, A: Infinity, T: Infinity };
+  const done = { S: true }; let seq = 0; const heap = [];
+  for (const [v, w] of adj.S) heap.push({ key: 0 + w, u: 'S', v, w, seq: seq++ });
+  const steps = [{ dist: snap(dist), done: snap(done), heap: sorted(heap), popped: null, changed: null,
+    msg: 'Start: dist[S]=0. Push S\'s edges keyed by dist[S]+w.' }];
+  while (heap.length) {
+    const e = popMin(heap); let msg = `pop (${e.key}, ${e.u}→${e.v})`; let changed = null;
+    if (done[e.v]) {
+      msg += `\n${e.v} already done with dist ${dist[e.v]} → stale entry, skip.`;
+    } else {
+      dist[e.v] = e.key; done[e.v] = true; changed = e.v;
+      const outs = adj[e.v];
+      for (const [x, w] of outs) heap.push({ key: dist[e.v] + w, u: e.v, v: x, w, seq: seq++ });
+      msg += `  → dist[${e.v}] = ${e.key}, final.\npush ${outs.length ? outs.map(([x, w]) => `(${dist[e.v]}+${w}=${dist[e.v] + w}, ${e.v}→${x})`).join(', ') : 'nothing (no out-edges)'}`;
+    }
+    steps.push({ dist: snap(dist), done: snap(done), heap: sorted(heap), popped: e, changed, msg });
+  }
+  return steps;
+}
+
+const A = runUser(), B = runDijkstra();
+const MAX = Math.max(A.length, B.length) - 1;
+let i = 0, timer = null;
+
+function svg(step) {
+  const p = step.popped;
+  let s = `<svg viewBox="0 0 670 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a5163"/></marker>
+    <marker id="arh" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ffb020"/></marker>
+  </defs>`;
+  for (const [u, v, w] of EDGES) {
+    const [x1, y1] = NODES[u], [x2, y2] = NODES[v];
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), r = 26;
+    const sx = x1 + dx / L * r, sy = y1 + dy / L * r, ex = x2 - dx / L * (r + 2), ey = y2 - dy / L * (r + 2);
+    const hot = p && p.u === u && p.v === v;
+    s += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${hot ? '#ffb020' : '#4a5163'}" stroke-width="${hot ? 4 : 2.5}" marker-end="url(#${hot ? 'arh' : 'ar'})"/>`;
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, off = (u === 'S' && v === 'A') ? 18 : -12;
+    const nx = -dy / L * off, ny = dx / L * off;
+    s += `<text x="${mx + nx}" y="${my + ny + 5}" fill="${hot ? '#ffb020' : '#cfd4df'}" font-size="17" font-weight="700" text-anchor="middle">${w}</text>`;
+  }
+  const last = (step === A[A.length - 1]) || (step === B[B.length - 1]);
+  for (const n in NODES) {
+    const [x, y] = NODES[n], d = step.dist[n];
+    const fill = step.done[n] ? '#3b82f6' : '#232838';
+    s += `<circle cx="${x}" cy="${y}" r="26" fill="${fill}" stroke="${step.changed === n ? '#ffb020' : '#5a6278'}" stroke-width="${step.changed === n ? 4 : 2}"/>`;
+    s += `<text x="${x}" y="${y + 6}" fill="#fff" font-size="18" font-weight="700" text-anchor="middle">${n}</text>`;
+    let col = '#cfd4df';
+    if (last && d !== Infinity) col = d === TRUE[n] ? '#3ecf8e' : '#ff5c6c';
+    s += `<text x="${x}" y="${y + 50}" fill="${col}" font-size="15" font-weight="600" text-anchor="middle">${d === Infinity ? '∞' : d}</text>`;
+  }
+  return s + '</svg>';
+}
+
+function table(step, isLast) {
+  let h = '<table><tr><th></th>' + Object.keys(NODES).map(n => `<th>${n}</th>`).join('') + '</tr><tr><th>dist</th>';
+  for (const n in NODES) {
+    const d = step.dist[n]; let cls = step.changed === n ? 'changed' : '';
+    if (isLast) cls += d === TRUE[n] ? ' right' : ' wrong';
+    h += `<td class="${cls}">${d === Infinity ? '∞' : d}</td>`;
+  }
+  h += '</tr><tr><th>true</th>' + Object.keys(NODES).map(n => `<td>${TRUE[n]}</td>`).join('') + '</tr></table>';
+  return h;
+}
+
+function heapHtml(step) {
+  if (!step.heap.length) return 'heap: <i style="color:#8b93a7">empty</i>';
+  return 'heap: ' + step.heap.map((e, k) => `<span class="${k === 0 ? 'top' : ''}">(${e.key}, ${e.u}→${e.v})</span>`).join('');
+}
+
+function render() {
+  for (const [steps, id] of [[A, 'A'], [B, 'B']]) {
+    const k = Math.min(i, steps.length - 1), st = steps[k], isLast = k === steps.length - 1;
+    document.getElementById('svg' + id).innerHTML = svg(st);
+    document.getElementById('heap' + id).innerHTML = heapHtml(st);
+    let msg = (i > steps.length - 1 ? '(finished)\n' : '') + st.msg;
+    if (isLast && i >= steps.length - 1) {
+      const ok = Object.keys(NODES).every(n => st.dist[n] === TRUE[n]);
+      msg += ok ? '\n✓ All distances correct.' : `\n✗ Final dist[T] = ${st.dist.T}, but the true shortest is ${TRUE.T}.`;
+    }
+    document.getElementById('log' + id).textContent = msg;
+    document.getElementById('tbl' + id).innerHTML = table(st, isLast && i >= steps.length - 1);
+  }
+  document.getElementById('stepno').textContent = `step ${i} / ${MAX}`;
+  document.getElementById('prev').disabled = i === 0;
+  document.getElementById('next').disabled = i === MAX;
+}
+
+document.getElementById('next').onclick = () => { if (i < MAX) { i++; render(); } };
+document.getElementById('prev').onclick = () => { if (i > 0) { i--; render(); } };
+document.getElementById('reset').onclick = () => { stop(); i = 0; render(); };
+function stop() { clearInterval(timer); timer = null; document.getElementById('play').textContent = '▶ Play'; }
+document.getElementById('play').onclick = () => {
+  if (timer) return stop();
+  if (i === MAX) i = 0;
+  document.getElementById('play').textContent = '⏸ Pause';
+  render();
+  timer = setInterval(() => { if (i >= MAX) return stop(); i++; render(); }, 1600);
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') document.getElementById('next').click();
+  if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+});
+render();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Keyed Serial Executor (Bounded, Concurrent, Graceful-Shutdown)
 
-A classic concurrency interview problem — "KeyedTaskExecutor": accept tasks under a key, run same-key tasks **serially in order**, cap global concurrency and total in-flight work, reject when full or shutting down, isolate failures, and drain on shutdown. It looks like five hard problems tangled together; the whole skill is **decomposing it into independent mechanisms, one concurrency construct per requirement** (see [[theory/concurrency-constructs]]). The winning shape is **per-key serial queue + shared bounded pool + atomic admission + completion-driven hand-off** — not a polling dispatcher.
+A classic concurrency interview problem — "KeyedTaskExecutor": accept tasks under a key, run same-key tasks **serially in order**, cap global concurrency and total in-flight work, reject when full or shutting down, isolate failures, and drain on shutdown. It looks like five hard problems tangled together; the whole skill is **decomposing it into independent mechanisms, one concurrency construct per requirement** (see [concurrency constructs](../theory/concurrency-constructs.md)). The winning shape is **per-key serial queue + shared bounded pool + atomic admission + completion-driven hand-off** — not a polling dispatcher.
 
 ## Problem
 
@@ -167,13 +167,13 @@ public final class KeyedTaskExecutor {
 > "I decompose it into one construct per requirement instead of one big lock. Concurrency ≤4 is a fixed pool of 4 — the pool is the semaphore. The ≤1000-and-reject-when-full-or-shutdown rule is an `AtomicInteger` CAS admission loop guarded by a volatile flag, because check-then-act on a bound is itself a race. Per-key serialization is a `ConcurrentHashMap.computeIfAbsent` to a per-key deque with a `scheduled` flag, and — this is the key move — the *finishing* task, under the key's lock, re-schedules the next one. That completion-driven hand-off replaces any polling dispatcher. Failures are isolated with a `try/catch` around `run()`, the counter is decremented in `finally`, and shutdown waits on a drain signal until a deadline, then `shutdownNow()`."
 
 ## Connections
-- [[theory/concurrency-constructs]] — the toolkit each requirement maps onto (CAS loop, semaphore/pool, `computeIfAbsent`, wait/notify)
-- [[theory/concurrency-primitives]] — the thread/pool execution model underneath the executor
-- [[system-design-concepts/dispatch-and-matching]] — the same atomic check-and-claim idea (first-accept-wins behind a two-invariant claim) at the distributed layer
-- [[system-design-concepts/work-distribution]] — per-key serialization is single-machine work partitioning; this is its in-process analog
-- [[system-design-concepts/hot-key-write-contention]] — a hot key here serializes onto one runner, the in-process face of hot-key contention
+- [concurrency constructs](../theory/concurrency-constructs.md) — the toolkit each requirement maps onto (CAS loop, semaphore/pool, `computeIfAbsent`, wait/notify)
+- [concurrency primitives](../theory/concurrency-primitives.md) — the thread/pool execution model underneath the executor
+- [dispatch and matching](../system-design-concepts/dispatch-and-matching.md) — the same atomic check-and-claim idea (first-accept-wins behind a two-invariant claim) at the distributed layer
+- [work distribution](../system-design-concepts/work-distribution.md) — per-key serialization is single-machine work partitioning; this is its in-process analog
+- [hot key write contention](../system-design-concepts/hot-key-write-contention.md) — a hot key here serializes onto one runner, the in-process face of hot-key contention
 
 ## Sources
-- [[sources/docs/keyed-task-executor-interview]] — the KeyedTaskExecutor problem statement and requirements
-- Runnable code in raw: [keyed-task-executor/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/keyed-task-executor/)
+- [keyed task executor](../problems/coding/keyed-task-executor.md) — the KeyedTaskExecutor problem statement and requirements
+- Runnable code in raw: [keyed-task-executor/](../../sources/code/keyed-task-executor)
 </content>

@@ -4,7 +4,7 @@ The GPU tier is the crux of any "design ChatGPT / an LLM product" question, and 
 
 ## Why generation is different from a normal request
 - A single generation **holds the GPU for seconds**, streaming **one token at a time** — the connection stays open the whole time.
-- **Decode is memory-bandwidth-bound, not compute-bound.** Generating each token re-reads the model weights and the growing attention state from GPU memory; you're waiting on memory bandwidth, not FLOPs. This is why throughput comes from *doing more in parallel*, not from a faster clock (see the roofline framing in [[wiki/theory/latency-numbers]] — latency stalls while bandwidth grows).
+- **Decode is memory-bandwidth-bound, not compute-bound.** Generating each token re-reads the model weights and the growing attention state from GPU memory; you're waiting on memory bandwidth, not FLOPs. This is why throughput comes from *doing more in parallel*, not from a faster clock (see the roofline framing in [latency numbers](../theory/latency-numbers.md) — latency stalls while bandwidth grows).
 
 ## KV cache — the thing that bounds concurrency
 Attention needs the keys/values of every prior token. Recomputing them each step is quadratic, so they're cached: the **KV cache**. Its size grows with **context length × layers × heads × head-dim × 2 × dtype-bytes**, *per in-flight sequence*.
@@ -22,16 +22,16 @@ Because decode is memory-bound, running one sequence wastes the GPU. **Batching*
 ## Key points
 - Capacity ≈ *how many sequences fit in KV-cache memory* × *how efficiently the batcher keeps them packed*. That product is your per-GPU QPS; multiply by fleet size for total.
 - Throughput and latency trade off: bigger batches = more throughput but higher per-token latency. SLA-aware batching is the balancing act.
-- This is what makes the GPU an [[wiki/system-design-concepts/serving-constrained-resources|expensive, constrained resource]]: you can't cheaply overprovision, so batching efficiency is money.
+- This is what makes the GPU an [expensive, constrained resource](serving-constrained-resources.md): you can't cheaply overprovision, so batching efficiency is money.
 
 ## Interview angle
 *30-second answer:* "A GPU's serving capacity is set by two things: the KV cache — attention state per sequence that grows with context length and eats GPU memory, usually capping concurrency before compute does — and continuous batching, which packs many sequences through the memory-bound decode step so the GPU isn't idle. Capacity is roughly how many sequences fit in KV-cache memory times how well the batcher keeps them full, and that's the number I'd size the fleet and cost model on."
 
 ## Connections
-- [[wiki/system-design-concepts/serving-constrained-resources]] — batching efficiency is what makes the scarce GPU economical; capacity feeds the shed/degrade decision
-- [[wiki/system-design-concepts/async-response-routing]] — the token-by-token stream this produces has to be routed back to the caller
-- [[wiki/theory/latency-numbers]] — memory-bandwidth-bound decode; the latency-vs-bandwidth divergence
+- [serving constrained resources](serving-constrained-resources.md) — batching efficiency is what makes the scarce GPU economical; capacity feeds the shed/degrade decision
+- [async response routing](async-response-routing.md) — the token-by-token stream this produces has to be routed back to the caller
+- [latency numbers](../theory/latency-numbers.md) — memory-bandwidth-bound decode; the latency-vs-bandwidth divergence
 
 ## Sources
-- [[sources/docs/design-chatgpt-mock-interview]] — the inference tier as the hardest part of the design
+- [conversational model serving](../problems/system-design/conversational-model-serving.md) — the inference tier as the hardest part of the design
 - External reading: kipply "Transformer Inference Arithmetic" (KV-cache sizing math), Anyscale "How Continuous Batching Enables 23x Throughput," vLLM/PagedAttention (SOSP 2023)

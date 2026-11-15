@@ -16,7 +16,7 @@ RPO is not one global number — set it per subsystem by asking "what does losin
 - **Irreplaceable state** (a conversation transcript, a ledger) → RPO≈0, strongly consistent, durable.
 - **Rebuildable state** (a search index, a cache) → RPO is irrelevant; lose it all and re-derive it.
 
-Naming *two different postures in one system, and why each is earned*, is the senior signal. (See [[system-design-concepts/agent-loop|coding-agent]] persistence: transcript RPO≈0 vs. index as a throwaway cache.)
+Naming *two different postures in one system, and why each is earned*, is the senior signal. (See [coding-agent](../system-design-concepts/agent-loop.md) persistence: transcript RPO≈0 vs. index as a throwaway cache.)
 
 ### RPO is also a dial you turn *per time window*, not just per subsystem
 
@@ -55,18 +55,18 @@ The contract that makes crashes safe:
 > "RPO is how much data I can lose; RTO is how long I'm down. I set RPO per subsystem — RPO≈0 for irreplaceable state like a transcript, don't-care for a rebuildable index. To hit RPO≈0 I event-source: append each event fsync'd, snapshots are materialized views. The trap is non-idempotent side effects — they aren't transactional with the DB, so I write-ahead the intent, and on resume I never auto-replay a non-completed operation or I'll git push twice. Pure operations are replay-safe; side-effecting ones must be reconciled."
 
 ## Connections
-- [[system-design-concepts/agent-loop]] — persisting each loop step (WAL of tool intent/result) is what makes a turn resumable
-- [[tech/aws-rds-postgresql]] — RPO≈0 made concrete: synchronous WAL fsync + Multi-AZ standby; `synchronous_commit` is the RPO-vs-latency knob
-- [[tech/aws-elasticache-redis]] — the RPO>0 case: async replication + snapshot interval, AOF off under Multi-AZ — "persisted" ≠ durable
-- [[system-design-concepts/rds-vs-key-value-store]] — the durability contract is what separates a system of record from a cache
-- [[theory/copy-on-write-vs-mvcc]] — the complementary consistency question: isolating concurrent writers vs. surviving a crash
-- [[theory/consistent-hashing]] — both are foundational distributed-systems primitives for stateful fleets
-- [[system-design-concepts/work-distribution]] — lease/checkpoint recovery when a worker dies mid-task is the same replay-safety problem
-- [[system-design-concepts/read-state-watermarking]] — commit-before-ACK + client retry timer is RPO≈0 reasoning applied to chat message delivery
-- [[system-design-concepts/hot-key-write-contention]] — the "sync only in the final window" dial is how you bound cost on a contended key without paying it always
-- [[theory/consistency-models]] — RPO ("how much can I lose") is orthogonal to the consistency contract ("what order can I observe"); both are dials
+- [agent loop](../system-design-concepts/agent-loop.md) — persisting each loop step (WAL of tool intent/result) is what makes a turn resumable
+- [aws rds postgresql](../tech/aws-rds-postgresql.md) — RPO≈0 made concrete: synchronous WAL fsync + Multi-AZ standby; `synchronous_commit` is the RPO-vs-latency knob
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — the RPO>0 case: async replication + snapshot interval, AOF off under Multi-AZ — "persisted" ≠ durable
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — the durability contract is what separates a system of record from a cache
+- [copy on write vs mvcc](copy-on-write-vs-mvcc.md) — the complementary consistency question: isolating concurrent writers vs. surviving a crash
+- [consistent hashing](consistent-hashing.md) — both are foundational distributed-systems primitives for stateful fleets
+- [work distribution](../system-design-concepts/work-distribution.md) — lease/checkpoint recovery when a worker dies mid-task is the same replay-safety problem
+- [read state watermarking](../system-design-concepts/read-state-watermarking.md) — commit-before-ACK + client retry timer is RPO≈0 reasoning applied to chat message delivery
+- [hot key write contention](../system-design-concepts/hot-key-write-contention.md) — the "sync only in the final window" dial is how you bound cost on a contended key without paying it always
+- [consistency models](consistency-models.md) — RPO ("how much can I lose") is orthogonal to the consistency contract ("what order can I observe"); both are dials
 
 ## Sources
-- [[sources/docs/local-coding-agent-system-design]] — §8 crash recovery, §9 durability glossary
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes
-- [[sources/docs/design-instagram-auction-mock-interview]] — RPO as a per-window dial (sync writes for an auction's last 30s); AZ-vs-region scoping; client-replay is a hint, not truth
+- [local terminal coding agent](../problems/system-design/local-terminal-coding-agent.md) — §8 crash recovery, §9 durability glossary
+- [local-coding-agent-system-design.md](../../sources/references/local-coding-agent-system-design.md) — full mock-interview design notes
+- [live auctions](../problems/system-design/live-auctions.md) — RPO as a per-window dial (sync writes for an auction's last 30s); AZ-vs-region scoping; client-replay is a hint, not truth

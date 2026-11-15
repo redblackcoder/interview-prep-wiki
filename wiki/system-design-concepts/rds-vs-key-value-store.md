@@ -6,7 +6,7 @@ The recurring storage-layer decision: back an application with a **relational da
 
 > **PostgreSQL is priced on cheap disk + compute + IO and sells flexible querying and hard durability. Redis is priced on expensive RAM and sells microsecond latency and high throughput on a hot working set.**
 
-You are choosing which resource — *durable bytes on SSD* or *fast bytes in DRAM* — dominates your bill and your guarantees. Almost every pro, con, and cost delta is downstream of that single fact: a relational DB keeps the bulk on SSD (~$0.115/GB-mo) and pulls the hot subset into a RAM buffer cache; a KV store holds the **entire** dataset in DRAM, priced ~100–250× higher per GB (see [[system-design-concepts/cloud-database-cost-model]]).
+You are choosing which resource — *durable bytes on SSD* or *fast bytes in DRAM* — dominates your bill and your guarantees. Almost every pro, con, and cost delta is downstream of that single fact: a relational DB keeps the bulk on SSD (~$0.115/GB-mo) and pulls the hot subset into a RAM buffer cache; a KV store holds the **entire** dataset in DRAM, priced ~100–250× higher per GB (see [cloud database cost model](cloud-database-cost-model.md)).
 
 ## How they differ
 
@@ -15,7 +15,7 @@ You are choosing which resource — *durable bytes on SSD* or *fast bytes in DRA
 | Primary resource billed | Compute + SSD storage + provisioned IOPS | RAM (node memory), or storage-GB-hr + ECPU (serverless) |
 | Data model | Relational, typed schema, SQL, joins, ad-hoc queries, secondary indexes | Key → value + structures (hash, sorted-set, stream); O(1) by key, **no joins** |
 | Consistency | ACID, strong, MVCC; synchronous Multi-AZ commit | Per-command atomic; **async** replication → weaker; failover can lose writes |
-| Durability (RPO) | Near-zero (WAL + fsync + sync standby) | Non-zero — snapshot interval + replication lag (see [[theory/durability-rpo-rto]]) |
+| Durability (RPO) | Near-zero (WAL + fsync + sync standby) | Non-zero — snapshot interval + replication lag (see [durability rpo rto](../theory/durability-rpo-rto.md)) |
 | Latency (p50 point read) | ~0.2–2 ms | ~50–300 µs |
 | Write scaling | Single writer — vertical, or shard (Citus / app / Aurora Limitless); vanilla Aurora raises the ceiling but is still single-writer | Horizontal via cluster sharding (up to 500 shards) |
 | Best role | System of record; anything relational, transactional, query-diverse | Cache, session, rate-limit, leaderboard, queue, derived/ephemeral state |
@@ -26,7 +26,7 @@ PostgreSQL lets you answer questions you *didn't anticipate at design time* — 
 
 ## The persisted-store nuance
 
-The comparison gets genuinely technical once you require *both* to persist, because **"Redis with persistence" ≠ "a durable database."** Postgres acknowledges a commit only after the WAL is `fsync`'d and (in Multi-AZ) a synchronous standby has it → RPO≈0. ElastiCache's realistic durability story is **async replication + periodic S3 snapshots + fast failover** — AOF is not supported once Multi-AZ auto-failover is on — so its RPO is "last snapshot + un-replicated writes," never provably zero. Detail in [[tech/aws-elasticache-redis]] and [[theory/durability-rpo-rto]].
+The comparison gets genuinely technical once you require *both* to persist, because **"Redis with persistence" ≠ "a durable database."** Postgres acknowledges a commit only after the WAL is `fsync`'d and (in Multi-AZ) a synchronous standby has it → RPO≈0. ElastiCache's realistic durability story is **async replication + periodic S3 snapshots + fast failover** — AOF is not supported once Multi-AZ auto-failover is on — so its RPO is "last snapshot + un-replicated writes," never provably zero. Detail in [aws elasticache redis](../tech/aws-elasticache-redis.md) and [durability rpo rto](../theory/durability-rpo-rto.md).
 
 ## The default staff+ answer: use both
 
@@ -49,13 +49,13 @@ Rarely "pick one." The senior answer is **PostgreSQL as the durable system of re
 > "I frame it as economics: Postgres is priced on cheap SSD plus compute and sells flexible querying and hard durability; Redis is priced on expensive RAM and sells microsecond latency on a hot set. So for a system of record I default to RDS PostgreSQL — ACID, joins, ad-hoc queries, and the bulk on $0.11/GB SSD — and put Redis in front only for the latency-critical hot slice, as a cache or session/leaderboard/rate-limit store. The trap in 'just use Redis and persist it' is that its durability is async replication plus snapshots, not an fsync'd log, so the RPO is non-zero — fine for a cache, not for money."
 
 ## Connections
-- [[system-design-concepts/cloud-database-cost-model]] — the four cost axes and the ~100–250× RAM-vs-SSD ratio that drives this decision
-- [[tech/aws-rds-postgresql]] — the relational implementation: topologies, storage engines, durability knobs
-- [[tech/aws-elasticache-redis]] — the KV implementation: engines, persistence semantics, data tiering
-- [[theory/durability-rpo-rto]] — the durability contract that separates a system of record from a cache
-- [[theory/copy-on-write-vs-mvcc]] — MVCC is *how* Postgres gives readers a consistent snapshot without blocking writers
-- [[theory/latency-numbers]] — the RAM-vs-SSD latency gap (100 ns vs µs–ms) is the physical reason Redis wins on the hot set
+- [cloud database cost model](cloud-database-cost-model.md) — the four cost axes and the ~100–250× RAM-vs-SSD ratio that drives this decision
+- [aws rds postgresql](../tech/aws-rds-postgresql.md) — the relational implementation: topologies, storage engines, durability knobs
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — the KV implementation: engines, persistence semantics, data tiering
+- [durability rpo rto](../theory/durability-rpo-rto.md) — the durability contract that separates a system of record from a cache
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — MVCC is *how* Postgres gives readers a consistent snapshot without blocking writers
+- [latency numbers](../theory/latency-numbers.md) — the RAM-vs-SSD latency gap (100 ns vs µs–ms) is the physical reason Redis wins on the hot set
 
 ## Sources
-- [[sources/docs/rds-vs-kv-store-study-guide]] — full staff+ study guide (data model, durability, scaling, pricing, decision framework)
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — §0–1 mental model & data model, §11 decision framework
+- [rds vs kv store study guide](../../sources/references/rds-vs-kv-store-study-guide.html) — full staff+ study guide (data model, durability, scaling, pricing, decision framework)
+- [rds-vs-kv-store-study-guide.html](../../sources/references/rds-vs-kv-store-study-guide.html) — §0–1 mental model & data model, §11 decision framework

@@ -1,0 +1,10 @@
+server:
+  port: 9765
+  servlet:
+    context-path: /api
+spring:
+  application:
+    name: commerce
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

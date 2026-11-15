@@ -24,28 +24,28 @@ Exactly-once holds **Kafka → process → Kafka** (a closed, replayable system)
 
 ## Key points
 - **Delivery vs effect:** correct the premise first — the guarantee is on the *effect/processing*, not the wire delivery.
-- **Dedup needs a stable idempotency key** and a window over which you remember it. Exact dedup over an unbounded window is expensive online — which is why, for billing, you push it to a **batch recompute over the immutable log** (`count(distinct id)`), where exactness is free and reproducible. See [[system-design-concepts/lambda-vs-kappa]].
-- Approximate consumers (dashboards) can dedup **probabilistically** (Bloom/Cuckoo filter over a bounded window) — different correctness model, cheaper mechanism. See [[theory/bloom-filters]].
+- **Dedup needs a stable idempotency key** and a window over which you remember it. Exact dedup over an unbounded window is expensive online — which is why, for billing, you push it to a **batch recompute over the immutable log** (`count(distinct id)`), where exactness is free and reproducible. See [lambda vs kappa](lambda-vs-kappa.md).
+- Approximate consumers (dashboards) can dedup **probabilistically** (Bloom/Cuckoo filter over a bounded window) — different correctness model, cheaper mechanism. See [bloom filters](../theory/bloom-filters.md).
 - The recipe generalizes far beyond Kafka: payment processors, at-least-once webhooks with an `Idempotency-Key`, and any "retry-safe" API all use it.
 - Two-generals reminder: this is *why* you can never get true exactly-once delivery — hence the "make the duplicate harmless" strategy.
-- **Arbitrary side effects (job schedulers, webhooks to third parties) can't be made exactly-once by the platform at all.** A job that charges a card then crashes before acking will be retried. The honest contract: **at-most-one live owner** (a [[system-design-concepts/lease-and-fencing|lease + fencing token]]) + **at-least-once execution** + a stable `execution_id`/`attempt` handed to the job as its idempotency key, optionally with an **at-most-once mode** (never retry after an uncertain start). State this *in the requirements* — promising exactly-once and then conceding under pushback reads as not knowing the boundary (see [[system-design-concepts/distributed-job-scheduler]]).
+- **Arbitrary side effects (job schedulers, webhooks to third parties) can't be made exactly-once by the platform at all.** A job that charges a card then crashes before acking will be retried. The honest contract: **at-most-one live owner** (a [lease + fencing token](lease-and-fencing.md)) + **at-least-once execution** + a stable `execution_id`/`attempt` handed to the job as its idempotency key, optionally with an **at-most-once mode** (never retry after an uncertain start). State this *in the requirements* — promising exactly-once and then conceding under pushback reads as not knowing the boundary (see [distributed job scheduler](distributed-job-scheduler.md)).
 
 ## Interview angle
 
 > "First I'd correct the phrase — you can't do exactly-once *delivery*, that's two-generals. What you build is exactly-once *effect*: deliver at least once and make duplicates no-ops by deduping on a stable key at the sink. Concretely in Kafka: an idempotent producer tags records with a producer-id and per-partition sequence, and the broker drops duplicates — that's dedup-by-key. For multi-step consume-process-produce you make the output write and the input-offset commit atomic so a crash can't lose or double anything. And critically it only holds Kafka-to-Kafka: an external DB write or an email still has to be idempotent on its own. For an exact monthly total I wouldn't even keep a giant online dedup set — I'd recompute distinct-by-id over the immutable event log, where exactness is a batch property."
 
 ## Connections
-- [[system-design-concepts/lambda-vs-kappa]] — exact = recompute-over-immutable-log; the batch/replay path *is* the exactness mechanism
-- [[system-design-concepts/event-time-vs-processing-time]] — the other half of "no silent loss": event-time correctness + checkpointed offsets
-- [[tech/kafka]] — idempotent producer, transactions, read_committed are Kafka's implementation
-- [[theory/bloom-filters]] — the cheap probabilistic dedup for the approximate path
-- [[theory/durability-rpo-rto]] — the non-idempotent-replay hazard on crash recovery is the same danger this addresses
-- [[system-design-concepts/distributed-id-generation]] — a good idempotency key is often the unique ID minted here
-- [[system-design-concepts/lease-and-fencing]] — the ownership half: at-most-one live worker, fenced writes; complements dedup on the effect half
-- [[system-design-concepts/transactional-outbox]] — at-least-once publish from a DB with idempotent consumers
+- [lambda vs kappa](lambda-vs-kappa.md) — exact = recompute-over-immutable-log; the batch/replay path *is* the exactness mechanism
+- [event time vs processing time](event-time-vs-processing-time.md) — the other half of "no silent loss": event-time correctness + checkpointed offsets
+- [kafka](../tech/kafka.md) — idempotent producer, transactions, read_committed are Kafka's implementation
+- [bloom filters](../theory/bloom-filters.md) — the cheap probabilistic dedup for the approximate path
+- [durability rpo rto](../theory/durability-rpo-rto.md) — the non-idempotent-replay hazard on crash recovery is the same danger this addresses
+- [distributed id generation](distributed-id-generation.md) — a good idempotency key is often the unique ID minted here
+- [lease and fencing](lease-and-fencing.md) — the ownership half: at-most-one live worker, fenced writes; complements dedup on the effect half
+- [transactional outbox](transactional-outbox.md) — at-least-once publish from a DB with idempotent consumers
 
 ## Sources
-- [[sources/docs/kafka-101-bytebytego]] — Kafka Streams exactly-once, the producer/consumer model
-- [kafka-101-bytebytego.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/kafka-101-bytebytego.md) — Stanislav Kozlovski / ByteByteGo
+- [kafka 101 bytebytego](../reading-notes/kafka-101-bytebytego.md) — Kafka Streams exactly-once, the producer/consumer model
+- [kafka-101-bytebytego.md](../../sources/references/kafka-101-bytebytego.md) — Stanislav Kozlovski / ByteByteGo
 - Conversation notes (tagged-counter mock) — "exact dedup is a batch property; at-least-once + dedup = effectively once"
-- [[sources/docs/design-job-scheduler-mock-interview]] — why exactly-once can't be promised for arbitrary job binaries; the at-least-once + lease + idempotency-key contract
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — why exactly-once can't be promised for arbitrary job binaries; the at-least-once + lease + idempotency-key contract

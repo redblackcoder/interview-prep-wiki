@@ -139,12 +139,12 @@ Read-heavy: `Clock ≳ Snapshot ≫ SingleLock`. Write-heavy: `Snapshot ≳ Cloc
 > and lock-free reads are fundamentally in tension; every scalable cache trades exactness."
 
 ## Connections
-- [[theory/concurrency-constructs]] — the toolkit: ReentrantLock vs ReadWriteLock vs StampedLock, CAS, Phaser, volatile visibility, `ConcurrentHashMap`
-- [[coding-patterns/keyed-serial-executor]] — same "one lock owns the invariant, go lock-free where you safely can" reasoning
-- [[system-design-concepts/cache-eviction-policies]] — the policy side (exact vs approximate LRU, LFU, CLOCK, W-TinyLFU) this code implements
-- [[theory/consistent-hashing]] — sharding/routing and the hash-distribution concern, taken to the cross-node layer
-- [[system-design-concepts/hot-key-write-contention]] — a hot key concentrates on one shard's lock; the in-process face of hot-key contention
+- [concurrency constructs](../theory/concurrency-constructs.md) — the toolkit: ReentrantLock vs ReadWriteLock vs StampedLock, CAS, Phaser, volatile visibility, `ConcurrentHashMap`
+- [keyed serial executor](keyed-serial-executor.md) — same "one lock owns the invariant, go lock-free where you safely can" reasoning
+- [cache eviction policies](../system-design-concepts/cache-eviction-policies.md) — the policy side (exact vs approximate LRU, LFU, CLOCK, W-TinyLFU) this code implements
+- [consistent hashing](../theory/consistent-hashing.md) — sharding/routing and the hash-distribution concern, taken to the cross-node layer
+- [hot key write contention](../system-design-concepts/hot-key-write-contention.md) — a hot key concentrates on one shard's lock; the in-process face of hot-key contention
 
 ## Sources
-- [[sources/code/concurrent-lru-cache]] — the four implementations and the design journey (get-is-a-writer, sharding hash, snapshot bugs, CLOCK)
-- Runnable code in raw: [concurrent-lru-cache/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/concurrent-lru-cache/)
+- [concurrent-lru-cache](../../sources/code/concurrent-lru-cache) — the four implementations and the design journey (get-is-a-writer, sharding hash, snapshot bugs, CLOCK)
+- Runnable code in raw: [concurrent-lru-cache/](../../sources/code/concurrent-lru-cache)

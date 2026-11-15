@@ -1,8 +1,8 @@
 # EEVDF: Earliest Eligible Virtual Deadline First
 
-Linux's default scheduler since 6.6 (late 2023), replacing [[theory/cfs-completely-fair-scheduler|CFS]]. EEVDF (from a 1995 paper by Stoica & Abdel-Wahab) keeps CFS's weighted-fairness foundation but fixes CFS's core defect: that `nice` welds *latency* to *share*. It does so with two additions — a rigorous fairness measure called **lag**, and a per-task **virtual deadline** derived from a *requestable* time slice. The selection rule is in the name: among all **eligible** tasks, run the one with the **earliest virtual deadline**.
+Linux's default scheduler since 6.6 (late 2023), replacing [CFS](cfs-completely-fair-scheduler.md). EEVDF (from a 1995 paper by Stoica & Abdel-Wahab) keeps CFS's weighted-fairness foundation but fixes CFS's core defect: that `nice` welds *latency* to *share*. It does so with two additions — a rigorous fairness measure called **lag**, and a per-task **virtual deadline** derived from a *requestable* time slice. The selection rule is in the name: among all **eligible** tasks, run the one with the **earliest virtual deadline**.
 
-Read [[theory/cpu-scheduler-goals]] first — EEVDF's whole reason to exist is promoting *latency* to a first-class, requestable goal alongside fairness.
+Read [cpu scheduler goals](cpu-scheduler-goals.md) first — EEVDF's whole reason to exist is promoting *latency* to a first-class, requestable goal alongside fairness.
 
 ## The system virtual time V
 
@@ -67,7 +67,7 @@ EEVDF still keeps runnable tasks in a **red-black tree keyed by `vruntime`** (so
 node: { vruntime (key), deadline, min_deadline = min(own deadline, children's min_deadline) }
 ```
 
-Selection = "leftmost eligible task with earliest deadline," which the augmentation answers in **O(log n)**: walk the tree pruning by eligibility (`vruntime ≤ V`) while using each subtree's `min_deadline` to find the earliest deadline among the eligible set. Insert/update stay O(log n) (the augmented field is recomputed on rotation). So EEVDF matches CFS's asymptotic cost while enforcing a richer rule — the **low-overhead** goal from [[theory/cpu-scheduler-goals]] is preserved.
+Selection = "leftmost eligible task with earliest deadline," which the augmentation answers in **O(log n)**: walk the tree pruning by eligibility (`vruntime ≤ V`) while using each subtree's `min_deadline` to find the earliest deadline among the eligible set. Insert/update stay O(log n) (the augmented field is recomputed on rotation). So EEVDF matches CFS's asymptotic cost while enforcing a richer rule — the **low-overhead** goal from [cpu scheduler goals](cpu-scheduler-goals.md) is preserved.
 
 ## How a running task updates its state
 
@@ -104,13 +104,13 @@ So, like CFS, "consumption" is recorded by *remove → advance vruntime → reco
 > "EEVDF keeps CFS's vruntime but fixes that `nice` couples latency and share. It defines a system virtual time V — the weighted-average vruntime, the fair clock — and per task a lag = V − vruntime, so positive lag means owed CPU, negative means overspent. A task is *eligible* only when vruntime ≤ V, i.e. it isn't ahead; overspenders are excluded until they catch up, which is what guarantees fairness. Each task also requests a slice, turned into a virtual deadline = eligible-time + slice/weight, and the scheduler runs the earliest deadline among eligible tasks. The magic is that a small requested slice gives a nearer deadline, so a latency-sensitive task runs *promptly* on wakeup but doesn't get *more* CPU — latency comes from the slice, share from the weight, finally decoupled. It's all kept O(log n) with a red-black tree augmented with each subtree's minimum deadline. Lag is preserved across sleep, so it doesn't need CFS's pile of sleeper-credit heuristics."
 
 ## Connections
-- [[theory/cfs-completely-fair-scheduler]] — the predecessor EEVDF extends; vruntime/weight/cgroup machinery carries over unchanged
-- [[theory/cpu-scheduler-goals]] — EEVDF is CFS + latency promoted to a first-class *requestable* goal; this is that tradeoff resolved
-- [[system-design-concepts/preemption-economics]] — EEVDF is the current OS-layer executor beneath cluster schedulers; cgroup weights/quota still apply
-- [[theory/concurrency-primitives]] — a short requested slice means more frequent preemption, so the context-switch cost is the price of the latency EEVDF grants
+- [cfs completely fair scheduler](cfs-completely-fair-scheduler.md) — the predecessor EEVDF extends; vruntime/weight/cgroup machinery carries over unchanged
+- [cpu scheduler goals](cpu-scheduler-goals.md) — EEVDF is CFS + latency promoted to a first-class *requestable* goal; this is that tradeoff resolved
+- [preemption economics](../system-design-concepts/preemption-economics.md) — EEVDF is the current OS-layer executor beneath cluster schedulers; cgroup weights/quota still apply
+- [concurrency primitives](concurrency-primitives.md) — a short requested slice means more frequent preemption, so the context-switch cost is the price of the latency EEVDF grants
 
 ## Sources
-- [[sources/docs/linux-cpu-scheduling]] — deep-dive extract: V/lag/eligibility/deadline, the augmented RB tree, and the CFS→EEVDF motivation
+- [linux cpu scheduling](../reading-notes/linux-cpu-scheduling.md) — deep-dive extract: V/lag/eligibility/deadline, the augmented RB tree, and the CFS→EEVDF motivation
 - [LWN: An EEVDF CPU scheduler for Linux](https://lwn.net/Articles/925371/) — the introductory writeup
 - [LWN: Completing the EEVDF scheduler](https://lwn.net/Articles/969062/) — follow-on (latency-nice, slice requests)
 - Stoica & Abdel-Wahab, *Earliest Eligible Virtual Deadline First: A Flexible and Accurate Mechanism for Proportional Share Resource Allocation* (TR-95-22, 1995) — the original algorithm (search the title; PDF widely mirrored)

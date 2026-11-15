@@ -10,7 +10,7 @@ The **log** — an append-only, totally-ordered sequence of records — is the s
 
 A log is "a file where records are sorted by time." Its order defines a **logical clock decoupled from any physical clock** — the property that makes it survive across distributed systems. Two problems it solves, everywhere it appears:
 
-1. **Ordering changes** — a single agreed sequence (the basis of [[theory/state-machine-replication]] and [[theory/consensus-raft|consensus]]).
+1. **Ordering changes** — a single agreed sequence (the basis of [state machine replication](../theory/state-machine-replication.md) and [consensus](../theory/consensus-raft.md)).
 2. **Distributing data** — a durable, replayable feed many consumers read at their own pace.
 
 ### As a data-integration hub
@@ -39,27 +39,27 @@ Serving nodes subscribe to the log and apply writes in log order; they can be **
 - **"Log" ≠ "pub/sub."** A log adds **durability + strong ordering** ("atomic broadcast"); pub/sub only promises indirect addressing. That precision is why Kreps insists on the word.
 - Cleanup belongs to the **producer** (canonical form), value-add transforms happen as **derived logs**, and only destination-specific aggregation happens at load — don't conflate ETL's "extract/clean" with "restructure for a warehouse."
 - The log is a **cheap** storage mechanism (linear I/O on multi-TB HDDs) and its cost is amortized over every index it feeds — the "wasteful extra copy" objection mostly dissolves.
-- Bounded size via retention window (event data) or **[[system-design-concepts/table-log-duality|log compaction]]** (keyed data: keep the latest value per key).
+- Bounded size via retention window (event data) or **[log compaction](table-log-duality.md)** (keyed data: keep the latest value per key).
 - The log can be **CP** (Kafka/BookKeeper, strongly consistent) *or* **AP** (a Dynamo-style log that redelivers and pushes dedup to the subscriber) — the abstraction is orthogonal to the consistency choice.
-- **A log absorbs single-key write contention.** Instead of a lock + read-modify-write on a hot row (auction top bid, viral counter), **append every write to a per-key log** and let a consumer fold it into the current value as a materialized view. The append is cheap and uncoordinated; the expensive decision is deferred and batched. When the fold is an order-free aggregate ([[system-design-concepts/commutative-aggregation]]) you can even split the key across sub-partitions and merge — so the log turns a [[system-design-concepts/hot-key-write-contention|hot key]] into horizontal scale.
+- **A log absorbs single-key write contention.** Instead of a lock + read-modify-write on a hot row (auction top bid, viral counter), **append every write to a per-key log** and let a consumer fold it into the current value as a materialized view. The append is cheap and uncoordinated; the expensive decision is deferred and batched. When the fold is an order-free aggregate ([commutative aggregation](commutative-aggregation.md)) you can even split the key across sub-partitions and merge — so the log turns a [hot key](hot-key-write-contention.md) into horizontal scale.
 
 ## Interview angle
 
 > "I think of the log as the system of record and everything else as a projection of it. A log is an append-only, totally-ordered record of what happened; a table, a search index, a cache are all just deterministic folds of that log, rebuildable by replay. At org scale it kills the O(N²) pipeline mess — every system publishes to or subscribes from one central log, which also acts as a durable buffer so a slow consumer never back-pressures a producer. And you can unbundle a single database the same way: a log that handles ordering, replication, and recovery, plus a thin serving layer that only owns the index and query API. It's the mental model behind Kafka, event sourcing, and CDC."
 
 ## Connections
-- [[theory/state-machine-replication]] — the log is the ordered input stream SMR replays into identical replicas
-- [[system-design-concepts/table-log-duality]] — the log↔table equivalence that lets any view be a projection
-- [[theory/consensus-raft]] — how you build a *consistent* log; consensus is really log-building
-- [[tech/kafka]] — Kafka is this abstraction productized
-- [[system-design-concepts/lambda-vs-kappa]] — both architectures assume a replayable log as their master dataset
-- [[system-design-concepts/leaderless-vs-leader-based]] — the "serving nodes need no leader, the log is truth" point
-- [[system-design-concepts/read-state-watermarking]] — the "read up to offset X" idea is the same offset-as-logical-clock
-- [[system-design-concepts/hot-key-write-contention]] — append-to-log + deferred fold is the primary escape from single-key contention
-- [[system-design-concepts/commutative-aggregation]] — when the fold is order-free, the log's materialized view can be split and merged across partitions
+- [state machine replication](../theory/state-machine-replication.md) — the log is the ordered input stream SMR replays into identical replicas
+- [table log duality](table-log-duality.md) — the log↔table equivalence that lets any view be a projection
+- [consensus raft](../theory/consensus-raft.md) — how you build a *consistent* log; consensus is really log-building
+- [kafka](../tech/kafka.md) — Kafka is this abstraction productized
+- [lambda vs kappa](lambda-vs-kappa.md) — both architectures assume a replayable log as their master dataset
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — the "serving nodes need no leader, the log is truth" point
+- [read state watermarking](read-state-watermarking.md) — the "read up to offset X" idea is the same offset-as-logical-clock
+- [hot key write contention](hot-key-write-contention.md) — append-to-log + deferred fold is the primary escape from single-key contention
+- [commutative aggregation](commutative-aggregation.md) — when the fold is order-free, the log's materialized view can be split and merged across partitions
 
 ## Sources
-- [[sources/docs/the-log-jay-kreps]] — the full unifying-abstraction argument (Parts 1–4)
-- [the-log-jay-kreps.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
-- [[sources/docs/kafka-101-bytebytego]] — the log as Kafka's core storage primitive
-- [[sources/docs/design-instagram-auction-mock-interview]] — the log as single-key contention absorber (per-auction bid ledger → materialized `max`)
+- [the log jay kreps](../reading-notes/the-log-jay-kreps.md) — the full unifying-abstraction argument (Parts 1–4)
+- [the-log-jay-kreps.md](../../sources/references/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
+- [kafka 101 bytebytego](../reading-notes/kafka-101-bytebytego.md) — the log as Kafka's core storage primitive
+- [live auctions](../problems/system-design/live-auctions.md) — the log as single-key contention absorber (per-auction bid ledger → materialized `max`)

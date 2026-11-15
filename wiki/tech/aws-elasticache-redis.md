@@ -14,12 +14,12 @@ The critical distinction for any "persisted store" requirement: **"Redis with pe
 - **AOF (append-only file)** — logs each write, replayable on restart; *closer* to a WAL, but `fsync`'d on an interval (`everysec` → up to 1s loss).
 - **Replication** — primary → replica is **asynchronous**. On primary failure, an acked write not yet shipped to the promoted replica is **lost**.
 
-**The AOF + Multi-AZ gotcha (know this cold):** on ElastiCache, **AOF is not supported once Multi-AZ with automatic failover is enabled** (and is unavailable on many modern node types). So AWS's durability story is **replication + snapshots + fast automatic failover — not an fsync'd log.** Realistic RPO is "last snapshot + un-replicated writes since," and never provably zero. The correct staff+ pushback on "we'll persist the system of record in Redis": *Redis persistence protects against process/node restarts, but its durability is weaker than an ACID database — size the acceptable data-loss window explicitly* (see [[theory/durability-rpo-rto]]).
+**The AOF + Multi-AZ gotcha (know this cold):** on ElastiCache, **AOF is not supported once Multi-AZ with automatic failover is enabled** (and is unavailable on many modern node types). So AWS's durability story is **replication + snapshots + fast automatic failover — not an fsync'd log.** Realistic RPO is "last snapshot + un-replicated writes since," and never provably zero. The correct staff+ pushback on "we'll persist the system of record in Redis": *Redis persistence protects against process/node restarts, but its durability is weaker than an ACID database — size the acceptable data-loss window explicitly* (see [durability rpo rto](../theory/durability-rpo-rto.md)).
 
 ## Deployment models and node math
 
 - **Node-based (provisioned)** — you pick node type & count. *Cluster Mode Disabled* = one shard (1 primary + up to 5 replicas). *Cluster Mode Enabled* = many shards, each with its own primary + replicas. **You pay per node** — a 3-shard × 3-node cluster is *9* billable nodes.
-- **Serverless** — no nodes; AWS auto-scales. Pay for **data stored (GB-hour)** + **ECPUs** (compute/requests). Great for spiky/unknown load; pricier per-unit at steady high load (see [[system-design-concepts/cloud-database-cost-model]]).
+- **Serverless** — no nodes; AWS auto-scales. Pay for **data stored (GB-hour)** + **ECPUs** (compute/requests). Great for spiky/unknown load; pricier per-unit at steady high load (see [cloud database cost model](../system-design-concepts/cloud-database-cost-model.md)).
 - **Multi-AZ + auto-failover** — replicas in other AZs, promote on primary loss. This *is* the practical durability mechanism (it replaces AOF).
 - **Data tiering (r6gd nodes)** — hot data in RAM, cold data spills to local NVMe SSD. The main lever to make "big Redis" affordable, at some latency cost for cold hits.
 
@@ -46,12 +46,12 @@ Redis executes commands on **one thread per shard** (I/O threads in 6+/Valkey ha
 > "ElastiCache is managed Redis — I'd pick Valkey now since it's wire-compatible and cheaper. The thing to be precise about is persistence: enabling it doesn't make Redis a database. Under Multi-AZ auto-failover AOF is off, so durability is async replication plus periodic S3 snapshots plus fast failover — the RPO is last-snapshot-plus-unreplicated-writes, never provably zero. Node-based you pay per node times replicas, and each shard is single-threaded, so one `KEYS *` stalls everyone and the snapshot fork needs ~30% headroom. Cluster mode scales writes horizontally, but multi-key transactions need hash tags to land on one slot. It's a fantastic cache and real-time layer; I wouldn't make it the sole store for money."
 
 ## Connections
-- [[system-design-concepts/rds-vs-key-value-store]] — ElastiCache as the KV side of the decision
-- [[system-design-concepts/cloud-database-cost-model]] — node-vs-serverless billing and the ~30% headroom cost driver
-- [[tech/aws-rds-postgresql]] — the relational counterpart; synchronous WAL commit vs async replicate + snapshot
-- [[theory/durability-rpo-rto]] — why snapshot-interval + replication-lag makes RPO non-zero
-- [[system-design-concepts/rate-limiting]] — Redis's atomic `INCR` per shard is exactly what a global rate limiter's counter needs
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — ElastiCache as the KV side of the decision
+- [cloud database cost model](../system-design-concepts/cloud-database-cost-model.md) — node-vs-serverless billing and the ~30% headroom cost driver
+- [aws rds postgresql](aws-rds-postgresql.md) — the relational counterpart; synchronous WAL commit vs async replicate + snapshot
+- [durability rpo rto](../theory/durability-rpo-rto.md) — why snapshot-interval + replication-lag makes RPO non-zero
+- [rate limiting](../system-design-concepts/rate-limiting.md) — Redis's atomic `INCR` per shard is exactly what a global rate limiter's counter needs
 
 ## Sources
-- [[sources/docs/rds-vs-kv-store-study-guide]] — §7 ElastiCache specifics, §2 durability, §4 performance/failure modes
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
+- [rds vs kv store study guide](../../sources/references/rds-vs-kv-store-study-guide.html) — §7 ElastiCache specifics, §2 durability, §4 performance/failure modes
+- [rds-vs-kv-store-study-guide.html](../../sources/references/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables

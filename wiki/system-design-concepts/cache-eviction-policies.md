@@ -23,7 +23,7 @@ real design space is a trade between **hit rate**, **read/write concurrency**, a
   (read everything once) evicts your whole hot set under LRU. Frequency-aware policies
   (LFU, TinyLFU) and second-chance (CLOCK) resist that.
 - **Reads must not mutate shared structure.** This is the concurrency crux (see
-  [[coding-patterns/concurrent-lru-cache]]): every scalable cache removes the write from the
+  [concurrent lru cache](../coding-patterns/concurrent-lru-cache.md)): every scalable cache removes the write from the
   read path — CLOCK reduces it to one bit, Redis sampling skips ordering entirely, Caffeine
   buffers accesses in a lock-free ring and **replays them lazily** under the next lock.
 - **Sampling replaces the data structure.** Redis keeps *no* recency list; it samples K random
@@ -37,7 +37,7 @@ A production cache is designed along three separate dimensions:
 1. **Eviction policy** → hit rate (this page).
 2. **Concurrency model** → throughput under contention: lock striping/sharding, read
    buffers + amortized replay (Caffeine), CLOCK's single-bit reads. See
-   [[coding-patterns/concurrent-lru-cache]].
+   [concurrent lru cache](../coding-patterns/concurrent-lru-cache.md).
 3. **Memory management** → density & latency, *orthogonal to concurrency*:
    - **Slab allocation** (Memcached): fixed size-classes carved from big pages → eliminates
      external fragmentation (freed chunk always fits the next same-class request); costs bounded
@@ -58,10 +58,10 @@ timing wheels for `expireAfter`. A full design has both a size policy and a time
 ## Distributed layer (multi-node)
 
 - **Consistent / rendezvous hashing** to place keys on nodes so add/remove remaps only `1/N`
-  (see [[theory/consistent-hashing]]). Memcached = client-side hashing (dumb servers); Redis
+  (see [consistent hashing](../theory/consistent-hashing.md)). Memcached = client-side hashing (dumb servers); Redis
   Cluster = 16384 managed hash slots.
 - **Stampede protection**: single-flight/request coalescing, probabilistic early expiration,
-  negative caching — see [[system-design-concepts/cache-stampede]].
+  negative caching — see [cache stampede](cache-stampede.md).
 - **Write policy**: write-through / write-back / write-around / cache-aside, plus invalidation
   (the genuinely hard part).
 
@@ -76,11 +76,11 @@ timing wheels for `expireAfter`. A full design has both a size policy and a time
 > memory layout (slabs, off-heap) are three independent axes."
 
 ## Connections
-- [[coding-patterns/concurrent-lru-cache]] — the implementation side: making LRU/CLOCK thread-safe, single-lock → sharded → lock-free read
-- [[system-design-concepts/cache-stampede]] — what happens on a *miss* (thundering herd); the read-path sibling of eviction
-- [[theory/consistent-hashing]] — how the distributed cache layer places keys across nodes
-- [[tech/aws-elasticache-redis]] — Redis's `maxmemory-policy` (sampled LRU/LFU), lazy+active TTL, cluster hash slots in practice
-- [[system-design-concepts/hot-key-write-contention]] — a hot cached key is the read-side twin of write-side hot-key contention
+- [concurrent lru cache](../coding-patterns/concurrent-lru-cache.md) — the implementation side: making LRU/CLOCK thread-safe, single-lock → sharded → lock-free read
+- [cache stampede](cache-stampede.md) — what happens on a *miss* (thundering herd); the read-path sibling of eviction
+- [consistent hashing](../theory/consistent-hashing.md) — how the distributed cache layer places keys across nodes
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — Redis's `maxmemory-policy` (sampled LRU/LFU), lazy+active TTL, cluster hash slots in practice
+- [hot key write contention](hot-key-write-contention.md) — a hot cached key is the read-side twin of write-side hot-key contention
 
 ## Sources
-- [[sources/code/concurrent-lru-cache]] — production-cache techniques surveyed alongside the four hands-on LRU implementations (CLOCK, sampling, W-TinyLFU, slabs vs off-heap)
+- [concurrent-lru-cache](../../sources/code/concurrent-lru-cache) — production-cache techniques surveyed alongside the four hands-on LRU implementations (CLOCK, sampling, W-TinyLFU, slabs vs off-heap)

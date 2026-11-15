@@ -1,0 +1,204 @@
+diff --git a/pom.xml b/pom.xml
+index 1207b7f..48ba062 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,14 +1,14 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project xmlns="http://maven.apache.org/POM/4.0.0"
+-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+   <modelVersion>4.0.0</modelVersion>
+ 
+   <parent>
+     <groupId>org.springframework.boot</groupId>
+     <artifactId>spring-boot-starter-parent</artifactId>
+     <version>3.4.1</version>
+-    <relativePath/>
++    <relativePath />
+   </parent>
+ 
+   <groupId>com.practice</groupId>
+@@ -55,6 +55,13 @@
+       <artifactId>spring-boot-starter-test</artifactId>
+       <scope>test</scope>
+     </dependency>
++
++    <dependency>
++      <groupId>org.projectlombok</groupId>
++      <artifactId>lombok</artifactId>
++      <version>1.18.48</version>
++      <scope>compile</scope>
++    </dependency>
+   </dependencies>
+ 
+   <build>
+@@ -70,7 +77,9 @@
+         <version>${openapi-generator.version}</version>
+         <executions>
+           <execution>
+-            <goals><goal>generate</goal></goals>
++            <goals>
++              <goal>generate</goal>
++            </goals>
+             <configuration>
+               <inputSpec>${project.basedir}/src/main/resources/openapi/openapi.yaml</inputSpec>
+               <generatorName>spring</generatorName>
+@@ -89,4 +98,4 @@
+       </plugin>
+     </plugins>
+   </build>
+-</project>
++</project>
+\ No newline at end of file
+diff --git a/src/main/resources/openapi/openapi.yaml b/src/main/resources/openapi/openapi.yaml
+index 3efd6b6..d17a149 100644
+--- a/src/main/resources/openapi/openapi.yaml
++++ b/src/main/resources/openapi/openapi.yaml
+@@ -7,18 +7,52 @@ servers:
+ tags:
+   - name: Item
+ paths:
++  /orders:
++    get:
++      tags: [commerce]
++      summary: fetch orders
++      description: >
++        Fetch all the orders on the system
++      operationId: listOrders
++      responses:
++        "200":
++          description: OK
++          content:
++            application/json:
++              schema:
++                type: array
++                items: { $ref: "#/components/schemas/Order" }
++    post:
++      tags: [commerce]
++      summary: create an orderId
++      description: >
++        Create an order record based on the provided input
++      operationId: createOrder
++      requestBody:
++        required: true
++        content:
++          application/json:
++            schema:
++              $ref: "#/components/schemas/Order"
++      responses:
++        "201":
++          description: Created
++          content:
++            application/json:
++              schema:
++                $ref: "#/components/schemas/Invoice"
+   /items:
+     get:
+       tags: [Item]
+       operationId: listItems
+       responses:
+-        '200':
++        "200":
+           description: OK
+           content:
+             application/json:
+               schema:
+                 type: array
+-                items: { $ref: '#/components/schemas/Item' }
++                items: { $ref: "#/components/schemas/Item" }
+     post:
+       tags: [Item]
+       operationId: createItem
+@@ -26,13 +60,13 @@ paths:
+         required: true
+         content:
+           application/json:
+-            schema: { $ref: '#/components/schemas/Item' }
++            schema: { $ref: "#/components/schemas/Item" }
+       responses:
+-        '201':
++        "201":
+           description: Created
+           content:
+             application/json:
+-              schema: { $ref: '#/components/schemas/Item' }
++              schema: { $ref: "#/components/schemas/Item" }
+   /items/{id}:
+     get:
+       tags: [Item]
+@@ -43,12 +77,12 @@ paths:
+           required: true
+           schema: { type: integer, format: int64 }
+       responses:
+-        '200':
++        "200":
+           description: OK
+           content:
+             application/json:
+-              schema: { $ref: '#/components/schemas/Item' }
+-        '404': { description: Not Found }
++              schema: { $ref: "#/components/schemas/Item" }
++        "404": { description: Not Found }
+     put:
+       tags: [Item]
+       operationId: updateItem
+@@ -61,14 +95,14 @@ paths:
+         required: true
+         content:
+           application/json:
+-            schema: { $ref: '#/components/schemas/Item' }
++            schema: { $ref: "#/components/schemas/Item" }
+       responses:
+-        '200':
++        "200":
+           description: OK
+           content:
+             application/json:
+-              schema: { $ref: '#/components/schemas/Item' }
+-        '404': { description: Not Found }
++              schema: { $ref: "#/components/schemas/Item" }
++        "404": { description: Not Found }
+     delete:
+       tags: [Item]
+       operationId: deleteItem
+@@ -78,8 +112,8 @@ paths:
+           required: true
+           schema: { type: integer, format: int64 }
+       responses:
+-        '204': { description: No Content }
+-        '404': { description: Not Found }
++        "204": { description: No Content }
++        "404": { description: Not Found }
+ components:
+   schemas:
+     Item:
+@@ -89,3 +123,27 @@ components:
+         name: { type: string }
+         description: { type: string }
+       required: [name]
++    Order:
++      type: object
++      properties:
++        id: { type: string, readOnly: true }
++        userId: { type: integer, format: int64 }
++        items:
++          type: array
++          items:
++            $ref: "#/components/schemas/OrderItem"
++      required: [userId, items]
++    OrderItem:
++      type: object
++      properties:
++        productId: { type: integer, format: int64 }
++        quantity: { type: integer, format: int32 }
++      required: [productId, quantity]
++    Invoice:
++      type: object
++      properties:
++        orderId: { type: string }
++        subTotal: { type: number, format: double }
++        shipping: { type: number, format: double }
++        grandTotal: { type: number, format: double }
++        status: { type: string, enum: ["SUCCESS", "FAIL"] }

@@ -14,7 +14,7 @@ How to keep a second system (cache, queue, search index) in sync with a database
 ## The gap outbox alone doesn't close
 "Published" means the relay's write was **acked**, not that it's durable. Redis with async replication can fail over and lose acked writes; the outbox still says done. Two fixes:
 - **Sweeper against the source of truth** — periodically query the DB for "should be in the secondary but may not be" (e.g. `state='QUEUED' AND scheduled_at < now()+10s`) and re-push. Catches holes anywhere in the window, unlike a "last-seen" watermark that only catches tail loss.
-- **Make over-pushing free** — if the consumer's first action is a conditional claim ([[system-design-concepts/lease-and-fencing]]), duplicate entries cost nothing, so the sweeper can be aggressive.
+- **Make over-pushing free** — if the consumer's first action is a conditional claim ([lease and fencing](lease-and-fencing.md)), duplicate entries cost nothing, so the sweeper can be aggressive.
 
 Net: the secondary store's loss costs **latency**, never **correctness**.
 
@@ -29,11 +29,11 @@ Net: the secondary store's loss costs **latency**, never **correctness**.
 > "I don't dual-write. The execution insert and an outbox row commit together; a relay pushes to Redis at-least-once. Redis is only a latency hint — a sweeper re-pushes anything due soon that's still queued, and because the dispatcher's first step is a CAS claim, duplicates are free. Losing Redis costs me a few seconds, never a job."
 
 ## Connections
-- [[system-design-concepts/lease-and-fencing]] — the idempotent consumer that makes re-publish safe
-- [[system-design-concepts/exactly-once-semantics]] — at-least-once publish + idempotent sink
-- [[system-design-concepts/distributed-job-scheduler]] — DB → Redis dispatch cache
-- [[system-design-concepts/table-log-duality]] — CDC relay is reading the table's log
-- [[tech/aws-elasticache-redis]] — async replication is why acked ≠ durable
+- [lease and fencing](lease-and-fencing.md) — the idempotent consumer that makes re-publish safe
+- [exactly once semantics](exactly-once-semantics.md) — at-least-once publish + idempotent sink
+- [distributed job scheduler](distributed-job-scheduler.md) — DB → Redis dispatch cache
+- [table log duality](table-log-duality.md) — CDC relay is reading the table's log
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — async replication is why acked ≠ durable
 
 ## Sources
-- [[sources/docs/design-job-scheduler-mock-interview]] — outbox, watermark vs sweeper, execute-now bypassing the DB
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — outbox, watermark vs sweeper, execute-now bypassing the DB

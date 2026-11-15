@@ -1,0 +1,56 @@
+[
+  {
+    "request": {
+      "url": "/v1/charges",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=123&currency=usd&card%5Bnumber%5D=example&card%5Bexp_month%5D=12&card%5Bexp_year%5D=2070",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"ch_example1\", \"currency\": \"usd\", \"object\": \"charge\", \"status\": \"succeeded\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=123&currency=usd&card%5Bnumber%5D=example&card%5Bexp_month%5D=12&card%5Bexp_year%5D=2070&card%5Baddress_line1%5D=example&card%5Baddress_zip%5D=example",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"ch_example2\", \"currency\": \"usd\", \"object\": \"charge\", \"status\": \"succeeded\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=123&currency=usd&card%5Bnumber%5D=example&card%5Bexp_month%5D=12&card%5Bexp_year%5D=2070",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"error\": {\"code\": \"example_decline\"}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 402
+    }
+  }
+]

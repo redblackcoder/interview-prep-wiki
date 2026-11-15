@@ -28,7 +28,7 @@ Partitioning splits a keyspace across nodes so the store scales horizontally. Th
 | **Range scan** (`user#1..#100`) | ❌ **scatter-gather over ALL partitions** — adjacent keys are everywhere | ✅ hits 1–few contiguous partitions |
 | **Load distribution** | ✅ uniform by construction (hash spreads) | ❌ hot ranges (recent timestamps, `a…` names) overload one partition |
 | **Sequential-write hotspot** | ✅ spread across partitions | ❌ monotonic keys (timestamps, autoinc IDs) all hit the *last* partition |
-| **Rebalancing** | consistent hashing + vnodes (see [[theory/consistent-hashing]]) | split/merge ranges dynamically (Bigtable tablets, CockroachDB) |
+| **Rebalancing** | consistent hashing + vnodes (see [consistent hashing](../theory/consistent-hashing.md)) | split/merge ranges dynamically (Bigtable tablets, CockroachDB) |
 
 The tension is irreducible: a **range scan wants adjacent keys co-located**, while **even load wants adjacent keys scattered**. One function can't do both.
 
@@ -89,14 +89,14 @@ Even hashed, a *single* partition key can be scorching: one celebrity `user_id`,
 > "I pick the partition function off the access pattern. Hashing gives uniform load but scatters adjacent keys, so any cross-key range scan becomes a full-cluster scatter-gather — disqualifying if range queries matter. Range partitioning keeps neighbors together for cheap scans but creates hotspots, especially on monotonic keys like timestamps. DynamoDB's move is to do both on a composite key: hash the partition key so load spreads, and store the sort key sorted *within* the partition so range queries are cheap — but only when scoped to one partition key. A cross-partition range needs a global secondary index, which is a second copy partitioned differently, so I'm paying storage, write amplification, and eventual consistency for that access path. And I'd call out the hot-partition case — hashing spreads across keys, not within one, so a celebrity key still needs write-sharding or caching."
 
 ## Connections
-- [[theory/consistent-hashing]] — the mechanism behind the *hash* side; vnodes are how hashed partitions balance and rebalance
-- [[system-design-concepts/rds-vs-key-value-store]] — a relational store's arbitrary `WHERE`/`JOIN` is exactly what partitioning gives up for horizontal write scale
-- [[system-design-concepts/leaderless-vs-leader-based]] — the partition is the unit each replica set / Raft group owns
-- [[theory/consistency-models]] — the GSI's "eventually consistent with the base table" is this spectrum applied to a secondary index
-- [[system-design-concepts/work-distribution]] — partitioning work across a fleet is the same scatter/hotspot problem in a different guise
-- [[system-design-concepts/distributed-file-system]] — a file-system namespace keyed by (dir, name) must be range-partitioned: `list` is a prefix scan and one directory can hold arbitrarily many files
+- [consistent hashing](../theory/consistent-hashing.md) — the mechanism behind the *hash* side; vnodes are how hashed partitions balance and rebalance
+- [rds vs key value store](rds-vs-key-value-store.md) — a relational store's arbitrary `WHERE`/`JOIN` is exactly what partitioning gives up for horizontal write scale
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — the partition is the unit each replica set / Raft group owns
+- [consistency models](../theory/consistency-models.md) — the GSI's "eventually consistent with the base table" is this spectrum applied to a secondary index
+- [work distribution](work-distribution.md) — partitioning work across a fleet is the same scatter/hotspot problem in a different guise
+- [distributed file system](distributed-file-system.md) — a file-system namespace keyed by (dir, name) must be range-partitioned: `list` is a prefix scan and one directory can hold arbitrarily many files
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §7 hash-vs-range + composite key, §2 sort-key range-query requirement, §8 GSI escape hatch
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
-- [[sources/docs/design-distributed-file-system-interview]] — namespace partitioning for `list` and huge directories
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §7 hash-vs-range + composite key, §2 sort-key range-query requirement, §8 GSI escape hatch
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md) — namespace partitioning for `list` and huge directories

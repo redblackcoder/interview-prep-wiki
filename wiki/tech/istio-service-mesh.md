@@ -14,10 +14,10 @@ The split that confuses everyone: **Gateway** = "open this port/protocol/host at
 ## Security: mTLS + SPIFFE + AuthorizationPolicy
 - **`PeerAuthentication` STRICT** — every pod-to-pod call between sidecars must be mutually-TLS authenticated. This is what gives authorization something to check: each call now carries a verified caller identity.
 - **SPIFFE identity** — each workload's ServiceAccount mints an mTLS cert with a SPIFFE name (`spiffe://cluster.local/ns/demo/sa/service-a`). Cryptographically verified, **not spoofable**.
-- **`AuthorizationPolicy`** — B's sidecar checks the caller's *verified mTLS principal* against an allow-list; anything that isn't Service A gets **403 inside the cluster**. This is "internal only" part 2: unreachable from outside (no Gateway) *and* locked down inside (identity check). The concrete realization of "verified service identity, not IP" (see [[system-design-concepts/network-security-layers]]).
+- **`AuthorizationPolicy`** — B's sidecar checks the caller's *verified mTLS principal* against an allow-list; anything that isn't Service A gets **403 inside the cluster**. This is "internal only" part 2: unreachable from outside (no Gateway) *and* locked down inside (identity check). The concrete realization of "verified service identity, not IP" (see [network security layers](../system-design-concepts/network-security-layers.md)).
 
 ## EnvoyFilter — the escape hatch
-Istio has no built-in "global rate limit" CRD, so you patch raw Envoy config with `EnvoyFilter` to (a) insert the `http.ratelimit` filter into the gateway's chain and (b) define a cluster pointing at the [[tech/envoy-ratelimit-service|RLS]]. It's a sharp tool: lives only at `networking.istio.io/v1alpha3`, patches raw config, and a bad match can break a proxy — use it only where Istio lacks a higher-level API.
+Istio has no built-in "global rate limit" CRD, so you patch raw Envoy config with `EnvoyFilter` to (a) insert the `http.ratelimit` filter into the gateway's chain and (b) define a cluster pointing at the [RLS](envoy-ratelimit-service.md). It's a sharp tool: lives only at `networking.istio.io/v1alpha3`, patches raw config, and a bad match can break a proxy — use it only where Istio lacks a higher-level API.
 
 ## First-timer gotchas
 - **domain mismatch = silent no-op** — the `domain` in the RL filter must equal the RLS ConfigMap's `domain`, or the RLS has no config for the request and returns OK for everything. Rate limiting fails *open*, so the mistake hides. (Descriptor key/value mismatches fail the same silent way.)
@@ -39,12 +39,12 @@ Client → cloud LB → `istio-ingressgateway` → matches Gateway listener + Vi
 > "Istio's data plane is Envoy sidecars; you never hand-write proxy config — you write Kubernetes objects and Istio CRDs, and istiod compiles and pushes them via xDS. Gateway opens the edge door, VirtualService routes once inside. Security is mTLS everywhere plus a verified SPIFFE identity per workload, so an AuthorizationPolicy can allow only a specific service account — real identity-based access control, not IP. For global rate limiting there's no CRD, so you drop to an EnvoyFilter to wire the ratelimit filter and a cluster to the RLS — and the classic trap is that a domain or descriptor mismatch fails open silently, because a limiter should never take down the app."
 
 ## Connections
-- [[tech/envoy-ratelimit-service]] — the RLS that EnvoyFilter wires onto the gateway
-- [[system-design-concepts/rate-limiting]] — edge (global, L7) enforcement is one cell of the local-vs-global grid
-- [[system-design-concepts/network-security-layers]] — mTLS/SPIFFE authz is the "verified identity, not IP" fix for the flat-network attack; ZTNA per-request authorization
-- [[system-design-concepts/zero-trust-ztna]] — a mesh with per-call mTLS authz is Zero Trust applied east-west
-- [[tech/https-tls]] — the mesh's mTLS reuses the same TLS confidentiality/integrity/auth machinery, mutually
+- [envoy ratelimit service](envoy-ratelimit-service.md) — the RLS that EnvoyFilter wires onto the gateway
+- [rate limiting](../system-design-concepts/rate-limiting.md) — edge (global, L7) enforcement is one cell of the local-vs-global grid
+- [network security layers](../system-design-concepts/network-security-layers.md) — mTLS/SPIFFE authz is the "verified identity, not IP" fix for the flat-network attack; ZTNA per-request authorization
+- [zero trust ztna](../system-design-concepts/zero-trust-ztna.md) — a mesh with per-call mTLS authz is Zero Trust applied east-west
+- [https tls](https-tls.md) — the mesh's mTLS reuses the same TLS confidentiality/integrity/auth machinery, mutually
 
 ## Sources
-- [[sources/docs/istio-rls-deployment-walkthrough]] — the complete K8s + Istio manifests (namespace → services → gateway → mTLS → authz → Redis → RLS → EnvoyFilters) and the who-configures-what map
-- [istio-rls-deployment-walkthrough.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/istio-rls-deployment-walkthrough.html) — annotated deployment with topology diagram and end-to-end request flow
+- [istio rls deployment walkthrough](../../sources/references/istio-rls-deployment-walkthrough.html) — the complete K8s + Istio manifests (namespace → services → gateway → mTLS → authz → Redis → RLS → EnvoyFilters) and the who-configures-what map
+- [istio-rls-deployment-walkthrough.html](../../sources/references/istio-rls-deployment-walkthrough.html) — annotated deployment with topology diagram and end-to-end request flow

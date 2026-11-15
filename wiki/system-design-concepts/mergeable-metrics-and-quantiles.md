@@ -1,6 +1,6 @@
 # Mergeable Metrics & Quantiles (Aggregate, Then Quantile)
 
-Why you can sum counts across a fleet but must **never** average percentiles — and how a metrics system computes an accurate cross-node p99 anyway. This is the algebra of [[system-design-concepts/commutative-aggregation]] applied to observability: transmit something order-independent, defer the non-mergeable step to the very end.
+Why you can sum counts across a fleet but must **never** average percentiles — and how a metrics system computes an accurate cross-node p99 anyway. This is the algebra of [commutative aggregation](commutative-aggregation.md) applied to observability: transmit something order-independent, defer the non-mergeable step to the very end.
 
 ## The one-sentence mental model
 
@@ -48,22 +48,22 @@ The **merge is exact**; the **interpolation is the error source**. `histogram_qu
 
 ## Key points
 
-- **"Aggregate, then quantile."** The single rule that keeps cross-node percentiles correct. It is the observability face of [[system-design-concepts/commutative-aggregation]]: bucket counts are a monotonic/associative aggregate, the quantile read is the non-mergeable step you defer.
+- **"Aggregate, then quantile."** The single rule that keeps cross-node percentiles correct. It is the observability face of [commutative aggregation](commutative-aggregation.md): bucket counts are a monotonic/associative aggregate, the quantile read is the non-mergeable step you defer.
 - **Means need `_sum` + `_count`, not `avg(avg)`** — same principle: transmit the mergeable primitives, compute the ratio last.
 - **Sketches degrade gracefully:** if one of 10 agents dies for a window, the merged p99 is built from the surviving 9 — a slight bias, not a blackout. Per-host-percentile designs lose that host-window entirely.
-- Pull histograms also inherit **counter-reset recovery** for free, because each bucket is a cumulative counter (see [[system-design-concepts/counter-reset-and-restart-recovery]]).
+- Pull histograms also inherit **counter-reset recovery** for free, because each bucket is a cumulative counter (see [counter reset and restart recovery](counter-reset-and-restart-recovery.md)).
 
 ## Interview angle
 
 > "The mistake is averaging p99s across hosts — a percentile isn't decomposable, so no function of per-host quantiles gives you the global one. This is a representation problem, not push-vs-pull: whatever the transport, I ship a *mergeable* structure — cumulative bucket counts or a DDSketch — sum them across nodes, and compute the quantile last. With fixed buckets the only error is the uniform-interpolation assumption inside the straddling bucket, bounded by bucket width; native histograms or a relative-error sketch tighten that. Same discipline for the mean: carry `_sum` and `_count`, never average of averages."
 
 ## Connections
-- [[system-design-concepts/commutative-aggregation]] — the general algebra: order-free aggregates fold freely; defer the non-mergeable step. Percentiles are the canonical *non*-mergeable operation
-- [[system-design-concepts/red-metrics-exposition]] — the histogram exposition and full p99 worked math this page abstracts
-- [[system-design-concepts/metrics-pull-vs-push]] — why this bites both transports, and where each ships buckets vs sketches
-- [[system-design-concepts/counter-reset-and-restart-recovery]] — bucket-counter merge inherits reset correction; per-window percentiles do not
-- [[theory/bloom-filters]] — another bounded-error probabilistic structure traded against exactness
+- [commutative aggregation](commutative-aggregation.md) — the general algebra: order-free aggregates fold freely; defer the non-mergeable step. Percentiles are the canonical *non*-mergeable operation
+- [red metrics exposition](red-metrics-exposition.md) — the histogram exposition and full p99 worked math this page abstracts
+- [metrics pull vs push](metrics-pull-vs-push.md) — why this bites both transports, and where each ships buckets vs sketches
+- [counter reset and restart recovery](counter-reset-and-restart-recovery.md) — bucket-counter merge inherits reset correction; per-window percentiles do not
+- [bloom filters](../theory/bloom-filters.md) — another bounded-error probabilistic structure traded against exactness
 
 ## Sources
-- [[sources/docs/metrics-collection-observability-self-study]] — §2 mergeability, §3 histogram p99 worked example
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — §2 mergeability, §3 histogram p99 worked example
 </content>

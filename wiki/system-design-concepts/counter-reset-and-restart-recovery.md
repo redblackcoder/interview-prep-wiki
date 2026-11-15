@@ -55,7 +55,7 @@ W3 (20–30s): back to normal → p99 = 95 ms                                 �
 No `(last − first) + correction` exists here — the information is simply gone.
 
 ## What buys back graceful degradation
-1. **Mergeable sketches + fleet-merge.** If all instances push DDSketches and one agent dies for a window, the fleet p99 is merged from the surviving 9/10 — a slight bias, not a blackout. (Per-host-percentile designs lose that host-window entirely.) See [[system-design-concepts/mergeable-metrics-and-quantiles]].
+1. **Mergeable sketches + fleet-merge.** If all instances push DDSketches and one agent dies for a window, the fleet p99 is merged from the surviving 9/10 — a slight bias, not a blackout. (Per-host-percentile designs lose that host-window entirely.) See [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md).
 2. **The pull symmetry (nice unifier).** A Prometheus histogram is just a set of **cumulative bucket counters**, so `rate(_bucket[5m])` inherits the counter-reset correction **bucket by bucket** for free — with the same "hidden by fast climb-back" blind spot. Push per-flush percentiles get none of this.
 
 ## Key points
@@ -68,12 +68,12 @@ No `(last − first) + correction` exists here — the information is simply gon
 > "Prometheus counters reset to zero on restart, and `rate()` handles it: when the sample drops it assumes the counter fell from its last value to zero and adds that back — `(last − first) + Σ pre-drop values`. The catch is it only triggers on a *decrease*; if a service restarts and climbs back above the previous sample within one scrape interval, the reset is invisible and I undercount — so I scrape crash-prone high-QPS services more often. In push, delta-based StatsD never goes negative; a restart is a silent missing flush instead. And percentiles are the real asymmetry: they're per-window, so a lost window is unrecoverable, and because crashes correlate with slow requests the loss is biased toward the tail. I lean on mergeable sketches with fleet-level merge so one dead agent just drops to 9-of-10 contributors instead of a blackout."
 
 ## Connections
-- [[system-design-concepts/red-metrics-exposition]] — the counters and histograms whose reset behavior this page explains
-- [[system-design-concepts/mergeable-metrics-and-quantiles]] — bucket counters inherit reset recovery; the sketch-merge that degrades gracefully
-- [[system-design-concepts/metrics-pull-vs-push]] — delta-push vs cumulative-push restart behavior
-- [[theory/durability-rpo-rto]] — un-flushed in-memory aggregates are an RPO gap; the crash-recovery / non-idempotent-replay family
-- [[system-design-concepts/exactly-once-semantics]] — at-least-once delivery vs the lost-window data gap; different failure than duplication
+- [red metrics exposition](red-metrics-exposition.md) — the counters and histograms whose reset behavior this page explains
+- [mergeable metrics and quantiles](mergeable-metrics-and-quantiles.md) — bucket counters inherit reset recovery; the sketch-merge that degrades gracefully
+- [metrics pull vs push](metrics-pull-vs-push.md) — delta-push vs cumulative-push restart behavior
+- [durability rpo rto](../theory/durability-rpo-rto.md) — un-flushed in-memory aggregates are an RPO gap; the crash-recovery / non-idempotent-replay family
+- [exactly once semantics](exactly-once-semantics.md) — at-least-once delivery vs the lost-window data gap; different failure than duplication
 
 ## Sources
-- [[sources/docs/metrics-collection-observability-self-study]] — §4 counter reset math, blind spot, push delta-vs-cumulative, percentile asymmetry
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — §4 counter reset math, blind spot, push delta-vs-cumulative, percentile asymmetry
 </content>

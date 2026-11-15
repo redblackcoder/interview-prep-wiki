@@ -12,9 +12,9 @@ Hinted handoff and sloppy quorum leave replicas **divergent** (a write landed on
 
 | Mechanism | Trigger | Covers |
 |---|---|---|
-| [[system-design-concepts/hinted-handoff]] | write, replica down | keeps the write alive |
+| [hinted handoff](hinted-handoff.md) | write, replica down | keeps the write alive |
 | **Read repair** (this page) | read finds divergence | **hot keys** (being read) |
-| [[system-design-concepts/anti-entropy-merkle-trees]] | background scan | **cold keys** (never read) |
+| [anti entropy merkle trees](anti-entropy-merkle-trees.md) | background scan | **cold keys** (never read) |
 
 The division is the insight: read repair covers hot data cheaply, anti-entropy sweeps the cold tail; together they cover everything.
 
@@ -38,14 +38,14 @@ A read with `R > 1` contacts multiple replicas and compares their versions (via 
 
 ### Read repair alone can't cover everything
 
-It only touches keys someone reads. A key written, never read, and sitting stale on a replica is **invisible to read repair forever** — which is precisely the gap [[system-design-concepts/anti-entropy-merkle-trees]] exists to close. Cassandra also offers **probabilistic read repair** (`read_repair_chance`): on reads that only needed one replica, occasionally query the others anyway to seed convergence on warm-but-not-hot keys.
+It only touches keys someone reads. A key written, never read, and sitting stale on a replica is **invisible to read repair forever** — which is precisely the gap [anti entropy merkle trees](anti-entropy-merkle-trees.md) exists to close. Cassandra also offers **probabilistic read repair** (`read_repair_chance`): on reads that only needed one replica, occasionally query the others anyway to seed convergence on warm-but-not-hot keys.
 
 ## Detecting divergence: timestamps vs version vectors
 
 Repair needs to know *which* version wins — and whether "newest" is even well-defined:
 
 - **Last-write-wins (LWW):** compare wall-clock timestamps, highest wins. Simple, but **clock skew can silently drop a real update**, and two concurrent writes → one is lost with no signal.
-- **Version vectors / vector clocks:** track per-replica counters so the coordinator can tell *descends-from* (safe to auto-pick the newer) from *concurrent* (a true **conflict** — siblings). For conflicts, read repair can't just pick one; it surfaces both for application/CRDT resolution or applies a defined merge. This ties directly to why quorum isn't linearizable ([[theory/consistency-models]]): concurrent writes produce siblings that *someone* must reconcile.
+- **Version vectors / vector clocks:** track per-replica counters so the coordinator can tell *descends-from* (safe to auto-pick the newer) from *concurrent* (a true **conflict** — siblings). For conflicts, read repair can't just pick one; it surfaces both for application/CRDT resolution or applies a defined merge. This ties directly to why quorum isn't linearizable ([consistency models](../theory/consistency-models.md)): concurrent writes produce siblings that *someone* must reconcile.
 
 ## What to actually memorize
 1. **Quorum read finds disagreement ⇒ return newest to client + async write-back to stale replicas.**
@@ -66,14 +66,14 @@ Repair needs to know *which* version wins — and whether "newest" is even well-
 > "Read repair is the read-time half of convergence in a leaderless store. On a quorum read I compare the replicas' versions; if they disagree I return the newest to the client and asynchronously write it back to the stale ones, so any key that's being read heals itself essentially for free. That's the elegant part — repair prioritizes hot data by construction. But it only ever touches keys someone reads, so a written-but-never-read key stays stale forever — that's why it's always paired with Merkle-tree anti-entropy for the cold tail, and hinted handoff at write time. The subtlety is deciding the winner: last-write-wins on timestamps is simple but drops concurrent updates under clock skew, so if correctness matters I use version vectors to distinguish a newer version from a genuine concurrent conflict, and surface siblings for merge rather than silently picking one."
 
 ## Connections
-- [[theory/vector-clocks]] — the version-comparison primitive read repair uses to tell stale (descendant, overwrite) from conflicting (sibling, keep both)
-- [[system-design-concepts/hinted-handoff]] — write-time leg; the drift it creates is partly what read repair heals
-- [[system-design-concepts/anti-entropy-merkle-trees]] — background leg; covers the cold keys read repair structurally can't
-- [[theory/consistency-models]] — concurrent writes → siblings needing reconciliation is *why* quorum isn't linearizable; read repair is where you feel it
-- [[system-design-concepts/leaderless-vs-leader-based]] — read repair is a leaderless-path necessity; a Raft leader's ordered log means replicas never silently diverge
-- [[theory/durability-rpo-rto]] — version vectors vs LWW is a data-loss (lost-update) question in disguise
+- [vector clocks](../theory/vector-clocks.md) — the version-comparison primitive read repair uses to tell stale (descendant, overwrite) from conflicting (sibling, keep both)
+- [hinted handoff](hinted-handoff.md) — write-time leg; the drift it creates is partly what read repair heals
+- [anti entropy merkle trees](anti-entropy-merkle-trees.md) — background leg; covers the cold keys read repair structurally can't
+- [consistency models](../theory/consistency-models.md) — concurrent writes → siblings needing reconciliation is *why* quorum isn't linearizable; read repair is where you feel it
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — read repair is a leaderless-path necessity; a Raft leader's ordered log means replicas never silently diverge
+- [durability rpo rto](../theory/durability-rpo-rto.md) — version vectors vs LWW is a data-loss (lost-update) question in disguise
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §6 read repair, §8 leaderless conflict reconciliation, §9 quorum-not-linearizable
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §6 read repair, §8 leaderless conflict reconciliation, §9 quorum-not-linearizable
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *Dynamo: Amazon's Highly Available Key-value Store* — DeCandia et al., SOSP 2007 (read repair, vector clocks)

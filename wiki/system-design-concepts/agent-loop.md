@@ -25,7 +25,7 @@ You don't need to know a specific provider's wire format if you design to a cont
 
 ## The loop
 
-assemble context → gateway → stream tokens → on `tool_use`, check permission ([[system-design-concepts/agent-tool-sandboxing|auto-allow vs ask]]) → execute with timeout → append `tool_result` (status ∈ {SUCCESS, FAIL, TIMEOUT, CANCELLED, DISAPPROVED}) → resend → repeat until no `tool_use` → apply edit (diff, per permission) → **verify** → terminate when applied *and green*.
+assemble context → gateway → stream tokens → on `tool_use`, check permission ([auto-allow vs ask](agent-tool-sandboxing.md)) → execute with timeout → append `tool_result` (status ∈ {SUCCESS, FAIL, TIMEOUT, CANCELLED, DISAPPROVED}) → resend → repeat until no `tool_use` → apply edit (diff, per permission) → **verify** → terminate when applied *and green*.
 
 **Verification is not a special phase** — it's ordinary tool calls inside the same loop: `edit → run_tests (tool_use) → failures return (tool_result) → fix → repeat`. Inventing a dedicated "verification section" re-adds intelligence to an agent you chose to keep dumb, and it's fragile: a pre-declared plan commits to running tests before it knows the edits applied cleanly. React across turns instead.
 
@@ -42,11 +42,11 @@ assemble context → gateway → stream tokens → on `tool_use`, check permissi
 > "The agent is a reactive loop, not a planner. The model emits typed text and tool_use blocks; multiple tool_use in one message means parallel, sequential means across turns by waiting for results. I execute after the message completes, append tool_results, and resend — with the system prompt as a cached stable prefix. Every tool_use must be paired with a tool_result, so interrupt has to leave the array valid, not just stop the loop. Verification isn't a special phase — it's just more tool calls, edit→test→fix, with a circuit-breaker so it terminates."
 
 ## Connections
-- [[system-design-concepts/context-assembly-retrieval-ladder]] — retrieval is the model pulling context via tool calls each iteration
-- [[system-design-concepts/agent-tool-sandboxing]] — the permission/containment check sits on the execute-tool step
-- [[theory/durability-rpo-rto]] — persisting each loop step is what makes a turn resumable after a crash
-- [[system-design-concepts/work-distribution]] — many such loops run as parallel sessions on one machine
+- [context assembly retrieval ladder](context-assembly-retrieval-ladder.md) — retrieval is the model pulling context via tool calls each iteration
+- [agent tool sandboxing](agent-tool-sandboxing.md) — the permission/containment check sits on the execute-tool step
+- [durability rpo rto](../theory/durability-rpo-rto.md) — persisting each loop step is what makes a turn resumable after a crash
+- [work distribution](work-distribution.md) — many such loops run as parallel sessions on one machine
 
 ## Sources
-- [[sources/docs/local-coding-agent-system-design]] — §4 One turn end-to-end, §5 latency, §8 verification & convergence
-- [local-coding-agent-system-design.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/local-coding-agent-system-design.md) — full mock-interview design notes
+- [local terminal coding agent](../problems/system-design/local-terminal-coding-agent.md) — §4 One turn end-to-end, §5 latency, §8 verification & convergence
+- [local-coding-agent-system-design.md](../../sources/references/local-coding-agent-system-design.md) — full mock-interview design notes

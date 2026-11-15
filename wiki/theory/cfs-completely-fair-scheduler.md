@@ -1,6 +1,6 @@
 # CFS: The Completely Fair Scheduler
 
-Linux's default scheduler from 2.6.23 (2007) to 6.5 (2023). CFS models an **ideal multitasking CPU** that runs every runnable task simultaneously at `1/n` speed, then approximates it on real hardware by always running the task that is *furthest behind* its fair share. "Furthest behind" is measured by a single per-task counter — **`vruntime`** — and the whole scheduler is essentially "pick the smallest `vruntime`, keep them equal." Its objective is [[theory/cpu-scheduler-goals|weighted fairness]]; everything below is mechanism.
+Linux's default scheduler from 2.6.23 (2007) to 6.5 (2023). CFS models an **ideal multitasking CPU** that runs every runnable task simultaneously at `1/n` speed, then approximates it on real hardware by always running the task that is *furthest behind* its fair share. "Furthest behind" is measured by a single per-task counter — **`vruntime`** — and the whole scheduler is essentially "pick the smallest `vruntime`, keep them equal." Its objective is [weighted fairness](cpu-scheduler-goals.md); everything below is mechanism.
 
 ## vruntime: the fairness clock
 
@@ -81,7 +81,7 @@ CFS doesn't use a fixed quantum. It targets a **scheduling period** (`sched_late
 slice_i = sched_period × weight_i / Σ weights
 ```
 
-To avoid death-by-context-switch when `n` is large, a floor `sched_min_granularity` (~0.75 ms) applies; once `n > sched_latency/min_granularity` (~8 tasks) the period stretches to `n × min_granularity`. A task is preempted when its accumulated `vruntime` overtakes the next task's by more than its slice — this is the latency↔throughput knob from [[theory/cpu-scheduler-goals]] made concrete.
+To avoid death-by-context-switch when `n` is large, a floor `sched_min_granularity` (~0.75 ms) applies; once `n > sched_latency/min_granularity` (~8 tasks) the period stretches to `n × min_granularity`. A task is preempted when its accumulated `vruntime` overtakes the next task's by more than its slice — this is the latency↔throughput knob from [cpu scheduler goals](cpu-scheduler-goals.md) made concrete.
 
 ## cgroups: priority for *groups*, not just tasks
 
@@ -98,7 +98,7 @@ So two containers with equal `cpu.weight` split the CPU 50/50 **even if one runs
 
 **2. Bandwidth control (`cpu.cfs_quota_us`/`cfs_period_us` in v1, `cpu.max` in v2).** A *hard cap*: "at most `quota` ns of CPU per `period` ns." When a group exhausts its quota in a period it is **throttled** — dequeued until the next period refills it, even if cores are idle. Shares are *relative and work-conserving* (use idle CPU if available); quota is *absolute and non-work-conserving* (a ceiling). Both can apply at once: shares divide contended CPU, quota caps absolute usage.
 
-This hierarchical group scheduling is the OS-level substrate that cluster schedulers sit on — k8s `cpu.requests`/`limits` map directly onto shares/quota (see [[system-design-concepts/preemption-economics]]).
+This hierarchical group scheduling is the OS-level substrate that cluster schedulers sit on — k8s `cpu.requests`/`limits` map directly onto shares/quota (see [preemption economics](../system-design-concepts/preemption-economics.md)).
 
 ## Limitations that motivated EEVDF
 
@@ -109,7 +109,7 @@ CFS is fair, but fairness is *all* it directly expresses — and that's the prob
 - **No principled deadline.** CFS has no notion of "this task must run within X ms." It only knows who's furthest behind.
 - **Slice granularity is coarse and global.** `sched_min_granularity` is one knob for the whole system, not a per-task property.
 
-EEVDF fixes exactly this by adding **lag** (a rigorous fairness measure) and a **requestable virtual deadline** that decouples latency from share — see [[theory/eevdf-scheduler]].
+EEVDF fixes exactly this by adding **lag** (a rigorous fairness measure) and a **requestable virtual deadline** that decouples latency from share — see [eevdf scheduler](eevdf-scheduler.md).
 
 ## Key points
 - `vruntime` = weight-normalized CPU consumed; `delta_vruntime = delta_exec × 1024/weight`. Fairness = equalize it; priority = make it tick at different speeds.
@@ -124,14 +124,14 @@ EEVDF fixes exactly this by adding **lag** (a rigorous fairness measure) and a *
 > "CFS keeps one number per task, `vruntime`, which is CPU time consumed divided by weight. It always runs the task with the smallest `vruntime` — the one furthest behind its fair share — so fairness is just 'keep all the vruntimes equal,' and priority is making the clock tick at different rates: a high-weight task's vruntime advances slower, so it stays behind and gets more CPU. Runnable tasks sit in a red-black tree keyed by vruntime; the leftmost node is next and is cached for O(1) pick, with O(log n) updates. The running task is pulled out of the tree, and on each tick `update_curr` advances its vruntime and reinserts it. `min_vruntime` is a monotonic floor that stops a freshly-woken task with a tiny vruntime from hogging the CPU to catch up. cgroups make this hierarchical — a container gets a weight and its threads share that slice. The reason Linux moved off CFS is that `nice` couples latency to share: you can't ask for low latency without also asking for more CPU. EEVDF splits those apart."
 
 ## Connections
-- [[theory/cpu-scheduler-goals]] — CFS is the "fairness wins" point in the goal-tradeoff space; this page is the mechanism
-- [[theory/eevdf-scheduler]] — the successor; keeps vruntime but adds lag + a requestable deadline to fix CFS's latency/share coupling
-- [[system-design-concepts/preemption-economics]] — CFS + cgroup shares/quota are the OS-layer time-slicing that cluster schedulers (k8s requests/limits) sit on top of
-- [[theory/concurrency-primitives]] — what a context switch actually costs, i.e. the price CFS pays each time it preempts on vruntime
-- [[theory/copy-on-write-vs-mvcc]] — an unrelated use of the same red-black/versioning toolkit; CFS's RB tree is the ordered-structure counterpart
+- [cpu scheduler goals](cpu-scheduler-goals.md) — CFS is the "fairness wins" point in the goal-tradeoff space; this page is the mechanism
+- [eevdf scheduler](eevdf-scheduler.md) — the successor; keeps vruntime but adds lag + a requestable deadline to fix CFS's latency/share coupling
+- [preemption economics](../system-design-concepts/preemption-economics.md) — CFS + cgroup shares/quota are the OS-layer time-slicing that cluster schedulers (k8s requests/limits) sit on top of
+- [concurrency primitives](concurrency-primitives.md) — what a context switch actually costs, i.e. the price CFS pays each time it preempts on vruntime
+- [copy on write vs mvcc](copy-on-write-vs-mvcc.md) — an unrelated use of the same red-black/versioning toolkit; CFS's RB tree is the ordered-structure counterpart
 
 ## Sources
-- [[sources/docs/linux-cpu-scheduling]] — deep-dive extract: vruntime, RB-tree bookkeeping, nice→weight, cgroup group scheduling + bandwidth, and the CFS→EEVDF motivation
+- [linux cpu scheduling](../reading-notes/linux-cpu-scheduling.md) — deep-dive extract: vruntime, RB-tree bookkeeping, nice→weight, cgroup group scheduling + bandwidth, and the CFS→EEVDF motivation
 - [Linux kernel docs: `Documentation/scheduler/sched-design-CFS.rst`](https://docs.kernel.org/scheduler/sched-design-CFS.html) — canonical CFS reference
 - [CFS bandwidth control (`sched-bwc.rst`)](https://docs.kernel.org/scheduler/sched-bwc.html) — quota/period throttling
 - [Operating Systems: Three Easy Pieces — Proportional Share](https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-sched-lottery.pdf) — the fair-share lineage CFS descends from

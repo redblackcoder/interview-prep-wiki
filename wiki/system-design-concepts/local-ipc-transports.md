@@ -22,7 +22,7 @@ A buggy `track.increment` in a tight loop is the stress case:
 - **UDP loopback:** the socket buffer fills and the **kernel drops** the excess; the sender returns immediately. You lose samples you didn't need (the SLA is "spot big moves"), and the app is untouched.
 - **Datagram UDS:** in between — you get message boundaries and, on a non-blocking socket, an explicit `EAGAIN` you turn into a drop, so *you* own the shedding policy rather than the kernel.
 
-This is the concrete edge of [[system-design-concepts/edge-shed-vs-core-durability]]: shed here, persist later.
+This is the concrete edge of [edge shed vs core durability](edge-shed-vs-core-durability.md): shed here, persist later.
 
 ## Secondary trade-offs
 - **Overhead:** HTTP's request/response couples app latency to the agent's health and adds header/serialization cost — wrong on a hot path. UDS/UDP skip the TCP/IP stack entirely.
@@ -37,21 +37,21 @@ This is the concrete edge of [[system-design-concepts/edge-shed-vs-core-durabili
 - **A UDS lets you *choose* reliable vs lossy** (stream vs datagram) — it's not inherently either.
 - **HTTP's request/response is a coupling**, not just overhead: the app waits on the agent. Fine for a low-rate control path, wrong for the hot counter path.
 - **Reserve reliability for the agent→collector hop** (retries, standard infra) where you *do* want delivery guarantees; keep the app→agent hop cheap and sheddable.
-- **Topology sets the plumbing:** sidecar ⇒ UDS over a shared volume; DaemonSet ⇒ UDS over `hostPath` or UDP to the node IP. See [[system-design-concepts/sidecar-vs-daemonset]].
+- **Topology sets the plumbing:** sidecar ⇒ UDS over a shared volume; DaemonSet ⇒ UDS over `hostPath` or UDP to the node IP. See [sidecar vs daemonset](sidecar-vs-daemonset.md).
 
 ## Interview angle
 
 > "I wouldn't pick by familiarity — I'd pick by what happens when the agent falls behind. On a metrics path the app must never slow down, so I want load-shedding, not backpressure. HTTP on loopback and a stream Unix socket are both reliable — the sender blocks or the agent's buffer grows and OOMs — which is exactly wrong here. A Unix socket actually lets me choose: stream for reliable-with-backpressure, datagram for message-framed-with-explicit-drop. And UDP loopback is pure fire-and-forget — the kernel drops on a full buffer and the sender never blocks, the statsd model. So: UDP loopback or a non-blocking datagram UDS, drop-on-full, with the client batching ~1s of increments. I'd keep HTTP for the agent→collector hop where I want retries and standard tooling. A UDS also gives me filesystem-permission access control and peer credentials for source attribution, which matters if a shared DaemonSet is receiving from many pods."
 
 ## Connections
-- [[system-design-concepts/edge-shed-vs-core-durability]] — this hop is the "shed" end of the reliability gradient
-- [[system-design-concepts/sidecar-vs-daemonset]] — topology decides socket-over-volume vs socket-over-hostPath vs node-IP UDP
-- [[system-design-concepts/metrics-pull-vs-push]] — the StatsD/UDP push model vs a pull scrape; where sampling variance enters
-- [[system-design-concepts/red-metrics-exposition]] — the StatsD-over-UDP sidecar + sampling exposition this specializes
-- [[system-design-concepts/serving-constrained-resources]] — "shed / degrade" as the response to overload, applied at the transport layer
-- [[theory/osi-model]] — why loopback still traverses L3/L4 while a UDS does not
-- [[theory/latency-numbers]] — the syscall/copy costs that make batching and stack-skipping worth it
+- [edge shed vs core durability](edge-shed-vs-core-durability.md) — this hop is the "shed" end of the reliability gradient
+- [sidecar vs daemonset](sidecar-vs-daemonset.md) — topology decides socket-over-volume vs socket-over-hostPath vs node-IP UDP
+- [metrics pull vs push](metrics-pull-vs-push.md) — the StatsD/UDP push model vs a pull scrape; where sampling variance enters
+- [red metrics exposition](red-metrics-exposition.md) — the StatsD-over-UDP sidecar + sampling exposition this specializes
+- [serving constrained resources](serving-constrained-resources.md) — "shed / degrade" as the response to overload, applied at the transport layer
+- [osi model](../theory/osi-model.md) — why loopback still traverses L3/L4 while a UDS does not
+- [latency numbers](../theory/latency-numbers.md) — the syscall/copy costs that make batching and stack-skipping worth it
 
 ## Sources
-- [[sources/docs/design-metrics-counters-mock-interview]] — the loopback-vs-UDS-vs-UDP exchange; the UDP load-shed insight and the backpressure-vs-shedding framing it implies
-- [[sources/docs/metrics-collection-observability-self-study]] — StatsD/UDP sidecar, sampling variance, the lossy-push model
+- [operational counter collection](../problems/system-design/operational-counter-collection.md) — the loopback-vs-UDS-vs-UDP exchange; the UDP load-shed insight and the backpressure-vs-shedding framing it implies
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — StatsD/UDP sidecar, sampling variance, the lossy-push model

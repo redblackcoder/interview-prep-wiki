@@ -1,0 +1,16 @@
+# Reading notes
+
+- [Combination Sum + Restaurant Reservation — Coding + Design Round](combination-sum-and-reservation-interview.md)
+- [How Discord Scaled Elixir to 5,000,000 Concurrent Users](discord-scaling-elixir-5m-concurrent.md)
+- [Exactly-k Subarray Counting: LC 992 and LC 3306](exactly-k-subarray-counting.md)
+- [Functional Programming & Elm: Recursion, State, and Folds](functional-programming-elm-study-guide.md)
+- [How to Beat the CAP Theorem (Lambda Architecture)](how-to-beat-the-cap-theorem.md)
+- [Kafka 101](kafka-101-bytebytego.md)
+- [kNN Search — from Brute Force to Space-Filling Curves](knn-geospatial-search-explainer.md)
+- [Latency Numbers Every Programmer Should Know](latency-numbers-every-programmer-should-know.md)
+- [Linux CPU Scheduling: Goals → CFS → EEVDF](linux-cpu-scheduling.md)
+- [Metrics Collection & Observability — Self-Study Q&A](metrics-collection-observability-self-study.md)
+- [Networking Deep Dive — OSI, HTTPS & VPN](networking-deep-dive.md)
+- [OS Scheduling → Distributed Data-Processing Scheduling](os-scheduling-to-distributed-scheduling.md)
+- [Streaming 101: The World Beyond Batch](streaming-101-world-beyond-batch.md)
+- [The Log: A Unifying Abstraction (Jay Kreps)](the-log-jay-kreps.md)

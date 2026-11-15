@@ -1,6 +1,6 @@
 # Elm
 
-A pure functional language that compiles to JavaScript for building web front-ends. It enforces the [[theory/pure-functional-programming]] tenets at the language level (no runtime exceptions, enforced immutability, mandatory `else`) and ships with a prescribed application architecture — TEA.
+A pure functional language that compiles to JavaScript for building web front-ends. It enforces the [pure functional programming](../theory/pure-functional-programming.md) tenets at the language level (no runtime exceptions, enforced immutability, mandatory `else`) and ships with a prescribed application architecture — TEA.
 
 ## The Elm Architecture (TEA)
 
@@ -82,10 +82,10 @@ These three combine to make fold pipelines terse: `clues |> List.map .weight |> 
 > "Elm is a pure functional language for the front-end. Its architecture, TEA, is a runtime-mediated unidirectional loop: the view renders the model into virtual DOM tagged with messages, the runtime catches a user event, calls `update(msg, model)` to get a new model, then re-renders and diffs. The view never calls update directly — that indirection makes `update` a pure `(Msg, Model) -> Model` you can test without a browser. Syntactically, `|>` pipelines, lambdas, and `.field` accessor functions keep the functional style readable."
 
 ## Connections
-- [[theory/pure-functional-programming]] — Elm enforces the three tenets; the runtime is where effects are quarantined so functions stay pure
-- [[theory/folds-and-tail-recursion]] — `|>`, lambdas, and `.field` accessors are what make fold expressions concise in Elm
-- [[coding-patterns/fold-accumulator]] — worked Elm examples of the fold/accumulator ladder
+- [pure functional programming](../theory/pure-functional-programming.md) — Elm enforces the three tenets; the runtime is where effects are quarantined so functions stay pure
+- [folds and tail recursion](../theory/folds-and-tail-recursion.md) — `|>`, lambdas, and `.field` accessors are what make fold expressions concise in Elm
+- [fold accumulator](../coding-patterns/fold-accumulator.md) — worked Elm examples of the fold/accumulator ladder
 
 ## Sources
-- [[sources/docs/functional-programming-elm-study-guide]] — §2 The Elm Architecture (TEA); §3 Elm Syntax and Features
-- Runnable example — a complete `Browser.sandbox` TEA program (Model/Msg/update/view) that reverses a comma-separated list: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code in raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/elm-list-reversal/)
+- [functional programming elm study guide](../reading-notes/functional-programming-elm-study-guide.md) — §2 The Elm Architecture (TEA); §3 Elm Syntax and Features
+- Runnable example — a complete `Browser.sandbox` TEA program (Model/Msg/update/view) that reverses a comma-separated list: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code in raw](../../sources/code/elm-list-reversal)

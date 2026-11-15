@@ -1,0 +1,57 @@
+diff --git a/src/main/java/com/practice/interview/Main.java b/src/main/java/com/practice/interview/Main.java
+index 6fd4323..e4f5dfd 100644
+--- a/src/main/java/com/practice/interview/Main.java
++++ b/src/main/java/com/practice/interview/Main.java
+@@ -3,11 +3,19 @@ package com.practice.interview;
+ import com.google.common.html.HtmlEscapers;
+ 
+ public class Main {
+-	public static void main(String... args) {
+-		System.out.println("Hello world!");
+-	}
++    public static void main(String... args) {
++        System.out.println("Hello world!");
++    }
+ 
+-	public static String useGuavaForSomeReason(String input) {
+-		return HtmlEscapers.htmlEscaper().escape(input);
+-	}
++    public static String useGuavaForSomeReason(String input) {
++        return HtmlEscapers.htmlEscaper().escape(input);
++    }
++
++    public static long factorial(int n) {
++        if (n == 1) {
++            return 1L;
++        }
++
++        return n * factorial(n - 1);
++    }
+ }
+diff --git a/src/test/java/com/practice/interview/MainTest.java b/src/test/java/com/practice/interview/MainTest.java
+index 6001200..f7da561 100644
+--- a/src/test/java/com/practice/interview/MainTest.java
++++ b/src/test/java/com/practice/interview/MainTest.java
+@@ -6,9 +6,15 @@ import org.junit.Test;
+ import static org.junit.Assert.*;
+ 
+ public class MainTest {
+-	@Test
+-	public void testUseGuavaForSomeReason() throws Exception {
+-		String actual = Main.useGuavaForSomeReason("hello!<a href>");
+-		Assert.assertEquals("uh oh, the tests failed!", "hello!&lt;a href&gt;", actual);
+-	}
+-}
+\ No newline at end of file
++    @Test
++    public void testUseGuavaForSomeReason() throws Exception {
++        String actual = Main.useGuavaForSomeReason("hello!<a href>");
++        Assert.assertEquals("uh oh, the tests failed!", "hello!&lt;a href&gt;", actual);
++    }
++
++    @Test
++    public void testFactorial() {
++        long fact4 = Main.factorial(4);
++        Assert.assertEquals(24, fact4);
++    }
++}

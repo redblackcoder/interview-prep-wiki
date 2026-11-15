@@ -8,7 +8,7 @@ The read path for a scroll-video product (YouTube Shorts, Reels, TikTok) is a di
 
 ## Two separate latency budgets
 
-- **Feed-of-IDs budget** — return the next page of `post_id`s + metadata + CDN URLs. Small JSON; served from the feed cache. This is a "page the cursor" problem → [[system-design-concepts/feed-cursor-stability]].
+- **Feed-of-IDs budget** — return the next page of `post_id`s + metadata + CDN URLs. Small JSON; served from the feed cache. This is a "page the cursor" problem → [feed cursor stability](feed-cursor-stability.md).
 - **Bytes budget** — actually stream the video. This is a CDN hit-ratio + client-prefetch problem. Conflating the two ("the feed is slow") hides which budget you're missing. The perceived `<100ms` is almost entirely the *bytes* budget, and it's won on the client.
 
 ## Mechanism 1 — Client prefetch
@@ -27,7 +27,7 @@ Transcode each video into a **rendition ladder** (e.g. 240p→1080p+). The playe
 Each rendition is chopped into short **segments** (~2–6s, fMP4/CMAF or TS). Wins:
 1. **Startup** — play after one segment, not the whole file.
 2. **ABR switch points** — the segment boundary is where the player changes rendition.
-3. **Cacheability** — each segment is an **immutable object with its own URL → its own CDN cache key**; a 4s chunk requested by millions who reach that point is *one* cache key (~100% edge hit). See [[tech/cdn]].
+3. **Cacheability** — each segment is an **immutable object with its own URL → its own CDN cache key**; a 4s chunk requested by millions who reach that point is *one* cache key (~100% edge hit). See [cdn](../tech/cdn.md).
 4. **Seek + retry isolation** — seek = fetch the covering segment; a failed fetch retries just that chunk.
 
 ### Segments as storage objects — the object-count trade-off
@@ -51,13 +51,13 @@ In the standard HLS/DASH → CDN → object-store setup, **every segment is a se
 > "Sub-100ms playback on a scroll feed isn't a server latency — it's that the client already has the next video buffered. So the feed API returns a look-ahead window of upcoming posts, and while you watch video i the client prefetches the manifest and first segment of i+1..i+N. Each video is transcoded into an adaptive-bitrate ladder and chopped into 2–6s segments: the player starts after one segment, switches rendition at segment boundaries as the network changes, and — crucially — each segment is an immutable object with its own URL, so the CDN caches it as one key shared by everyone who reaches that point. The catch is object count: ~45 objects per Short times a million uploads a day is ~45M objects daily. I either use byte-range CMAF to cut object count, or I accept it and make sure cleanup never lists the bucket — lifecycle policies expire staging objects, deletes are prefix-deletes off keys I already have in the metadata DB, and orphan sweeps run offline against an S3 Inventory report."
 
 ## Connections
-- [[tech/cdn]] — segmentation is the hit-ratio lever; immutable segment URLs get effectively-infinite TTL; the CDN serves the bytes the feed only references
-- [[system-design-concepts/timeline-fanout-hybrid]] — the feed returns the post IDs + URLs this path streams; the look-ahead window is what the client prefetches
-- [[system-design-concepts/feed-cursor-stability]] — the feed-of-IDs budget: paging the upcoming window stably as follows change
-- [[system-design-concepts/cache-stampede]] — a segment of a suddenly-viral video is the cold-object stampede case at the edge
-- [[theory/latency-numbers]] — why a local buffer read beats even an edge fetch, and an edge fetch beats origin, for a <100ms budget
-- [[system-design-concepts/cloud-database-cost-model]] — object-store cost/among the four axes; request + storage cost of ~45M objects/day
-- [[theory/durability-rpo-rto]] — orphaned segments arise from half-failed writes; the DB-as-source-of-truth reconcile is the recovery
+- [cdn](../tech/cdn.md) — segmentation is the hit-ratio lever; immutable segment URLs get effectively-infinite TTL; the CDN serves the bytes the feed only references
+- [timeline fanout hybrid](timeline-fanout-hybrid.md) — the feed returns the post IDs + URLs this path streams; the look-ahead window is what the client prefetches
+- [feed cursor stability](feed-cursor-stability.md) — the feed-of-IDs budget: paging the upcoming window stably as follows change
+- [cache stampede](cache-stampede.md) — a segment of a suddenly-viral video is the cold-object stampede case at the edge
+- [latency numbers](../theory/latency-numbers.md) — why a local buffer read beats even an edge fetch, and an edge fetch beats origin, for a <100ms budget
+- [cloud database cost model](cloud-database-cost-model.md) — object-store cost/among the four axes; request + storage cost of ~45M objects/day
+- [durability rpo rto](../theory/durability-rpo-rto.md) — orphaned segments arise from half-failed writes; the DB-as-source-of-truth reconcile is the recovery
 
 ## Sources
-- [[sources/docs/design-youtube-shorts-self-interview]] — the read path (<100 ms start, prefetch, ABR); segment crash course + S3 object-model/cleanup discussion
+- [short video feed](../problems/system-design/short-video-feed.md) — the read path (<100 ms start, prefetch, ABR); segment crash course + S3 object-model/cleanup discussion

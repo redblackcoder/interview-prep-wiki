@@ -8,7 +8,7 @@ The **background** convergence mechanism: replicas periodically compare their da
 
 ## Why it exists
 
-[[system-design-concepts/read-repair]] only heals keys that get **read**; [[system-design-concepts/hinted-handoff]] only covers failures it saw at **write** time and can drop hints after a long outage. A key that was written, missed by a replica, and never read again would stay divergent forever. Anti-entropy is the **backstop that guarantees eventual convergence** for the entire keyspace — the cold tail the other two legs miss.
+[read repair](read-repair.md) only heals keys that get **read**; [hinted handoff](hinted-handoff.md) only covers failures it saw at **write** time and can drop hints after a long outage. A key that was written, missed by a replica, and never read again would stay divergent forever. Anti-entropy is the **backstop that guarantees eventual convergence** for the entire keyspace — the cold tail the other two legs miss.
 
 ```
  convergence family (leaderless store):
@@ -53,8 +53,8 @@ Cost is **O(d · log N)** for `d` divergent buckets over `N`, versus **O(N)** to
 
 - **Tree maintenance:** the tree must track live data. Rebuilding on demand means reading the whole range (expensive), so systems maintain it incrementally or rebuild during compaction. Stale trees cause missed or redundant repair.
 - **Granularity trade-off:** shallow tree (few big leaves) → cheap tree, but any diff drags a big bucket over the wire. Deep tree (many small leaves) → precise diffs, but a bigger tree to store/compare. Tune leaf size to expected divergence.
-- **Range alignment:** both replicas must bucket the **same key ranges** or every leaf mismatches. Cassandra scopes trees to token ranges; **vnodes multiply the number of small trees** to build and compare (another cost of high vnode counts — see [[theory/consistent-hashing]]).
-- **Cadence:** too frequent wastes CPU/IO hashing unchanged data; too rare widens the window where a lost replica's data is under-replicated (raising effective MTTR — see [[theory/durability-math]]). Cassandra runs it as scheduled **repair**; Dynamo used it between replica pairs.
+- **Range alignment:** both replicas must bucket the **same key ranges** or every leaf mismatches. Cassandra scopes trees to token ranges; **vnodes multiply the number of small trees** to build and compare (another cost of high vnode counts — see [consistent hashing](../theory/consistent-hashing.md)).
+- **Cadence:** too frequent wastes CPU/IO hashing unchanged data; too rare widens the window where a lost replica's data is under-replicated (raising effective MTTR — see [durability math](../theory/durability-math.md)). Cassandra runs it as scheduled **repair**; Dynamo used it between replica pairs.
 
 Merkle trees show up with the same "compare hashes, fetch only diffs" logic in Git (commit/tree objects), ZFS/Btrfs scrub, and blockchains — worth name-dropping to show the pattern generalizes.
 
@@ -77,16 +77,16 @@ Merkle trees show up with the same "compare hashes, fetch only diffs" logic in G
 > "Anti-entropy is the background leg that guarantees convergence for every key, including cold ones read repair never touches because nobody reads them. The naive version ships all the data and diffs it — O(N). Merkle trees fix that: each replica hashes its key-range buckets into leaves and hashes upward to a root, so if two replicas' roots match, the entire range is identical in a single message. When they differ, a change only affects the hashes on its root-to-leaf path, so they recurse just into mismatching subtrees and exchange O(differences · log N) — network cost scales with how much diverged, not how much data exists. The knobs are leaf granularity, keeping the tree fresh, aligning ranges between replicas, and cadence — too rare and under-replicated data lingers, raising effective MTTR. It's the same hash-tree diffing Git and ZFS use."
 
 ## Connections
-- [[system-design-concepts/read-repair]] — the read-time leg; anti-entropy covers the cold keys it can't reach
-- [[system-design-concepts/hinted-handoff]] — the write-time leg; anti-entropy is the fallback when hints are dropped after a long outage
-- [[theory/consistent-hashing]] — trees are scoped to token ranges; high vnode counts multiply the number of trees to maintain
-- [[theory/durability-math]] — repair cadence is part of MTTR — how fast under-replicated data returns to full RF
-- [[system-design-concepts/leaderless-vs-leader-based]] — anti-entropy is a leaderless necessity; a Raft log keeps replicas from diverging in the first place
-- [[theory/bloom-filters]] — sibling "compare compact digests instead of shipping data" idea for set reconciliation
-- [[system-design-concepts/replica-repair-and-re-replication]] — the centrally-coordinated equivalent: a DFS finds under-replicated extents via a reverse index or storage-node inventory reports instead of tree diffing
+- [read repair](read-repair.md) — the read-time leg; anti-entropy covers the cold keys it can't reach
+- [hinted handoff](hinted-handoff.md) — the write-time leg; anti-entropy is the fallback when hints are dropped after a long outage
+- [consistent hashing](../theory/consistent-hashing.md) — trees are scoped to token ranges; high vnode counts multiply the number of trees to maintain
+- [durability math](../theory/durability-math.md) — repair cadence is part of MTTR — how fast under-replicated data returns to full RF
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — anti-entropy is a leaderless necessity; a Raft log keeps replicas from diverging in the first place
+- [bloom filters](../theory/bloom-filters.md) — sibling "compare compact digests instead of shipping data" idea for set reconciliation
+- [replica repair and re replication](replica-repair-and-re-replication.md) — the centrally-coordinated equivalent: a DFS finds under-replicated extents via a reverse index or storage-node inventory reports instead of tree diffing
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §6 anti-entropy / Merkle-tree sync, §4 convergence after sloppy quorum
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §6 anti-entropy / Merkle-tree sync, §4 convergence after sloppy quorum
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *Dynamo: Amazon's Highly Available Key-value Store* — DeCandia et al., SOSP 2007 (anti-entropy via Merkle trees)
-- [[sources/docs/design-distributed-file-system-interview]] — contrast case: metadata-driven repair in a DFS
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md) — contrast case: metadata-driven repair in a DFS

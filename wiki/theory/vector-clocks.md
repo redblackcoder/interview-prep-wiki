@@ -108,7 +108,7 @@ When versions are concurrent, the store keeps **both** (siblings) and resolves b
 - **Application merge** — return both to the client, let it merge (Dynamo's shopping cart: union the carts so no add is lost).
 - **CRDTs** — types whose merge is mathematically defined (counters, OR-sets), so reconciliation is automatic and deterministic — the modern way to erase the burden.
 
-This is where the convergence family plugs in: [[system-design-concepts/read-repair]] and [[system-design-concepts/anti-entropy-merkle-trees]] use the clock to decide *which* replica is stale (descendant) vs conflicting (sibling), and only overwrite in the safe descendant case.
+This is where the convergence family plugs in: [read repair](../system-design-concepts/read-repair.md) and [anti entropy merkle trees](../system-design-concepts/anti-entropy-merkle-trees.md) use the clock to decide *which* replica is stale (descendant) vs conflicting (sibling), and only overwrite in the safe descendant case.
 
 ## The family (don't conflate these)
 
@@ -127,7 +127,7 @@ The key distinction: **Lamport gives a total order but *cannot detect concurrenc
 
 - **Growth:** the map has an entry per node that ever coordinated a write to the key → it grows with the writer set. Mitigations: prune old entries (with care — pruning can create false concurrency), or **dotted version vectors** to bound sibling growth.
 - **Sibling explosion:** pathological write patterns can accumulate many siblings; clients must handle a *set*, not a value.
-- **Why leaders sidestep it:** a [[system-design-concepts/per-shard-raft|leader-based]] shard has a **single writer imposing a total order** — there are no concurrent writes to the same key, so *no siblings, no vector clocks needed*. This is a concrete instance of the [[system-design-concepts/leaderless-vs-leader-based|fork]]: leaderless externalizes conflict handling (you run vector clocks + reconciliation); leader-based internalizes it (the log order is the truth). It's a large part of *why* Amazon moved from Dynamo (2007, vector clocks) to DynamoDB (2012, leader-per-partition).
+- **Why leaders sidestep it:** a [leader-based](../system-design-concepts/per-shard-raft.md) shard has a **single writer imposing a total order** — there are no concurrent writes to the same key, so *no siblings, no vector clocks needed*. This is a concrete instance of the [fork](../system-design-concepts/leaderless-vs-leader-based.md): leaderless externalizes conflict handling (you run vector clocks + reconciliation); leader-based internalizes it (the log order is the truth). It's a large part of *why* Amazon moved from Dynamo (2007, vector clocks) to DynamoDB (2012, leader-per-partition).
 
 ## What to actually memorize
 1. **Vector clock = `{node→counter}`**; increment own on write, **merge = element-wise max**, compare element-wise.
@@ -148,14 +148,14 @@ The key distinction: **Lamport gives a total order but *cannot detect concurrenc
 > "Vector clocks are how a leaderless store tells a superseding write from a genuinely concurrent one. Each version carries a map of per-writer counters; you bump your own on a write and take the element-wise max on merge. Then version A dominates B only if all its counters are ≥ B's — and if neither dominates, the writes are concurrent, so I keep both as siblings and reconcile with app-merge or a CRDT rather than silently dropping one, which is what last-write-wins does under clock skew. The distinction I'm careful about is Lamport versus vector: a Lamport clock gives a total order but *can't* detect concurrency, so it hides the conflict; vector clocks give only a partial order but can surface it. The cost is the vector grows with the writer set, so you prune or use dotted version vectors. And the punchline — a single-leader design needs none of this, because there are no concurrent writes to one key; that's a big reason DynamoDB moved off Dynamo's vector-clock model."
 
 ## Connections
-- [[system-design-concepts/read-repair]] — uses the clock to tell stale (descendant, safe to overwrite) from conflicting (sibling) on a divergent read
-- [[system-design-concepts/hinted-handoff]] — when a hinted copy and a later home write meet, the clock decides supersede vs conflict
-- [[system-design-concepts/leaderless-vs-leader-based]] — vector clocks are the leaderless conflict-detection tax; leader-based avoids them entirely
-- [[theory/consistency-models]] — "concurrent writes → siblings needing reconciliation" is precisely *why* quorum `W+R>N` isn't linearizable
-- [[system-design-concepts/anti-entropy-merkle-trees]] — background repair uses version comparison to converge divergent replicas
-- [[theory/durability-rpo-rto]] — LWW's silent lost-update is a data-loss (RPO) hazard the clock exposes
+- [read repair](../system-design-concepts/read-repair.md) — uses the clock to tell stale (descendant, safe to overwrite) from conflicting (sibling) on a divergent read
+- [hinted handoff](../system-design-concepts/hinted-handoff.md) — when a hinted copy and a later home write meet, the clock decides supersede vs conflict
+- [leaderless vs leader based](../system-design-concepts/leaderless-vs-leader-based.md) — vector clocks are the leaderless conflict-detection tax; leader-based avoids them entirely
+- [consistency models](consistency-models.md) — "concurrent writes → siblings needing reconciliation" is precisely *why* quorum `W+R>N` isn't linearizable
+- [anti entropy merkle trees](../system-design-concepts/anti-entropy-merkle-trees.md) — background repair uses version comparison to converge divergent replicas
+- [durability rpo rto](durability-rpo-rto.md) — LWW's silent lost-update is a data-loss (RPO) hazard the clock exposes
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §8 leaderless conflict reconciliation, §9 quorum-not-linearizable (concurrent writes → siblings)
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §8 leaderless conflict reconciliation, §9 quorum-not-linearizable (concurrent writes → siblings)
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *Dynamo: Amazon's Highly Available Key-value Store* — DeCandia et al., SOSP 2007 (vector clocks + sibling reconciliation)

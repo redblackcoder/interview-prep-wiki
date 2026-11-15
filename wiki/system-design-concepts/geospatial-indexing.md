@@ -40,7 +40,7 @@ locality** (near-in-space ⇒ near-in-key), so an ordinary **B-tree** becomes a 
 few contiguous `WHERE key BETWEEN lo AND hi` ranges. A **geohash is literally a Z-order (Morton) curve** — interleaved
 lng/lat bits, base-32 encoded. Z-order is cheap but has long jumps; **Hilbert** rotates the sub-curve per quadrant to
 eliminate them, giving better locality — which is why **S2 numbers its cells along a Hilbert curve**. Full mechanics and
-the lakehouse data-skipping angle: [[system-design-concepts/space-filling-curves]].
+the lakehouse data-skipping angle: [space filling curves](space-filling-curves.md).
 
 This also explains the **S2 vs H3** split. Both project the sphere onto a polyhedron then tile+refine, but:
 - **S2** = project to a **cube** (6 flat square faces), then **quadtree** each face. Refinement is **aperture-4 and exact**:
@@ -59,7 +59,7 @@ This also explains the **S2 vs H3** split. Both project the sphere onto a polyhe
 
 ## The hot cell (the real crux)
 
-A stadium emptying, an airport, a surge zone → one cell holds enormous density of both demand and supply. A fixed grid turns that into a **hotspot**: one shard/partition takes all the load and melts. This is the **spatial twin of [[system-design-concepts/hot-key-write-contention]]** — aggregate QPS shards trivially, but *concentration on one cell* does not, because everyone there must query/update the same bucket.
+A stadium emptying, an airport, a surge zone → one cell holds enormous density of both demand and supply. A fixed grid turns that into a **hotspot**: one shard/partition takes all the load and melts. This is the **spatial twin of [hot key write contention](hot-key-write-contention.md)** — aggregate QPS shards trivially, but *concentration on one cell* does not, because everyone there must query/update the same bucket.
 
 Mitigations:
 - **Adaptive cells** (QuadTree split / raise H3 resolution) so the dense area becomes many small cells.
@@ -73,13 +73,13 @@ Cell-size is itself a tradeoff: too large → too many candidates to scan per qu
 > "Proximity search is a spatial-index problem: bucket space into cells (H3 hexagons like Uber, or Redis geohash), index `cell → members`, and a query touches only the local ring. The two things people miss: the **location-update write path** is the dominant load, not the match lookup; and the **hot cell** — a stadium or airport — is the real scaling crux, the 2-D version of a hot key. Fixed grids hotspot there; adaptive cells (QuadTree/H3 resolution) and per-zone sharding are the fix. It is *not* a graph-DB problem."
 
 ## Connections
-- [[system-design-concepts/space-filling-curves]] — the Z-order/Hilbert mechanism behind geohash/S2 keys; why S2's quadtree nests exactly while H3's hexagons only approximately; lakehouse data-skipping
-- [[system-design-concepts/hot-key-write-contention]] — the hot cell is a hot key in 2-D; the same shard-can't-help-concentration argument
-- [[system-design-concepts/dispatch-and-matching]] — proximity search produces the candidate set that the offer protocol then ranks and offers
-- [[system-design-concepts/hash-vs-range-partitioning]] — sharding the geo index by zone; geohash prefixes as a range key
-- [[system-design-concepts/rds-vs-key-value-store]] — why the live location store is an in-memory KV (Redis), not the relational registration DB
-- [[theory/latency-numbers]] — why the hot location store must be in-memory to sustain the write churn
+- [space filling curves](space-filling-curves.md) — the Z-order/Hilbert mechanism behind geohash/S2 keys; why S2's quadtree nests exactly while H3's hexagons only approximately; lakehouse data-skipping
+- [hot key write contention](hot-key-write-contention.md) — the hot cell is a hot key in 2-D; the same shard-can't-help-concentration argument
+- [dispatch and matching](dispatch-and-matching.md) — proximity search produces the candidate set that the offer protocol then ranks and offers
+- [hash vs range partitioning](hash-vs-range-partitioning.md) — sharding the geo index by zone; geohash prefixes as a range key
+- [rds vs key value store](rds-vs-key-value-store.md) — why the live location store is an in-memory KV (Redis), not the relational registration DB
+- [latency numbers](../theory/latency-numbers.md) — why the hot location store must be in-memory to sustain the write churn
 
 ## Sources
-- [[sources/docs/design-uber-driver-allocation-mock-interview]] — grid/cells for driver location; the hot cell and the location-write path as the cruxes
-- [[sources/docs/knn-geospatial-search-explainer]] — kNN methodology (brute force → ANN → trees → grids), space-filling curves, and the S2-vs-H3 exact/approximate nesting deep-dive
+- [ride dispatch](../problems/system-design/ride-dispatch.md) — grid/cells for driver location; the hot cell and the location-write path as the cruxes
+- [knn geospatial search explainer](../reading-notes/knn-geospatial-search-explainer.md) — kNN methodology (brute force → ANN → trees → grids), space-filling curves, and the S2-vs-H3 exact/approximate nesting deep-dive

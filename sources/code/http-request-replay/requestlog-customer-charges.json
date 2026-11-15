@@ -1,0 +1,110 @@
+[
+  {
+    "request": {
+      "url": "/v1/customers",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "email=example%40example.invalid&source%5Bobject%5D=card&source%5Bnumber%5D=example&source%5Bexp_month%5D=12&source%5Bexp_year%5D=2070",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"cus_example1\", \"currency\": \"None\", \"object\": \"customer\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=123&currency=usd&card%5Bnumber%5D=example&card%5Bexp_month%5D=12&card%5Bexp_year%5D=2070",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"ch_example2\", \"currency\": \"usd\", \"object\": \"charge\", \"status\": \"succeeded\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=123&currency=usd&customer=cus_example1",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"ch_example3\", \"currency\": \"usd\", \"object\": \"charge\", \"status\": \"succeeded\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges/ch_example2/refunds",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": "",
+      "method": "POST"
+    },
+    "response": {
+      "body": "{\"id\": \"re_example4\", \"currency\": \"usd\", \"object\": \"refund\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges/ch_example2/refunds/re_example4",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "method": "GET",
+      "body": ""
+    },
+    "response": {
+      "body": "{\"id\": \"re_example4\", \"currency\": \"usd\", \"object\": \"refund\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  },
+  {
+    "request": {
+      "url": "/v1/charges/ch_example2",
+      "headers": {
+        "Host": "api.example.com",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "method": "GET",
+      "body": ""
+    },
+    "response": {
+      "body": "{\"id\": \"ch_example2\", \"currency\": \"usd\", \"object\": \"charge\", \"status\": \"succeeded\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "code": 200
+    }
+  }
+]

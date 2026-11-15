@@ -1,6 +1,6 @@
 # Envoy Global Rate Limit Service (RLS)
 
-`envoyproxy/ratelimit` is a stateless **Go/gRPC service** that reads a rate-limit config, receives descriptor-based requests from Envoy, composes cache keys, and atomically increments counters in Redis. It's the reference implementation of *global* [[system-design-concepts/rate-limiting|rate limiting]] and a rich source of staff+ design detail. Wired into a mesh via [[tech/istio-service-mesh|Istio]].
+`envoyproxy/ratelimit` is a stateless **Go/gRPC service** that reads a rate-limit config, receives descriptor-based requests from Envoy, composes cache keys, and atomically increments counters in Redis. It's the reference implementation of *global* [rate limiting](../system-design-concepts/rate-limiting.md) and a rich source of staff+ design detail. Wired into a mesh via [Istio](istio-service-mesh.md).
 
 ## The request path
 1. Envoy's `http.ratelimit` filter builds **descriptors** (ordered key/value tuples from request attributes) and calls `ShouldRateLimit(domain, [descriptors])` over gRPC.
@@ -30,7 +30,7 @@ The trustworthy signals differ completely by direction:
 **The X-Forwarded-For trap** (#1 edge mistake): behind a cloud L4 LB, `remote_address` returns the *LB's* IP unless you configure trusted-hop handling (`xff_num_trusted_hops`/Proxy Protocol). Get it wrong one way → every client shares one bucket (the whole API collapses to one counter); the other way (blindly trusting client-supplied XFF) → an attacker rotates fake XFF values to mint infinite identities. **IP-as-identity is only as good as your trusted-hop config.** The compressed rule: *at the edge, identity is a spoofable signal you must harden; inside the mesh, it's a verified principal you should prefer over IP* — same RLS, same descriptors, only the source/trust of descriptor *values* changes. The RLS being identity-agnostic is the feature: one service correctly limits a public API keyed on API-key and internal traffic keyed on SPIFFE, with no code change.
 
 ## Design touches worth citing
-- **Fixed-window over an atomic counter** — `INCRBY`'s return value *is* the decision, so concurrent Envoys are serialized correctly by Redis with no read-modify-write race (see [[theory/rate-limiting-algorithms]]).
+- **Fixed-window over an atomic counter** — `INCRBY`'s return value *is* the decision, so concurrent Envoys are serialized correctly by Redis with no read-modify-write race (see [rate limiting algorithms](../theory/rate-limiting-algorithms.md)).
 - **Cache key encodes the window** — `prefix + domain + values + floored-window-start`; when the clock rolls into the next bucket the key changes, the counter starts fresh, and TTL cleans the old key. No sweeper.
 - **Local over-limit cache (freecache)** — caches *only over-limit verdicts* for the rest of the window. Safe by construction: caching "OK" would let each proxy skip the shared `INCR` and under-count; caching "OVER" only rejects what Redis already rejected, turning a hot blocked key from N round-trips into N local hits. **Asymmetric caching is a strong senior signal.**
 - **Redis data path** — pipelines all descriptors into one round-trip; TTL **expiry jitter** avoids a synchronized cache-cliff; optional separate Redis for per-second limits; cluster/sentinel topologies; keys shard by hash so each counter stays on one shard (preserving atomicity).
@@ -49,15 +49,15 @@ The trustworthy signals differ completely by direction:
 > "The Envoy RLS is a stateless Go/gRPC service over Redis. Envoy builds descriptors from request attributes and calls ShouldRateLimit; the service walks a descriptor tree for the most specific limit and does an atomic INCRBY+EXPIRE — the increment's return value is the decision, which is how it avoids the read-modify-write race. The elegant bits: the window is encoded in the cache key by time-flooring so old buckets just expire, and it caches only over-limit verdicts locally because caching OK would break global accuracy. The deep point is identity: Envoy has no built-in 'client' — whatever attribute you extract into the descriptor is the identity, so at the edge you harden a spoofable IP/header and inside the mesh you key on the verified SPIFFE principal, same service either way."
 
 ## Connections
-- [[system-design-concepts/rate-limiting]] — the global-limiter half of the local-vs-global framing this implements
-- [[theory/rate-limiting-algorithms]] — why fixed-window-over-atomic-counter, and the cache-key window encoding
-- [[system-design-concepts/client-identification]] — deepens the descriptor identity model: authenticated credential vs anonymous IP/ASN/JA4 at the edge
-- [[system-design-concepts/global-rate-limiting]] — running this single-region counter across regions without a synchronous global store
-- [[tech/istio-service-mesh]] — how the RLS filter + cluster are patched onto the ingress gateway
-- [[tech/aws-elasticache-redis]] — the Redis atomic `INCR`/pipeline/cluster behavior the RLS depends on
-- [[system-design-concepts/network-security-layers]] — the edge-vs-mesh trust distinction mirrors payload-vs-envelope; mTLS/SPIFFE is the verified-identity anchor
+- [rate limiting](../system-design-concepts/rate-limiting.md) — the global-limiter half of the local-vs-global framing this implements
+- [rate limiting algorithms](../theory/rate-limiting-algorithms.md) — why fixed-window-over-atomic-counter, and the cache-key window encoding
+- [client identification](../system-design-concepts/client-identification.md) — deepens the descriptor identity model: authenticated credential vs anonymous IP/ASN/JA4 at the edge
+- [global rate limiting](../system-design-concepts/global-rate-limiting.md) — running this single-region counter across regions without a synchronous global store
+- [istio service mesh](istio-service-mesh.md) — how the RLS filter + cluster are patched onto the ingress gateway
+- [aws elasticache redis](aws-elasticache-redis.md) — the Redis atomic `INCR`/pipeline/cluster behavior the RLS depends on
+- [network security layers](../system-design-concepts/network-security-layers.md) — the edge-vs-mesh trust distinction mirrors payload-vs-envelope; mTLS/SPIFFE is the verified-identity anchor
 
 ## Sources
-- [[sources/docs/rate-limiting-study-guide]] — §5 the global RLS (architecture, gRPC contract, descriptor tree, identity, algorithm, cache, failure modes)
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html) — repo-grounded walkthrough of envoyproxy/ratelimit internals
-- [[sources/docs/istio-rls-deployment-walkthrough]] — the runnable manifests that wire this service to a gateway
+- [rate limiting study guide](../../sources/references/rate-limiting-study-guide.html) — §5 the global RLS (architecture, gRPC contract, descriptor tree, identity, algorithm, cache, failure modes)
+- [rate-limiting-study-guide.html](../../sources/references/rate-limiting-study-guide.html) — repo-grounded walkthrough of envoyproxy/ratelimit internals
+- [istio rls deployment walkthrough](../../sources/references/istio-rls-deployment-walkthrough.html) — the runnable manifests that wire this service to a gateway
