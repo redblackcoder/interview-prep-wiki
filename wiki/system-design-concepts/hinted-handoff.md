@@ -34,7 +34,7 @@ This is **sloppy quorum**: W acks, but the acking set may include non-home nodes
 
 ## Why it beats "raise RF" for AZ+1
 
-The KV interview's failure model was **survive a full AZ loss plus one more node.** The tempting fix was RF=6 (2 replicas/AZ). But strict-quorum AZ+1 across 3 AZs actually needs RF=9 — absurd (see [[theory/durability-math]] on why RF isn't the lever). Hinted handoff covers the gap at **RF=3**:
+The KV interview's failure model was **survive a full AZ loss plus one more node.** The tempting fix was RF=6 (2 replicas/AZ). But strict-quorum AZ+1 across 3 AZs actually needs RF=9 — absurd (see [durability math](../theory/durability-math.md) on why RF isn't the lever). Hinted handoff covers the gap at **RF=3**:
 
 ```
  RF=3, one replica per AZ.  AZ-C fails (N3 gone) + straggler N1 flaps.
@@ -51,8 +51,8 @@ The hinted copy is in the *wrong place*, so the moment it exists your replicas a
 | Mechanism | When | Role |
 |---|---|---|
 | **Hinted handoff** (this page) | write time, replica down | keep the write; redeliver on recovery |
-| [[system-design-concepts/read-repair]] | read time | fix divergence on keys being *read* (hot data) |
-| [[system-design-concepts/anti-entropy-merkle-trees]] | background | fix divergence on keys *never read* (cold data) |
+| [read repair](read-repair.md) | read time | fix divergence on keys being *read* (hot data) |
+| [anti entropy merkle trees](anti-entropy-merkle-trees.md) | background | fix divergence on keys *never read* (cold data) |
 
 Failure modes to name: a hint holder can itself die before handoff (the copy is lost — but you still had W−1 others, so durability holds if W was ≥2); and hints can pile up during a long outage, so systems **cap hint storage** and fall back to anti-entropy for anything past the window. Dynamo/Cassandra both do exactly this.
 
@@ -75,14 +75,14 @@ Failure modes to name: a hint holder can itself die before handoff (the copy is 
 > "Hinted handoff is how a leaderless store stays writable when a replica or a whole AZ is down, without raising RF. If a home replica is unavailable, the coordinator writes that copy to the next healthy node tagged with a hint saying who it belongs to, counts it toward the write quorum, and that node hands the data back when the owner returns — sloppy quorum. The win is I keep W durable copies the whole time, so I get AZ-plus-one write availability at RF=3 instead of needing RF=9 for strict quorum. The cost is the copy is in the wrong place, so replicas are briefly divergent — which is why hinted handoff always ships with read-repair for hot keys and Merkle-tree anti-entropy for cold ones. And I'd cap hint storage so a long outage falls through to anti-entropy rather than growing unbounded."
 
 ## Connections
-- [[theory/vector-clocks]] — decides supersede-vs-conflict when a hinted copy and a later home write meet on recovery
-- [[system-design-concepts/read-repair]] — the read-time leg of the same convergence family; fixes drift on keys being read
-- [[system-design-concepts/anti-entropy-merkle-trees]] — the background leg; fixes drift hinted handoff leaves on cold keys
-- [[system-design-concepts/leaderless-vs-leader-based]] — hinted handoff is a defining feature of the leaderless (Dynamo) path; leader-based Raft doesn't need it
-- [[theory/consistency-models]] — sloppy quorum breaks `W+R>N`'s intersection, pushing you toward eventual + reconciliation
-- [[theory/durability-math]] — why AZ+1 survivability comes from this mechanism, not from a higher RF
+- [vector clocks](../theory/vector-clocks.md) — decides supersede-vs-conflict when a hinted copy and a later home write meet on recovery
+- [read repair](read-repair.md) — the read-time leg of the same convergence family; fixes drift on keys being read
+- [anti entropy merkle trees](anti-entropy-merkle-trees.md) — the background leg; fixes drift hinted handoff leaves on cold keys
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — hinted handoff is a defining feature of the leaderless (Dynamo) path; leader-based Raft doesn't need it
+- [consistency models](../theory/consistency-models.md) — sloppy quorum breaks `W+R>N`'s intersection, pushing you toward eventual + reconciliation
+- [durability math](../theory/durability-math.md) — why AZ+1 survivability comes from this mechanism, not from a higher RF
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §6 hinted handoff, §4 sloppy vs strict quorum / AZ+1, §5 why-not-raise-RF
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §6 hinted handoff, §4 sloppy vs strict quorum / AZ+1, §5 why-not-raise-RF
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *Dynamo: Amazon's Highly Available Key-value Store* — DeCandia et al., SOSP 2007 (hinted handoff, sloppy quorum)

@@ -23,11 +23,11 @@ For any stable system: **L = λ × W** — average items in the system = arrival
 > "Before sizing, I convert: 10k starts a second times a 10-minute average is six million running. That's what drives the design — any per-running-job write, like a heartbeat, is six million over its interval. At 30 seconds that's 200k writes a second, so the lease is per driver, not per job — 200 a second."
 
 ## Connections
-- [[theory/latency-numbers]] — the other estimation primitives
-- [[system-design-concepts/distributed-job-scheduler]] — heartbeat load derived from L
-- [[system-design-concepts/serving-constrained-resources]] — λ > μ can't be buffered
-- [[system-design-concepts/lease-and-fencing]] — per-lease renewals scale with L; batch them
+- [latency numbers](latency-numbers.md) — the other estimation primitives
+- [distributed job scheduler](../system-design-concepts/distributed-job-scheduler.md) — heartbeat load derived from L
+- [serving constrained resources](../system-design-concepts/serving-constrained-resources.md) — λ > μ can't be buffered
+- [lease and fencing](../system-design-concepts/lease-and-fencing.md) — per-lease renewals scale with L; batch them
 
 ## Sources
-- [[sources/docs/design-job-scheduler-mock-interview]] — Little's law for running jobs and heartbeat writes
-- [[sources/docs/design-uber-driver-allocation-mock-interview]] — 600k outstanding offers
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — Little's law for running jobs and heartbeat writes
+- [ride dispatch](../problems/system-design/ride-dispatch.md) — 600k outstanding offers

@@ -32,21 +32,21 @@ You can't keep all changes forever. **Log compaction** keeps the *latest* record
 - **CDC = table→log**; **materialized view / replica = log→table.** Same duality, opposite directions.
 - Analogy to **version control**: the patch history is the log, your working checkout is the table, and you replicate by pulling patches (the log), not snapshots.
 - Compaction (keep latest-per-key) vs retention (drop-by-age) is the keyed-data vs event-data cleanup fork.
-- This is the concrete justification for "billing recomputes from an immutable event store": the event log is the source of truth; the billing table is a fold you can always rebuild — see [[system-design-concepts/lambda-vs-kappa]].
+- This is the concrete justification for "billing recomputes from an immutable event store": the event log is the source of truth; the billing table is a fold you can always rebuild — see [lambda vs kappa](lambda-vs-kappa.md).
 
 ## Interview angle
 
 > "A table and a log are dual: the log is the ordered list of changes, the table is the current state you get by folding those changes, keeping the latest per key. The log is more fundamental — it can rebuild the table and every historical version, whereas the table alone has thrown away history. That's why change-data-capture (table→log) and materialized views or replicas (log→table) are the same idea in opposite directions. Practically, it's how stream processors get fault-tolerant state: keep a local index, journal its changelog to the log, and replay to recover. And log compaction — keep the latest value per key — is how you bound the log while still holding a full backup of current state."
 
 ## Connections
-- [[system-design-concepts/the-log-abstraction]] — duality is *why* every table/index can be a projection of the log
-- [[theory/state-machine-replication]] — the table is the state a replica reaches by folding the command log
-- [[tech/kafka]] — Kafka Streams state stores + log compaction are this duality in production
-- [[system-design-concepts/lambda-vs-kappa]] — "recompute the view from the immutable log" relies on log→table
-- [[theory/copy-on-write-vs-mvcc]] — another "keep history to reconstruct past states" theme (versioned snapshots)
-- [[theory/durability-rpo-rto]] — event-sourcing (log of changes) vs snapshot (table), and replay hazards
+- [the log abstraction](the-log-abstraction.md) — duality is *why* every table/index can be a projection of the log
+- [state machine replication](../theory/state-machine-replication.md) — the table is the state a replica reaches by folding the command log
+- [kafka](../tech/kafka.md) — Kafka Streams state stores + log compaction are this duality in production
+- [lambda vs kappa](lambda-vs-kappa.md) — "recompute the view from the immutable log" relies on log→table
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — another "keep history to reconstruct past states" theme (versioned snapshots)
+- [durability rpo rto](../theory/durability-rpo-rto.md) — event-sourcing (log of changes) vs snapshot (table), and replay hazards
 
 ## Sources
-- [[sources/docs/the-log-jay-kreps]] — "Changelog 101: Tables and Events are Dual" and stateful stream processing
-- [the-log-jay-kreps.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
-- [[sources/docs/kafka-101-bytebytego]] — log compaction and Kafka Streams local state
+- [the log jay kreps](../reading-notes/the-log-jay-kreps.md) — "Changelog 101: Tables and Events are Dual" and stateful stream processing
+- [the-log-jay-kreps.md](../../sources/references/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
+- [kafka 101 bytebytego](../reading-notes/kafka-101-bytebytego.md) — log compaction and Kafka Streams local state

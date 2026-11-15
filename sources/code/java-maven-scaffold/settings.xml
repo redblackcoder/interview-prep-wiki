@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ | Project-local Maven settings that bypass the corporate Nexus proxy and go
+ | straight to Maven Central. Use with:  mvn -s settings.xml clean install
+ |
+ | A <mirror> with mirrorOf="*" forces EVERY repository (including the ones
+ | injected by the global ~/.m2/settings.xml proxy profile) to route to
+ | Maven Central over its public, publicly-trusted TLS cert, so no corporate
+ | CA needs to be in the JDK truststore.
+ -->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <mirrors>
+    <mirror>
+      <id>maven-central-direct</id>
+      <name>Maven Central (direct, bypass Nexus)</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+
+</settings>

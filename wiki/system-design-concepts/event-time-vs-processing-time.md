@@ -33,7 +33,7 @@ For unbounded, out-of-order data you can **never know for certain** you've seen 
 ## Key points
 - **Windowing by processing time is simpler** (perfect completeness knowledge, no late data) and correct *only* if events arrive in event-time order — which distributed/mobile sources violate. Fine for "requests per second right now" monitoring; wrong for "activity that happened at time X."
 - The named mechanism behind an ad-hoc "5-day grace window" is **watermarks + allowed-lateness**; saying the mechanism (not just the behavior) is the depth signal in an interview.
-- Dashboards tolerate **mutable, eventually-accurate** windows; billing needs a **cutoff + correction policy** — same event log, two consumers, two completeness models (the [[system-design-concepts/lambda-vs-kappa|Lambda/Kappa]] split).
+- Dashboards tolerate **mutable, eventually-accurate** windows; billing needs a **cutoff + correction policy** — same event log, two consumers, two completeness models (the [Lambda/Kappa](lambda-vs-kappa.md) split).
 - Approximation algorithms with error bounds assume in-order arrival — those bounds are meaningless on skewed, out-of-order data. Beware.
 - **A deadline is a watermark; a "grace window" is allowed-lateness.** Auction close is the same machinery: the end time is an event-time cutoff, but *server clocks disagree*, so you accept bids for a small grace window past local end and adjudicate membership by each bid's **recorded event timestamp** — never by which node's wall-clock fired first. The winner is a windowed `max` over the in-cutoff set. "Did this bid make it before close?" is precisely "is this event in-window or late?"
 
@@ -42,16 +42,16 @@ For unbounded, out-of-order data you can **never know for certain** you've seen 
 > "Event time is when the event happened; processing time is when my pipeline saw it. They diverge by a variable, sometimes huge amount — think a phone flushing a day of offline events. If I care about *when things happened* — billing, activity analytics — I must bucket by event time, or late events land in the wrong window and the numbers are wrong. The catch is completeness: with out-of-order data I can never be sure I've seen everything for a window, so I use a watermark as a heuristic 'probably complete up to T,' fire on it, and allow lateness to refine the window. For a dashboard that's fine — the number can shift as stragglers arrive. For billing I don't trust the heuristic: I set an explicit cutoff and a correction policy for anything later. That's also why the same event stream feeds two consumers with different completeness models — the freshness SLA is really a processing-time guarantee, but the buckets are event-time."
 
 ## Connections
-- [[system-design-concepts/lambda-vs-kappa]] — the dashboard(approx)/billing(exact) dual-SLA is this distinction operationalized
-- [[system-design-concepts/exactly-once-semantics]] — "no silent loss" also needs the consumer-crash story (checkpointed offsets), the other half of correctness
-- [[system-design-concepts/read-state-watermarking]] — "watermark" reused: there a per-user read position, here an event-time completeness estimate
-- [[tech/kafka]] — Kafka Streams / stream processors implement event-time windowing + watermarks
-- [[system-design-concepts/the-log-abstraction]] — replaying the log by event time is how you recompute exact windowed views
-- [[theory/latency-numbers]] — the physical skews (WAN, queueing) that make processing time lag event time
-- [[system-design-concepts/commutative-aggregation]] — the auction winner is a windowed order-free fold; "membership/cutoff" is exactly this page's watermark decision
-- [[system-design-concepts/hot-key-write-contention]] — the deferred aggregate that absorbs single-key contention is usually a *windowed* fold, inheriting these completeness concerns
+- [lambda vs kappa](lambda-vs-kappa.md) — the dashboard(approx)/billing(exact) dual-SLA is this distinction operationalized
+- [exactly once semantics](exactly-once-semantics.md) — "no silent loss" also needs the consumer-crash story (checkpointed offsets), the other half of correctness
+- [read state watermarking](read-state-watermarking.md) — "watermark" reused: there a per-user read position, here an event-time completeness estimate
+- [kafka](../tech/kafka.md) — Kafka Streams / stream processors implement event-time windowing + watermarks
+- [the log abstraction](the-log-abstraction.md) — replaying the log by event time is how you recompute exact windowed views
+- [latency numbers](../theory/latency-numbers.md) — the physical skews (WAN, queueing) that make processing time lag event time
+- [commutative aggregation](commutative-aggregation.md) — the auction winner is a windowed order-free fold; "membership/cutoff" is exactly this page's watermark decision
+- [hot key write contention](hot-key-write-contention.md) — the deferred aggregate that absorbs single-key contention is usually a *windowed* fold, inheriting these completeness concerns
 
 ## Sources
-- [[sources/docs/streaming-101-world-beyond-batch]] — event vs processing time, windowing strategies, watermarks, the completeness problem
-- [streaming-101-world-beyond-batch.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/streaming-101-world-beyond-batch.md) — Tyler Akidau, "Streaming 101" (2015)
-- [[sources/docs/design-instagram-auction-mock-interview]] — auction close as watermark + grace window; clock-skew adjudication by recorded timestamps
+- [streaming 101 world beyond batch](../reading-notes/streaming-101-world-beyond-batch.md) — event vs processing time, windowing strategies, watermarks, the completeness problem
+- [streaming-101-world-beyond-batch.md](../../sources/references/streaming-101-world-beyond-batch.md) — Tyler Akidau, "Streaming 101" (2015)
+- [live auctions](../problems/system-design/live-auctions.md) — auction close as watermark + grace window; clock-skew adjudication by recorded timestamps

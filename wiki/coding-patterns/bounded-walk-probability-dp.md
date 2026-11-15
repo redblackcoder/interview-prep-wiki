@@ -22,7 +22,7 @@ Two things make it click:
 - **Each direction is chosen with prob 1/B regardless of validity.** A move off the board contributes **0** (that path is dead), so only valid neighbors carry probability forward. You do *not* renormalize to "1/validCount" — that would be a different problem (choose only among legal moves).
 - **The state is `(cell, k)`, and it's bounded.** `cell` ranges over a fixed number of board cells; `k` over `1..N`. The move tree has up to `B^N` leaves but only `cells · N` distinct states — that gap is the entire optimization.
 
-Equivalent framing (often cleaner to reason about, and exact): **count surviving paths.** `paths(cell, k)` is an integer with the same recurrence minus the `1/B`; the probability is `paths / B^N`. Same DP, no floating point — see [[theory/floating-point-representation]].
+Equivalent framing (often cleaner to reason about, and exact): **count surviving paths.** `paths(cell, k)` is an integer with the same recurrence minus the `1/B`; the probability is `paths / B^N`. Same DP, no floating point — see [floating point representation](../theory/floating-point-representation.md).
 
 ## Two implementations
 
@@ -74,7 +74,7 @@ Only ~`cells·N` of the `B^N` calls do real work; the rest are memo hits.
 - **Off-by-one on the answer index.** With `dp[...][k-1]` holding "k moves," the N-move answer is at index `n-1`, not `n`. Writing `dp[...][n]` on an array sized `n` throws `ArrayIndexOutOfBounds`. The top-down form sidesteps this.
 - **Renormalizing to valid moves only.** `Σ (1/validCount)` answers "the piece only ever picks legal moves" — a *different* question. Survival uses `1/B` and lets off-board paths die.
 - **Wrong base case.** `f(cell, 1) = validCount/B` (top-down: `f(·,0)=1`). Getting the base one step off silently shifts every probability.
-- **Floating-point at large N.** The product/sum of many `<1` factors shrinks; know *why* `double` is fine well into the hundreds of moves (relative precision is magnitude-independent) and when to switch to exact `BigInteger` path-counts. See [[theory/floating-point-representation]].
+- **Floating-point at large N.** The product/sum of many `<1` factors shrinks; know *why* `double` is fine well into the hundreds of moves (relative precision is magnitude-independent) and when to switch to exact `BigInteger` path-counts. See [floating point representation](../theory/floating-point-representation.md).
 - **Forgetting the layer dependency.** Bottom-up must fill `k-1` fully before `k`. Get the loop nesting wrong (cells inside k, not k inside cells) or it reads uncomputed zeros.
 
 ## Recognizing the pattern
@@ -84,18 +84,18 @@ Reach for it whenever a problem is *"N random/possible steps on a bounded struct
 - **Knight Probability in Chessboard** (LC 688) — the 2D twin of this exact problem.
 - **Out-of-Boundary Paths** (LC 576) — count paths that *leave*; complementary counting on the same DP.
 - **Dice-roll / coin-path counting**, **Knight Dialer** (LC 935), random-walk return/absorption probabilities.
-- Any "probability after N steps" — it's a length-N power of a transition, and DP over `(state, step)` *is* iterating that transition. See [[theory/state-machine-replication]] for the transition-matrix view; the matrix-power form gives `O(cells³ · log N)` when N ≫ cells.
+- Any "probability after N steps" — it's a length-N power of a transition, and DP over `(state, step)` *is* iterating that transition. See [state machine replication](../theory/state-machine-replication.md) for the transition-matrix view; the matrix-power form gives `O(cells³ · log N)` when N ≫ cells.
 
 ## Interview angle
 
 > "I model it as `f(cell, k)` = probability of surviving k moves, with `f(cell, k) = Σ over on-board neighbors of (1/8)·f(neighbor, k-1)` and base `f(cell,1) = validMoves/8`. Key point: every direction is picked with prob 1/8 whether or not it's legal, so off-board picks just contribute zero — I don't renormalize. The move tree is O(8^N), but the state `(cell, k)` is bounded — 512 cells times N — so I memoize and it's O(N·8⁴), linear in N since the board is fixed. If N is large I'd switch from `double` probabilities to an exact `BigInteger` count of surviving paths over 8^N, which also sidesteps floating-point underflow."
 
 ## Connections
-- [[theory/floating-point-representation]] — the `double`-precision follow-up this problem triggers: why relative precision is magnitude-independent, when underflow bites, and the exact `BigInteger` path-count alternative
-- [[algorithms/knapsack-variants]] — sibling "DP over a bounded state space (item/capacity vs cell/steps), each state O(choices) work" family; both collapse an exponential choice tree by memoizing bounded state
-- [[theory/state-machine-replication]] — "probability after N steps" is applying a transition N times; the matrix-power view gives an O(cells³·log N) alternative when N dominates
-- [[coding-patterns/fold-accumulator]] — bottom-up DP is a fold over the step index, threading the previous layer as the accumulator
+- [floating point representation](../theory/floating-point-representation.md) — the `double`-precision follow-up this problem triggers: why relative precision is magnitude-independent, when underflow bites, and the exact `BigInteger` path-count alternative
+- [knapsack variants](../algorithms/knapsack-variants.md) — sibling "DP over a bounded state space (item/capacity vs cell/steps), each state O(choices) work" family; both collapse an exponential choice tree by memoizing bounded state
+- [state machine replication](../theory/state-machine-replication.md) — "probability after N steps" is applying a transition N times; the matrix-power view gives an O(cells³·log N) alternative when N dominates
+- [fold accumulator](fold-accumulator.md) — bottom-up DP is a fold over the step index, threading the previous layer as the accumulator
 
 ## Sources
-- [[sources/problems/3d-board-walk-probability]] — the coding round: problem, solution path, the `[n]` vs `[n-1]` indexing bug, and the floating-point follow-up
-- Runnable code in raw (DP + recursion + exact BigInteger cross-check): [bounded-walk-probability/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/bounded-walk-probability/)
+- [bounded diagonal walk](../problems/coding/bounded-diagonal-walk.md) — the coding round: problem, solution path, the `[n]` vs `[n-1]` indexing bug, and the floating-point follow-up
+- Runnable code in raw (DP + recursion + exact BigInteger cross-check): [bounded-walk-probability/](../../sources/code/bounded-walk-probability)

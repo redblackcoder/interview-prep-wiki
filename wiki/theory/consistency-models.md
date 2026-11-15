@@ -91,7 +91,7 @@ CAP only speaks about the moment of a **partition** — minutes per year. It say
 
 The **E**lse branch is the one you reason about daily: on a perfectly healthy network, stronger consistency still costs **latency** (a leader round-trip, a quorum wait, an fsync). So a "must be consistent" claim is really a standing latency bill, not just a partition-time availability bet. When someone frames a contended-write problem as pure CAP, redirect: *the partition is rare; the everyday question is how much latency your consistency is charging you.*
 
-**And the corollary that catches candidates: don't over-ask.** Before spending that latency, check whether the operation even needs ordering. If the update is an **order-free aggregate** (`max`, counter, set-union — see [[system-design-concepts/commutative-aggregation]]), reordering can't change the result, so linearizability is *overkill*: you need durability + an agreed cutoff, not a total order. Deriving the **weakest sufficient guarantee from the operation's algebra** is the senior move; reflexively demanding linearizability is a tell.
+**And the corollary that catches candidates: don't over-ask.** Before spending that latency, check whether the operation even needs ordering. If the update is an **order-free aggregate** (`max`, counter, set-union — see [commutative aggregation](../system-design-concepts/commutative-aggregation.md)), reordering can't change the result, so linearizability is *overkill*: you need durability + an agreed cutoff, not a total order. Deriving the **weakest sufficient guarantee from the operation's algebra** is the senior move; reflexively demanding linearizability is a tell.
 
 ## What to actually memorize
 
@@ -115,18 +115,18 @@ The rest you derive. Hold onto:
 > "I don't recite the lattice — I start with two questions. One: single-key ordering or a multi-key transaction? That picks the ladder. Two: does the requirement forbid a specific anomaly? For transactions I reason in anomalies — dirty read, non-repeatable read, phantom, lost update, write skew — and the level is just the line that bans the one I care about; the classic trap is snapshot isolation, which stops lost update but *allows write skew*. For availability I use one rule: if a guarantee needs a global decision — a total order or detecting a conflict anywhere — it can't survive a partition, so linearizable and serializable are unavailable, while causal is the strongest model that stays available. And the quorum trap: W+R>N only means the read and write sets intersect, so a read sees the latest acked write — but there's no total order and concurrent writes still need version-vector reconciliation, so it's not linearizable. For linearizable I put a per-shard leader in front."
 
 ## Connections
-- [[theory/vector-clocks]] — how concurrent writes are *detected* as siblings; the concrete reason quorum `W+R>N` isn't linearizable
-- [[theory/durability-math]] — the sibling non-functional axis; the W in W+R>N is also what makes an acked write operationally durable
-- [[system-design-concepts/rds-vs-key-value-store]] — ACID/serializable (relational) vs per-command/eventual (KV) is this frame applied to the store choice
-- [[theory/durability-rpo-rto]] — RPO is "how much can I lose"; consistency is "what order can I observe" — orthogonal contracts
-- [[theory/consistent-hashing]] — quorum is defined over the replica set the ring assigns to each key
-- [[system-design-concepts/global-rate-limiting]] — "consistent vs accurate" counters is this exact trade-off (CRDT/eventual, sticky-available) in a concrete subsystem
-- [[theory/copy-on-write-vs-mvcc]] — MVCC is *how* SI reads a consistent snapshot without blocking writers (the mechanism behind Ladder 2's middle)
-- [[system-design-concepts/commutative-aggregation]] — the rung *below* the ladder: when the op is order-free you need no ordering guarantee at all (PACELC corollary)
-- [[system-design-concepts/hot-key-write-contention]] — where the latency-vs-consistency bill actually comes due: many writers on one key
+- [vector clocks](vector-clocks.md) — how concurrent writes are *detected* as siblings; the concrete reason quorum `W+R>N` isn't linearizable
+- [durability math](durability-math.md) — the sibling non-functional axis; the W in W+R>N is also what makes an acked write operationally durable
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — ACID/serializable (relational) vs per-command/eventual (KV) is this frame applied to the store choice
+- [durability rpo rto](durability-rpo-rto.md) — RPO is "how much can I lose"; consistency is "what order can I observe" — orthogonal contracts
+- [consistent hashing](consistent-hashing.md) — quorum is defined over the replica set the ring assigns to each key
+- [global rate limiting](../system-design-concepts/global-rate-limiting.md) — "consistent vs accurate" counters is this exact trade-off (CRDT/eventual, sticky-available) in a concrete subsystem
+- [copy on write vs mvcc](copy-on-write-vs-mvcc.md) — MVCC is *how* SI reads a consistent snapshot without blocking writers (the mechanism behind Ladder 2's middle)
+- [commutative aggregation](../system-design-concepts/commutative-aggregation.md) — the rung *below* the ladder: when the op is order-free you need no ordering guarantee at all (PACELC corollary)
+- [hot key write contention](../system-design-concepts/hot-key-write-contention.md) — where the latency-vs-consistency bill actually comes due: many writers on one key
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §9 consistency spectrum, §4 quorum, §8 leaderless-vs-leader-based fork
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
-- [[sources/docs/design-instagram-auction-mock-interview]] — PACELC as the everyday frame; linearizability isn't needed once `max` is seen to be order-free
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §9 consistency spectrum, §4 quorum, §8 leaderless-vs-leader-based fork
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
+- [live auctions](../problems/system-design/live-auctions.md) — PACELC as the everyday frame; linearizability isn't needed once `max` is seen to be order-free
 - [Jepsen: Consistency Models](https://jepsen.io/consistency/models) — the canonical formal lattice this page distills; Bailis et al., *Highly Available Transactions* is the source of the availability classification

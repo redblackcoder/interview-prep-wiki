@@ -1,6 +1,6 @@
 # Feed Cursor Stability (Snapshot-Isolated Pagination)
 
-An infinite-scroll feed is paginated, but the underlying data **mutates while you scroll**: new posts arrive, follows change, the ranking model re-scores, hot posts get stitched in ([[system-design-concepts/timeline-fanout-hybrid]]). Naïve pagination over a moving target makes items **duplicate, skip, or jump**. The fix is to page over a *pinned version* of the feed, not the live one — snapshot isolation applied to a feed.
+An infinite-scroll feed is paginated, but the underlying data **mutates while you scroll**: new posts arrive, follows change, the ranking model re-scores, hot posts get stitched in ([timeline fanout hybrid](timeline-fanout-hybrid.md)). Naïve pagination over a moving target makes items **duplicate, skip, or jump**. The fix is to page over a *pinned version* of the feed, not the live one — snapshot isolation applied to a feed.
 
 ## The one-sentence mental model
 
@@ -22,7 +22,7 @@ Offset is positional; positions move. You need an anchor that survives mutation.
 **2. Snapshot for a mutating/ re-scored feed.** Keyset isn't enough when scores themselves change or hot posts are stitched at read time. So pin a **snapshot**:
 - First feed request mints a **snapshot ID** bound to the feed version the user is reading.
 - The cursor is interpreted **within that snapshot** — every page of this scroll session reads the same frozen version, so ordering and membership are stable.
-- The **feed generator won't overwrite an in-use snapshot**: on a follow-change / new upload / new algo version it **copy-on-writes a new version** rather than mutating the pinned one (see [[theory/copy-on-write-vs-mvcc]]).
+- The **feed generator won't overwrite an in-use snapshot**: on a follow-change / new upload / new algo version it **copy-on-writes a new version** rather than mutating the pinned one (see [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md)).
 - Snapshots **expire by TTL** (e.g. minutes–hours) so the store keeps bounded versions, not one-per-session-forever. A returning user past TTL gets a fresh snapshot (and fresh content) — an acceptable UX trade.
 
 ## Where the snapshot lives
@@ -43,11 +43,11 @@ Offset is positional; positions move. You need an anchor that survives mutation.
 > "An infinite feed paginates over data that changes while you scroll — new posts, unfollows, the model re-scoring, celebrity posts stitched in at read time. Offset pagination breaks immediately: an insert above your position re-serves an item, a delete skips one, a re-score makes items jump. So first I page with a keyset cursor — 'everything after this (score, id)' — which is immune to inserts and deletes elsewhere. But that's not enough once scores themselves change, so I pin a snapshot: the first request mints a snapshot ID bound to the feed version, every page in that scroll session reads the same frozen version, and the feed generator copy-on-writes a new version instead of mutating one that's in use. Snapshots expire on a TTL so I'm not storing a version per session forever, and the snapshot ID is part of the cache key so paging stays cache-served and any read-time stitching is done once per snapshot."
 
 ## Connections
-- [[theory/copy-on-write-vs-mvcc]] — the mechanism: a snapshot is an MVCC read view; the generator COWs a new version rather than mutating in place
-- [[system-design-concepts/timeline-fanout-hybrid]] — why the feed mutates under you (follows change, hot posts stitched at read); the snapshot is what makes hybrid stitching pageable
-- [[system-design-concepts/video-delivery-read-path]] — the feed-of-IDs budget this page owns, feeding the client's prefetch window
-- [[system-design-concepts/read-state-watermarking]] — a related "where am I in a stream" anchor (per-user watermark for read state); cursor is its pagination cousin
-- [[theory/consistency-models]] — snapshot isolation as a named guarantee; bounded staleness within a session is a deliberate consistency choice
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — the mechanism: a snapshot is an MVCC read view; the generator COWs a new version rather than mutating in place
+- [timeline fanout hybrid](timeline-fanout-hybrid.md) — why the feed mutates under you (follows change, hot posts stitched at read); the snapshot is what makes hybrid stitching pageable
+- [video delivery read path](video-delivery-read-path.md) — the feed-of-IDs budget this page owns, feeding the client's prefetch window
+- [read state watermarking](read-state-watermarking.md) — a related "where am I in a stream" anchor (per-user watermark for read state); cursor is its pagination cousin
+- [consistency models](../theory/consistency-models.md) — snapshot isolation as a named guarantee; bounded staleness within a session is a deliberate consistency choice
 
 ## Sources
-- [[sources/docs/design-youtube-shorts-self-interview]] — the cursor-stability crux: snapshot ID + COW-on-change + TTL
+- [short video feed](../problems/system-design/short-video-feed.md) — the cursor-stability crux: snapshot ID + COW-on-change + TTL

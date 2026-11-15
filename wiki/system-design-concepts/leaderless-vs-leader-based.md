@@ -18,8 +18,8 @@ The single most important fork in a distributed store's design: **who orders the
                                           followers never coordinate writes
 ```
 
-- **Leaderless:** the coordinator (any node — see [[theory/consistent-hashing]] for how it finds the replicas) writes directly to the RF replicas and counts **W** acks; reads gather **R** and pick the winner. No global order. Concurrent writes to one key both succeed → **siblings** to reconcile.
-- **Leader-based:** each shard is a [[theory/consensus-raft|Raft]] group; the leader is the sole writer and imposes a real-time total order (see [[system-design-concepts/per-shard-raft]]).
+- **Leaderless:** the coordinator (any node — see [consistent hashing](../theory/consistent-hashing.md) for how it finds the replicas) writes directly to the RF replicas and counts **W** acks; reads gather **R** and pick the winner. No global order. Concurrent writes to one key both succeed → **siblings** to reconcile.
+- **Leader-based:** each shard is a [Raft](../theory/consensus-raft.md) group; the leader is the sole writer and imposes a real-time total order (see [per shard raft](per-shard-raft.md)).
 
 ## The decision table
 
@@ -28,10 +28,10 @@ The single most important fork in a distributed store's design: **who orders the
 | **Consistency ceiling** | eventual + staleness bound; **not** linearizable | **linearizable** per key |
 | **Write path** | any coordinator, W acks | route to shard leader, majority commit |
 | **Concurrent writes** | both succeed → siblings → **app/CRDT/LWW must reconcile** | leader serializes → no conflict |
-| **Availability under partition** | **stays writable** (sloppy quorum + [[system-design-concepts/hinted-handoff]]) | minority side **can't write**; election gap on leader loss |
+| **Availability under partition** | **stays writable** (sloppy quorum + [hinted handoff](hinted-handoff.md)) | minority side **can't write**; election gap on leader loss |
 | **Write latency** | fast — local/nearest W replicas | 1 RTT to majority, every write |
 | **Failure survival** | RF=3 + hinted handoff covers AZ+1 | RF=5 so 3-of-5 majority survives an AZ |
-| **Operational burden** | **high** — version vectors, [[system-design-concepts/read-repair]], [[system-design-concepts/anti-entropy-merkle-trees]], conflict semantics exposed to clients | lower — one ordered log, no siblings |
+| **Operational burden** | **high** — version vectors, [read repair](read-repair.md), [anti entropy merkle trees](anti-entropy-merkle-trees.md), conflict semantics exposed to clients | lower — one ordered log, no siblings |
 | **Reconciliation owner** | the platform *and* leaks to app (conflict resolution) | fully internal to the group |
 
 ## The tell: why W=2/R=2 already picked your lane
@@ -45,7 +45,7 @@ Same company, same problem, opposite answer five years apart — and the *why* i
 - **Dynamo (2007):** leaderless, vector clocks, client-side conflict resolution. Amazon's own teams found **reconciling siblings in application code miserable** — every app had to merge conflicting carts, handle LWW data loss, reason about staleness. The availability was great; the developer experience and correctness burden were not.
 - **DynamoDB (2012):** leader-per-partition with Paxos replication, **strong consistency available as a first-class option**, conflicts handled *inside* the system. The industry lesson: **for a multi-tenant platform, exporting reconciliation to tenants is the wrong trade** — most teams want a store that just gives them the latest value.
 
-That's the reasoning to reproduce: leaderless maximizes availability but **externalizes** the hard problem (conflict resolution); leader-based **internalizes** it at the cost of availability during elections. Modern default for a general-purpose platform leans **leader-based**, because [[theory/consistency-models|linearizability]] is what tenants expect and the operational burden lands on the platform, not 100 app teams.
+That's the reasoning to reproduce: leaderless maximizes availability but **externalizes** the hard problem (conflict resolution); leader-based **internalizes** it at the cost of availability during elections. Modern default for a general-purpose platform leans **leader-based**, because [linearizability](../theory/consistency-models.md) is what tenants expect and the operational burden lands on the platform, not 100 app teams.
 
 ## When leaderless still wins
 
@@ -73,16 +73,16 @@ Not obsolete — right when:
 > "The fork is: who orders writes? Leaderless — Dynamo-style — lets any coordinator write to W replicas and reconciles conflicts afterward; it stays available under partition via sloppy quorum and hinted handoff, but it's not linearizable and it pushes conflict resolution out to vector clocks, read-repair, anti-entropy, and ultimately the app. Leader-based — Raft per shard — routes every write through one leader that imposes a total order, so it's linearizable with no siblings, but the shard is write-unavailable during an election and every write costs a round trip to a majority. The tell for which lane you're in: if I'm tuning W and R, I've already chosen leaderless. My anchor is Dynamo 2007 versus DynamoDB 2012 — Amazon went from leaderless to leader-per-partition because making every app team reconcile siblings was the wrong trade for a platform. So I default a general-purpose store to leader-based per-shard Raft, and reach for leaderless only when availability must trump consistency or conflicts are CRDT-mergeable, like active-active multi-region."
 
 ## Connections
-- [[theory/vector-clocks]] — the leaderless conflict-detection tax (siblings); leader-based needs none of it
-- [[theory/consensus-raft]] — the ordering mechanism of the leader-based arm
-- [[system-design-concepts/per-shard-raft]] — how leader-based scales while staying linearizable
-- [[system-design-concepts/hinted-handoff]] — a defining leaderless mechanism; leader-based doesn't need it
-- [[system-design-concepts/read-repair]] / [[system-design-concepts/anti-entropy-merkle-trees]] — the convergence machinery leaderless requires and leader-based avoids
-- [[theory/consistency-models]] — the fork *is* the linearizable-vs-eventual choice; quorum≠linearizable is why leaderless can't reach the top
-- [[theory/consistent-hashing]] — how a leaderless coordinator locates the replica set to write its quorum to
-- [[system-design-concepts/rds-vs-key-value-store]] — same "who owns consistency" theme at the store-selection level
+- [vector clocks](../theory/vector-clocks.md) — the leaderless conflict-detection tax (siblings); leader-based needs none of it
+- [consensus raft](../theory/consensus-raft.md) — the ordering mechanism of the leader-based arm
+- [per shard raft](per-shard-raft.md) — how leader-based scales while staying linearizable
+- [hinted handoff](hinted-handoff.md) — a defining leaderless mechanism; leader-based doesn't need it
+- [read repair](read-repair.md) / [anti entropy merkle trees](anti-entropy-merkle-trees.md) — the convergence machinery leaderless requires and leader-based avoids
+- [consistency models](../theory/consistency-models.md) — the fork *is* the linearizable-vs-eventual choice; quorum≠linearizable is why leaderless can't reach the top
+- [consistent hashing](../theory/consistent-hashing.md) — how a leaderless coordinator locates the replica set to write its quorum to
+- [rds vs key value store](rds-vs-key-value-store.md) — same "who owns consistency" theme at the store-selection level
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §8 the coordinator fork (where the interview stopped), §4 quorum, §9 quorum-not-linearizable
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §8 the coordinator fork (where the interview stopped), §4 quorum, §9 quorum-not-linearizable
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *Dynamo: Amazon's Highly Available Key-value Store* (SOSP 2007) and the *Amazon DynamoDB* USENIX ATC 2022 paper — the leaderless→leader-based evolution

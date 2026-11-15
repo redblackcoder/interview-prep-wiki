@@ -26,22 +26,22 @@ Two ways to survive disk and node loss. **Replication** stores whole copies: sim
 - **Placement:** k+m fragments need k+m failure domains. RS(6,3) needs 9 racks to survive the loss of 3 whole racks.
 
 ## Key points
-- **Repair amplification is the cost:** one lost 300 TB node under RS(6,3) means reading ~1.8 PB to rebuild. Budget repair bandwidth accordingly ([[system-design-concepts/replica-repair-and-re-replication]]). LRC exists to cut this.
+- **Repair amplification is the cost:** one lost 300 TB node under RS(6,3) means reading ~1.8 PB to rebuild. Budget repair bandwidth accordingly ([replica repair and re replication](replica-repair-and-re-replication.md)). LRC exists to cut this.
 - **Tail latency:** a degraded read waits on k nodes. Hedge, or keep hot data replicated.
-- **Small objects:** EC only pays off at stripe granularity, so pack first ([[system-design-concepts/distributed-file-system]]), then encode the packed volume.
-- **Durability:** EC with m=3 or m=4 usually beats 3-way replication on independent failures. Correlated failure still depends on placement ([[system-design-concepts/copysets]]).
+- **Small objects:** EC only pays off at stripe granularity, so pack first ([distributed file system](distributed-file-system.md)), then encode the packed volume.
+- **Durability:** EC with m=3 or m=4 usually beats 3-way replication on independent failures. Correlated failure still depends on placement ([copysets](copysets.md)).
 - **Cost framing lands with cost-focused interviewers.** For a cloud-cost audience, "immutable files → EC cold data → half the raw bytes" is the point to make.
 
 ## Interview angle
 > "I write replicated, 3 copies, so the write path and hot reads stay simple. When a storage file seals, I erasure code it, say RS(6,3). That still survives 3 losses but at 1.5x instead of 3x, which halves raw capacity at PB scale. The cost is repair and degraded reads: rebuilding a fragment reads 6. So I keep hot data replicated, throttle EC repair, and consider LRC if repair bandwidth becomes the bottleneck."
 
 ## Connections
-- [[theory/durability-math]]: RF math generalizes to "any m of k+m can fail within the repair window"
-- [[system-design-concepts/replica-repair-and-re-replication]]: EC changes the repair budget (k-fold reads)
-- [[system-design-concepts/distributed-file-system]]: seal-then-encode fits append-only storage files
-- [[system-design-concepts/copysets]]: fragment placement across failure domains
-- [[system-design-concepts/cloud-database-cost-model]]: raw-capacity cost is the lever EC pulls
+- [durability math](../theory/durability-math.md): RF math generalizes to "any m of k+m can fail within the repair window"
+- [replica repair and re replication](replica-repair-and-re-replication.md): EC changes the repair budget (k-fold reads)
+- [distributed file system](distributed-file-system.md): seal-then-encode fits append-only storage files
+- [copysets](copysets.md): fragment placement across failure domains
+- [cloud database cost model](cloud-database-cost-model.md): raw-capacity cost is the lever EC pulls
 
 ## Sources
-- [[sources/docs/design-distributed-file-system-interview]]: erasure coding as the cost lever for sealed, immutable files
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md): erasure coding as the cost lever for sealed, immutable files
 - Background, not ingested: f4 (OSDI 2014); Huang et al., "Erasure Coding in Windows Azure Storage" (USENIX ATC 2012)

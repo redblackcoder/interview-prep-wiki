@@ -1,6 +1,6 @@
 # VPN (Virtual Private Network)
 
-A **VPN** creates a *virtual* private link across the shared, untrusted public internet, so a remote client behaves as if it were physically plugged into the corporate LAN. It exists to fix the gap that [[tech/https-tls|HTTPS]] leaves open (see [[system-design-concepts/network-security-layers]]): HTTPS secures a single app session's *payload*, but does nothing about *who is allowed to reach a server at all*. A VPN answers that network-level question at [[theory/osi-model|OSI]] L3 by (a) making internal services unaddressable from the internet and (b) forcing every packet through one authenticated, encrypted gateway.
+A **VPN** creates a *virtual* private link across the shared, untrusted public internet, so a remote client behaves as if it were physically plugged into the corporate LAN. It exists to fix the gap that [HTTPS](https-tls.md) leaves open (see [network security layers](../system-design-concepts/network-security-layers.md)): HTTPS secures a single app session's *payload*, but does nothing about *who is allowed to reach a server at all*. A VPN answers that network-level question at [OSI](../theory/osi-model.md) L3 by (a) making internal services unaddressable from the internet and (b) forcing every packet through one authenticated, encrypted gateway.
 
 ## What we want
 - A remote laptop reaches **private internal servers** (`10.0.0.0/8`) that have **no public IP**.
@@ -51,7 +51,7 @@ Every protocol implements the same seven steps — they differ in *how*.
 | Codebase | Large | ~100k LOC | **~4k LOC** (auditable) |
 | Best for | Site-to-site, native clients | Firewall traversal (looks like HTTPS on :443) | Speed, simplicity, modern default |
 
-Mapping back to the build: IPsec's **ESP** = steps 1–3, its **IKE** = step 4. OpenVPN reuses the [[tech/https-tls|TLS]] machinery as its step-3/4 engine (which is why it can hide on port 443). WireGuard hard-codes steps 2–4 into a tiny fixed handshake.
+Mapping back to the build: IPsec's **ESP** = steps 1–3, its **IKE** = step 4. OpenVPN reuses the [TLS](https-tls.md) machinery as its step-3/4 engine (which is why it can hide on port 443). WireGuard hard-codes steps 2–4 into a tiny fixed handshake.
 
 ## End-to-end packet walkthrough (defense in depth)
 
@@ -73,22 +73,22 @@ There are now **two independent encryption layers**: inner TLS gives true end-to
 
 ## Key points
 - **A VPN is fundamentally just another encapsulation below IP.** Once you see the wrap as payload, it's obvious *why* it hides the inner IP header (the metadata TLS leaks) — it's payload now.
-- **Encryption ≠ access control.** Steps 2–4 give a private pipe; step 7 (making services private + a single authenticated door + segmentation ACLs) is what actually stops attackers. Re-running the [[system-design-concepts/network-security-layers|attack scenario]]: an internet scan now finds only the gateway's one hardened UDP port; `10.1.5.4` doesn't exist to the attacker → no admission → no app to exploit → no lateral movement.
+- **Encryption ≠ access control.** Steps 2–4 give a private pipe; step 7 (making services private + a single authenticated door + segmentation ACLs) is what actually stops attackers. Re-running the [attack scenario](../system-design-concepts/network-security-layers.md): an internet scan now finds only the gateway's one hardened UDP port; `10.1.5.4` doesn't exist to the attacker → no admission → no app to exploit → no lateral movement.
 - **Split vs full tunnel is a real trade-off**, not a default — split is faster but bridges two trust zones; full centralizes monitoring and hides client IP.
 - **TUN (L3) vs TAP (L2)** — remote-access VPNs almost always use TUN.
-- **Perimeter weakness**: once on the tunnel you're "inside," and only segmentation limits you — a compromised laptop inherits broad access. That limitation is what [[system-design-concepts/zero-trust-ztna|ZTNA]] addresses.
+- **Perimeter weakness**: once on the tunnel you're "inside," and only segmentation limits you — a compromised laptop inherits broad access. That limitation is what [ZTNA](../system-design-concepts/zero-trust-ztna.md) addresses.
 
 ## Interview angle
 
 > "A VPN encapsulates and encrypts whole IP packets at L3. Internal servers get private, non-routable IPs, and the only public thing is a hardened gateway in a DMZ that authenticates the device, decrypts, and — behind segmentation ACLs — forwards into the LAN. The build is seven steps: tunnel (packet-in-packet), encrypt, authenticate + anti-replay, ephemeral key exchange, a TUN virtual interface, split-vs-full routing, and the gateway. It's the same confidentiality/integrity/auth triad as TLS, but because it wraps the whole packet it also hides the addressing metadata HTTPS leaks, and — crucially — it enforces *network admission*, which HTTPS never does. IPsec, OpenVPN, and WireGuard are three implementations of those same steps."
 
 ## Connections
-- [[theory/osi-model]] — a VPN is an L3 encapsulation; understanding nesting is the prerequisite
-- [[tech/https-tls]] — same crypto triad applied to whole packets; OpenVPN reuses the TLS handshake; run TLS *inside* the tunnel for defense in depth
-- [[system-design-concepts/network-security-layers]] — the payload-vs-envelope gap a VPN exists to close
-- [[system-design-concepts/zero-trust-ztna]] — the evolution beyond the VPN's perimeter trust model
-- [[system-design-concepts/work-distribution]] — a production VPN gateway is itself a scaled, load-balanced fleet
+- [osi model](../theory/osi-model.md) — a VPN is an L3 encapsulation; understanding nesting is the prerequisite
+- [https tls](https-tls.md) — same crypto triad applied to whole packets; OpenVPN reuses the TLS handshake; run TLS *inside* the tunnel for defense in depth
+- [network security layers](../system-design-concepts/network-security-layers.md) — the payload-vs-envelope gap a VPN exists to close
+- [zero trust ztna](../system-design-concepts/zero-trust-ztna.md) — the evolution beyond the VPN's perimeter trust model
+- [work distribution](../system-design-concepts/work-distribution.md) — a production VPN gateway is itself a scaled, load-balanced fleet
 
 ## Sources
-- [[sources/docs/networking-deep-dive]] — §4 Building a VPN layer by layer (7 steps, protocol comparison, packet walkthrough, ZTNA)
-- [networking-study-guide.html](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/networking-deep-dive/networking-study-guide.html) — full architecture SVG (client → internet → DMZ gateway → segmented internal servers)
+- [networking deep dive](../reading-notes/networking-deep-dive.md) — §4 Building a VPN layer by layer (7 steps, protocol comparison, packet walkthrough, ZTNA)
+- [networking-study-guide.html](../../sources/references/networking-deep-dive/networking-study-guide.html) — full architecture SVG (client → internet → DMZ gateway → segmented internal servers)

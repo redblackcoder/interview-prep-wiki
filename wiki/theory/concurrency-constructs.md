@@ -1,8 +1,8 @@
 # Concurrency Constructs: The Synchronization Toolkit (JVM-flavored)
 
-The set of building blocks you compose to make concurrent code correct. The mistake most people make is memorizing the API surface; the skill is **mapping each construct to the exact problem it solves** — mutual exclusion, safe publication, bounded resources, coordination, or lock-free state — and knowing which is the *cheapest* tool that still closes the race. Get that mapping and a problem like [[coding-patterns/keyed-serial-executor]] decomposes into "one construct per requirement."
+The set of building blocks you compose to make concurrent code correct. The mistake most people make is memorizing the API surface; the skill is **mapping each construct to the exact problem it solves** — mutual exclusion, safe publication, bounded resources, coordination, or lock-free state — and knowing which is the *cheapest* tool that still closes the race. Get that mapping and a problem like [keyed serial executor](../coding-patterns/keyed-serial-executor.md) decomposes into "one construct per requirement."
 
-This page is the toolkit. [[theory/concurrency-primitives]] covers the *execution units* (process/thread/green thread) these run on.
+This page is the toolkit. [concurrency primitives](concurrency-primitives.md) covers the *execution units* (process/thread/green thread) these run on.
 
 ## The five problems and their tools
 
@@ -43,7 +43,7 @@ do { n = counter.get(); }
 while (!counter.compareAndSet(n, n + 1));   // retry if someone raced us
 ```
 
-This is how you enforce a **bound without a lock** — the crux of admission control in [[coding-patterns/keyed-serial-executor]]:
+This is how you enforce a **bound without a lock** — the crux of admission control in [keyed serial executor](../coding-patterns/keyed-serial-executor.md):
 
 ```java
 while (true) {
@@ -92,7 +92,7 @@ A `Semaphore(1)` is a non-reentrant mutex (and, unlike `synchronized`, can be re
 
 ## How they compose (the KeyedTaskExecutor mapping)
 
-Every requirement of [[coding-patterns/keyed-serial-executor]] is one construct:
+Every requirement of [keyed serial executor](../coding-patterns/keyed-serial-executor.md) is one construct:
 
 | Requirement | Construct |
 |---|---|
@@ -116,13 +116,13 @@ Every requirement of [[coding-patterns/keyed-serial-executor]] is one construct:
 > "I don't reach for a lock reflexively — I classify the race first. Visibility-only? `volatile`. A bounded counter? An `AtomicInteger` CAS loop, because check-then-act on a bound is itself a race and CAS makes 'check and claim' atomic. Bound concurrency to N? A fixed pool or a `Semaphore(N)` — the pool *is* the semaphore. Per-key state without a global lock? `ConcurrentHashMap.computeIfAbsent`, which runs the factory atomically per bucket. And I avoid the two classic smells: busy-poll dispatch loops — I prefer completion-driven hand-off — and a missing `finally` that leaks a permit so the system wedges at its cap."
 
 ## Connections
-- [[coding-patterns/keyed-serial-executor]] — the worked problem these constructs compose into; each requirement maps to one tool
-- [[theory/concurrency-primitives]] — the execution units (process/thread/green thread) these constructs schedule and synchronize
-- [[theory/actor-model-message-passing]] — the alternative to shared-memory synchronization: no locks, serialize by owning state in one actor's mailbox
-- [[system-design-concepts/dispatch-and-matching]] — the same atomic check-and-claim (CAS) idea at the distributed layer: "first-accept-wins behind a two-invariant claim"
-- [[system-design-concepts/exactly-once-semantics]] — idempotency/dedup is the distributed cousin of failure-isolation + safe retries here
-- [[coding-patterns/concurrent-lru-cache]] — a second worked problem: why a `ReadWriteLock` fails when `get` mutates, one-lock-owns-the-invariant, `Phaser`/CAS/volatile in a lock-free-read cache
+- [keyed serial executor](../coding-patterns/keyed-serial-executor.md) — the worked problem these constructs compose into; each requirement maps to one tool
+- [concurrency primitives](concurrency-primitives.md) — the execution units (process/thread/green thread) these constructs schedule and synchronize
+- [actor model message passing](actor-model-message-passing.md) — the alternative to shared-memory synchronization: no locks, serialize by owning state in one actor's mailbox
+- [dispatch and matching](../system-design-concepts/dispatch-and-matching.md) — the same atomic check-and-claim (CAS) idea at the distributed layer: "first-accept-wins behind a two-invariant claim"
+- [exactly once semantics](../system-design-concepts/exactly-once-semantics.md) — idempotency/dedup is the distributed cousin of failure-isolation + safe retries here
+- [concurrent lru cache](../coding-patterns/concurrent-lru-cache.md) — a second worked problem: why a `ReadWriteLock` fails when `get` mutates, one-lock-owns-the-invariant, `Phaser`/CAS/volatile in a lock-free-read cache
 
 ## Sources
-- [[sources/docs/keyed-task-executor-interview]] — the KeyedTaskExecutor problem; constructs extracted from the coding exercise
+- [keyed task executor](../problems/coding/keyed-task-executor.md) — the KeyedTaskExecutor problem; constructs extracted from the coding exercise
 </content>

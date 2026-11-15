@@ -117,7 +117,7 @@ large fleet / heavy vnodes (~10⁴ sets):
   P(any loss/yr) ≈ 10⁴ · 5×10⁻¹² ≈ 5×10⁻⁸    → ~7 nines
 ```
 
-Both clear the 6-nines *object* SLA with margin. Note the subtlety this exposes — **spreading data over more distinct trios (more vnodes) raises P(some set fails)** even as it speeds rebuild and balances load: a real durability cost of vnodes, see [[theory/consistent-hashing]].
+Both clear the 6-nines *object* SLA with margin. Note the subtlety this exposes — **spreading data over more distinct trios (more vnodes) raises P(some set fails)** even as it speeds rebuild and balances load: a real durability cost of vnodes, see [consistent hashing](consistent-hashing.md).
 
 **Bottom line:** the customer-facing 6 nines is the **per-set ~11-nines number (Step 5), and it does not depend on fleet size at all.** The earlier "~7 nines across 10⁴ sets" was answering question (b) for a *hyperscale* fleet, and I'd stated the set count without deriving it — for our ~100-node region it's ~10² sets and ~9 nines. Either way: **RF=3 with fast re-replication is already a 6-nines design** — durability comes from *winning the MTTR race*, not from piling on copies.
 
@@ -133,7 +133,7 @@ Both clear the 6-nines *object* SLA with margin. Note the subtlety this exposes 
 
 **2. Beyond RF=3, correlated failure dominates — so more replicas stop helping.** The math above assumes *independent* failures. Reality has **correlated** ones: a bad disk batch, a rack/AZ power event, a bug that writes corrupt bytes to *every* replica, an operator `DROP`. These have their own floor (say 10⁻⁵–10⁻⁶) that **RF cannot touch** — RF=6 replicates the corrupting bug six times, faithfully. Once independent-failure loss (10⁻¹¹) is far below correlated loss, adding replicas improves a term that no longer matters.
 
-**Nuance — placement decides how correlated failure hits.** The independent-failure math treats each replica set separately. With per-object *random* placement across millions of objects, nearly every node triple *is* some object's replica set, so any simultaneous 3-node event (rack power, bad rollout) loses data with near certainty. Constraining placement to a few rack-diverse copysets makes such events rarely fatal, but fewer peers per node lengthens MTTR, the other term in this formula. See [[system-design-concepts/copysets]].
+**Nuance — placement decides how correlated failure hits.** The independent-failure math treats each replica set separately. With per-object *random* placement across millions of objects, nearly every node triple *is* some object's replica set, so any simultaneous 3-node event (rack power, bad rollout) loses data with near certainty. Constraining placement to a few rack-diverse copysets makes such events rarely fatal, but fewer peers per node lengthens MTTR, the other term in this formula. See [copysets](../system-design-concepts/copysets.md).
 
 The consequence, stated in the interview: **RF beyond 3 is an *availability* decision, not a durability one.** You raise RF to keep serving through more simultaneous node/AZ losses (quorum survival), not to lose less data.
 
@@ -141,7 +141,7 @@ The consequence, stated in the interview: **RF beyond 3 is an *availability* dec
 
 - **RF=3 across 3 AZs** (independent power/network/cooling ⇒ decorrelates the AZ-level event).
 - **Fast, automated re-replication** — the MTTR term; no human in the loop (recall 4–5 nines availability ≈ minutes/month, so a human paging in has already lost).
-- **Synchronous replication to W replicas before ACK** — this is *operational* durability, RPO≈0 (see [[theory/durability-rpo-rto]]). An acked write is on W disks *now*.
+- **Synchronous replication to W replicas before ACK** — this is *operational* durability, RPO≈0 (see [durability rpo rto](durability-rpo-rto.md)). An acked write is on W disks *now*.
 - **Off-cluster backups (S3) for the correlated/logical failures the RF math can't cover** — bad-batch, corruption bug, operator error, whole-region DR, PITR. Backups are async ⇒ non-zero RPO ⇒ they are *not* operational durability; restoring TBs has an RTO that blows the availability budget. Different failure class, different tool.
 
 ## Key points
@@ -156,16 +156,16 @@ The consequence, stated in the interview: **RF beyond 3 is an *availability* dec
 > "I derive it rather than quote it. Loss needs all RF replicas dead inside one repair window, so for RF=3 it's roughly 6·AFR³·(MTTR/year)² — with 2% AFR and a 4-hour MTTR that's about 1e-11 per replica set per year, ~7 nines even across ten thousand sets. So RF=3 already clears six nines. The lever isn't replication factor, it's MTTR — loss goes as MTTR to the (RF−1), and MTTR is the thing I actually control with fast detection and parallel rebuild. I only raise RF above 3 for *availability* — surviving more simultaneous failures on a quorum — because past three copies durability is capped by *correlated* failure, a bad batch or a corruption bug, which more replicas just copy faithfully. That correlated tail is what backups and multi-AZ are for, not extra RF."
 
 ## Connections
-- [[theory/durability-rpo-rto]] — RPO≈0 (synchronous W-replica ACK) is *operational* durability; this page is the *statistical* durability that RF+MTTR buy
-- [[theory/consistency-models]] — the sibling axis; W-replica ACK ties durability to the quorum/consistency choice
-- [[system-design-concepts/rds-vs-key-value-store]] — "persisted cache ≠ durable store" is the same async-vs-sync-replication distinction quantified here
-- [[system-design-concepts/cloud-database-cost-model]] — RF and spare-capacity-for-fast-MTTR are the storage-cost drivers; durability is bought with $
-- [[theory/consistent-hashing]] — the partition scheme that decides *which* nodes form a replica set and how fast a dead one is rebuilt
-- [[system-design-concepts/replica-repair-and-re-replication]] — how MTTR is engineered: heartbeats, reverse index, parallel rebuild from many peers (300 TB from 100 peers ≈ 4 h)
-- [[system-design-concepts/copysets]] — placement is what bounds correlated-failure loss; scatter width trades MTTR against the number of fatal node triples
-- [[system-design-concepts/replication-vs-erasure-coding]] — the same survive-within-the-repair-window math with k+m fragments instead of RF copies
+- [durability rpo rto](durability-rpo-rto.md) — RPO≈0 (synchronous W-replica ACK) is *operational* durability; this page is the *statistical* durability that RF+MTTR buy
+- [consistency models](consistency-models.md) — the sibling axis; W-replica ACK ties durability to the quorum/consistency choice
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — "persisted cache ≠ durable store" is the same async-vs-sync-replication distinction quantified here
+- [cloud database cost model](../system-design-concepts/cloud-database-cost-model.md) — RF and spare-capacity-for-fast-MTTR are the storage-cost drivers; durability is bought with $
+- [consistent hashing](consistent-hashing.md) — the partition scheme that decides *which* nodes form a replica set and how fast a dead one is rebuilt
+- [replica repair and re replication](../system-design-concepts/replica-repair-and-re-replication.md) — how MTTR is engineered: heartbeats, reverse index, parallel rebuild from many peers (300 TB from 100 peers ≈ 4 h)
+- [copysets](../system-design-concepts/copysets.md) — placement is what bounds correlated-failure loss; scatter width trades MTTR against the number of fatal node triples
+- [replication vs erasure coding](../system-design-concepts/replication-vs-erasure-coding.md) — the same survive-within-the-repair-window math with k+m fragments instead of RF copies
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §5 durability math, §4 replication/quorum, §3 nines→downtime
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
-- [[sources/docs/design-distributed-file-system-interview]] — placement nuance: per-extent random placement makes correlated 3-node loss near-certain (copysets); MTTR from scatter width
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §5 durability math, §4 replication/quorum, §3 nines→downtime
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md) — placement nuance: per-extent random placement makes correlated 3-node loss near-certain (copysets); MTTR from scatter width

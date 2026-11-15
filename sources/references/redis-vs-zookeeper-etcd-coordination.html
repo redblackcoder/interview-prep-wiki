@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redis vs ZooKeeper/etcd — why "it's just key-value" is the wrong lens for coordination</title>
+<style>
+  :root{
+    --bg:#fbfbfd; --fg:#1d1d24; --muted:#6b6f7e; --line:#e3e5ec; --card:#ffffff;
+    --redis:#d6342a; --etcd:#2f7fd1; --zk:#8a6d1f;
+    --bad:#c0392b; --bad-bg:#fdecea; --good:#1e8449; --good-bg:#e9f7ef; --warn:#b9770e; --warn-bg:#fef5e7;
+    --accent:#4c5bd4; --code:#f1f2f7;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+  .layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;max-width:1280px;margin:0 auto;padding:32px 24px}
+  @media (max-width:980px){.layout{grid-template-columns:1fr}nav.toc{position:static;max-height:none}}
+  nav.toc{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto;font-size:14px;border-right:1px solid var(--line);padding-right:16px}
+  nav.toc h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:4px 0;border-left:2px solid transparent;padding-left:8px}
+  nav.toc a:hover{border-left-color:var(--accent);color:var(--accent)}
+  nav.toc a.sub{padding-left:20px;color:var(--muted);font-size:13px}
+  main{min-width:0}
+  h1{font-size:34px;line-height:1.2;margin:0 0 8px;letter-spacing:-.01em}
+  h2{font-size:26px;margin:56px 0 12px;padding-top:12px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:19px;margin:28px 0 8px}
+  p.lede{font-size:19px;color:#3a3d4a;margin:0 0 20px}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+  code{background:var(--code);padding:1px 5px;border-radius:4px}
+  pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto;line-height:1.45}
+  pre code{background:none;padding:0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+  th{background:#f3f4f9}
+  td.bad{background:var(--bad-bg)} td.good{background:var(--good-bg)} td.warn{background:var(--warn-bg)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .callout{border-left:4px solid var(--accent);background:#f3f4fc;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0}
+  .callout.bad{border-left-color:var(--bad);background:var(--bad-bg)}
+  .callout.good{border-left-color:var(--good);background:var(--good-bg)}
+  .callout.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;color:#fff;vertical-align:middle}
+  .pill.redis{background:var(--redis)} .pill.etcd{background:var(--etcd)} .pill.zk{background:var(--zk)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:1100px){.two{grid-template-columns:1fr}}
+  .muted{color:var(--muted)}
+  small.src{color:var(--muted)}
+  kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 6px;background:#fff;font-size:.9em}
+
+  /* sequence diagrams */
+  .seq-wrap{margin:12px 0}
+  .seq-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .seq-controls button,.sim button,.quiz button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .seq-controls button:hover,.sim button:hover{border-color:var(--accent);color:var(--accent)}
+  .seq-controls button.primary,.sim button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .seq-pos{margin-left:auto;color:var(--muted);font-size:13px}
+  svg.seq{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--line);border-radius:10px}
+  svg.seq .actor rect{fill:#f3f4f9;stroke:#c9cbd6}
+  svg.seq .actor.redis rect{fill:#fdeceb;stroke:var(--redis)} svg.seq .actor.etcd rect{fill:#e8f1fb;stroke:var(--etcd)} svg.seq .actor.zk rect{fill:#f7f1e0;stroke:var(--zk)}
+  svg.seq .actor.client rect{fill:#eef9f1;stroke:#7fb897} svg.seq .actor.store rect{fill:#f2eefc;stroke:#9b87d1}
+  svg.seq .actor-label{font-size:13px;font-weight:600;fill:#1d1d24}
+  svg.seq .lifeline{stroke:#c9cbd6;stroke-width:1.5;stroke-dasharray:4 4}
+  svg.seq .lifeline.dead{stroke:var(--bad);stroke-dasharray:2 6;stroke-width:2}
+  svg.seq .step{opacity:0;transition:opacity .25s}
+  svg.seq .step.shown{opacity:1}
+  svg.seq .step .arrow{stroke:#2b2e3b;stroke-width:1.8}
+  svg.seq .step.bad .arrow{stroke:var(--bad)} svg.seq .step.good .arrow{stroke:var(--good)} svg.seq .step.warn .arrow{stroke:var(--warn)} svg.seq .step.muted .arrow{stroke:#9aa0b0}
+  svg.seq .arrhead{fill:#2b2e3b} svg.seq .arrhead.bad{fill:var(--bad)} svg.seq .arrhead.good{fill:var(--good)} svg.seq .arrhead.warn{fill:var(--warn)} svg.seq .arrhead.muted{fill:#9aa0b0}
+  svg.seq .msg-label{font-size:12.5px;fill:#1d1d24;font-family:"SF Mono",Menlo,Consolas,monospace}
+  svg.seq .msg-label.left{text-anchor:start}
+  svg.seq .msg-label.bad{fill:var(--bad);font-weight:700}
+  svg.seq .lostx{stroke:var(--bad);stroke-width:2.5}
+  svg.seq .crashx{stroke:var(--bad);stroke-width:3}
+  svg.seq .note{fill:#fff8dc;stroke:#e0c060}
+  svg.seq .note-label{font-size:12.5px;fill:#4a3f10}
+  svg.seq .state{fill:#f3f4fc;stroke:var(--accent)}
+  svg.seq .step.bad .state{fill:var(--bad-bg);stroke:var(--bad)} svg.seq .step.good .state{fill:var(--good-bg);stroke:var(--good)} svg.seq .step.warn .state{fill:var(--warn-bg);stroke:var(--warn)}
+  svg.seq .state-label{font-size:13.5px;font-weight:700;fill:#1d1d24}
+  svg.seq .step.cur .arrow{stroke-width:3} svg.seq .step.cur .state,svg.seq .step.cur .note{stroke-width:2.5}
+  .seq-caption{min-height:48px;margin-top:10px;padding:10px 14px;border-radius:8px;background:#f3f4fc;border-left:4px solid var(--accent);font-size:15px}
+  .seq-caption.bad{background:var(--bad-bg);border-left-color:var(--bad)} .seq-caption.good{background:var(--good-bg);border-left-color:var(--good)} .seq-caption.warn{background:var(--warn-bg);border-left-color:var(--warn)}
+
+  /* simulators */
+  .sim{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .sim .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:#fff;padding:6px 12px}
+  .seg button.on{background:var(--fg);color:#fff}
+  .seg button.on.redis{background:var(--redis)} .seg button.on.etcd{background:var(--etcd)} .seg button.on.zk{background:var(--zk)}
+  .sides{display:grid;grid-template-columns:1fr 60px 1fr;gap:8px;align-items:stretch}
+  .side{border:2px dashed #c9cbd6;border-radius:12px;padding:12px;min-height:170px}
+  .side h4{margin:0 0 8px;font-size:14px;color:var(--muted)}
+  .side.writable{border-color:var(--good);background:var(--good-bg)} .side.readonly{border-color:#c9cbd6;background:#f7f7fa} .side.split{border-color:var(--bad);background:var(--bad-bg)}
+  .gap{display:flex;align-items:center;justify-content:center;color:var(--bad);font-weight:700;font-size:22px;letter-spacing:-2px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .chip{border:1px solid #c9cbd6;background:#fff;border-radius:8px;padding:6px 10px;font-size:13.5px;cursor:pointer;user-select:none}
+  .chip:hover{border-color:var(--accent)}
+  .chip.leader{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+  .chip.dead{text-decoration:line-through;color:var(--muted);background:#f4f4f6}
+  .chip.client{cursor:default;background:#eef9f1;border-color:#7fb897}
+  .sideout{font-size:14px;margin-top:8px}
+  .verdict{margin-top:12px;padding:12px 14px;border-radius:8px;font-weight:600}
+  .verdict.bad{background:var(--bad-bg);color:#7b241c} .verdict.good{background:var(--good-bg);color:#145a32} .verdict.warn{background:var(--warn-bg);color:#7e5109}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:800px){.cols{grid-template-columns:1fr}.sides{grid-template-columns:1fr}.gap{display:none}}
+  .box{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .box h4{margin:0 0 6px;font-size:14px}
+  .big{font-size:28px;font-weight:700;font-family:"SF Mono",Menlo,Consolas,monospace}
+  .log{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;background:#1d1d24;color:#e6e6ef;border-radius:8px;padding:10px 12px;height:220px;overflow:auto;white-space:pre-wrap}
+  .log .b{color:#ff8a80} .log .g{color:#8be28b} .log .y{color:#ffd54f} .log .m{color:#9aa0b0}
+  .stale{color:var(--bad);font-weight:700} .fresh{color:var(--good);font-weight:700}
+  .quiz label{display:block;padding:6px 0}
+  .quiz fieldset{border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px 14px}
+  .quiz legend{font-weight:600;padding:0 6px}
+  .result{margin-top:12px}
+  footer{margin:60px 0 20px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 2px}
+  .legend span::before{content:"";display:inline-block;width:22px;height:0;border-top:2px solid #2b2e3b;margin-right:6px;vertical-align:middle}
+  .legend .dash::before{border-top-style:dashed}
+  .legend .lost::before{border-top-color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc">
+  <h4>Contents</h4>
+  <a href="#tldr">0. TL;DR</a>
+  <a href="#requirements">1. What coordination needs</a>
+  <a href="#f1">2. Failure 1: lost write on failover</a>
+  <a href="#f1-redis" class="sub">Redis: lock acquired twice</a>
+  <a href="#f1-etcd" class="sub">etcd: Raft commit survives</a>
+  <a href="#f2">3. Failure 2: split brain</a>
+  <a href="#f3">4. Failure 3: no fencing token</a>
+  <a href="#f4">5. Failure 4: missed notifications</a>
+  <a href="#f5">6. Failure 5: stale reads</a>
+  <a href="#objections">7. "But what about WAIT / Redlock…"</a>
+  <a href="#how">8. How ZK and etcd get there</a>
+  <a href="#zk-vs-etcd">9. ZooKeeper vs etcd</a>
+  <a href="#redis-good">10. When Redis is the right answer</a>
+  <a href="#decide">11. Decision helper</a>
+  <a href="#interview">12. Interview phrasing + cheat sheet</a>
+  <a href="#drain">13. Worked design: graceful drain + session migration</a>
+  <a href="#sources">Sources</a>
+</nav>
+
+<main>
+<h1>Redis vs ZooKeeper / etcd</h1>
+<p class="lede">Why "they're all key-value stores" is the wrong lens, shown as the concrete sequences in which Redis breaks a lock, a leader election, or a config push, and what ZooKeeper and etcd do differently at the exact step where Redis goes wrong.</p>
+
+<div class="callout">
+<strong>The one-sentence answer.</strong> Redis is a <em>fast, available</em> key-value store that acknowledges a write when one process has it in RAM. ZooKeeper and etcd are <em>slow, consistent</em> coordination services that acknowledge a write only when a majority of nodes have fsynced it, and that hand you a cluster-wide monotonic version with every read and write. Coordination problems (locks, leader election, membership, config) are precisely the problems where a single lost or stale write is a correctness bug rather than a cache miss.
+</div>
+
+<h2 id="tldr">0. TL;DR table</h2>
+<table>
+<tr><th>Question</th><th><span class="pill redis">Redis</span> (Sentinel / Cluster)</th><th><span class="pill zk">ZooKeeper</span> / <span class="pill etcd">etcd</span></th></tr>
+<tr><td>What does "OK" mean after a write?</td><td class="bad">One node has it in memory. Replication is asynchronous; fsync is off or periodic by default.</td><td class="good">A majority of nodes have appended it to a write-ahead log and fsynced it (ZAB / Raft).</td></tr>
+<tr><td>Can an acknowledged write disappear on failover?</td><td class="bad">Yes. Replica promoted without the write.</td><td class="good">No. A new leader must hold every committed entry.</td></tr>
+<tr><td>Can two nodes accept writes during a partition?</td><td class="bad">Yes, for a window (old primary + newly promoted replica).</td><td class="good">No. Minority side cannot commit; its leader steps down.</td></tr>
+<tr><td>Is there a monotonic version I can use as a fencing token?</td><td class="bad">No. <code>INCR</code> counters roll back on failover.</td><td class="good">Yes. zxid / znode version (ZK), revision / mod_revision (etcd).</td></tr>
+<tr><td>Do watchers see every change, in order?</td><td class="bad">No. Pub/Sub keyspace notifications are at-most-once, no replay.</td><td class="good">Yes. ZK: ordered one-shot watches tied to the session. etcd: streaming watch resumable from a revision.</td></tr>
+<tr><td>Are reads linearizable?</td><td class="bad">Replica reads are stale with no bound and no version to detect it.</td><td class="good">etcd: yes by default. ZK: writes yes; reads sequentially consistent, <code>sync()</code> for linearizable.</td></tr>
+<tr><td>Throughput / data size</td><td class="good">100k+ ops/s per node, GBs of data</td><td class="warn">~10k writes/s, write latency in ms (fsync-bound), MBs of data</td></tr>
+</table>
+<p class="muted">The last row is why both exist. Redis is fast because it skips exactly the work the other two do for safety. You pay for coordination guarantees in latency, and you only want to pay it on the small, rarely-written control-plane data.</p>
+
+<h2 id="requirements">1. What coordination actually requires</h2>
+<p>Every "config management / service discovery / leader election / distributed lock" use case decomposes into the same five primitives. Hold a design against this list, not against "does it store key-value pairs".</p>
+<table>
+<tr><th>#</th><th>Primitive</th><th>Why coordination needs it</th><th>Redis</th><th>ZK / etcd</th></tr>
+<tr><td>1</td><td><strong>Durable, quorum-committed write</strong></td><td>"I hold the lock" must survive the death of any one node.</td><td class="bad">No</td><td class="good">Yes</td></tr>
+<tr><td>2</td><td><strong>Single writer per partition</strong></td><td>Leader election is meaningless if two sides of a partition can both elect.</td><td class="bad">No</td><td class="good">Yes</td></tr>
+<tr><td>3</td><td><strong>Atomic compare-and-set on a version</strong></td><td>"Create if absent", "update only if unchanged since I read".</td><td class="warn">Single node only (<code>SET NX</code>, <code>WATCH</code>, Lua)</td><td class="good">Yes, cluster-wide</td></tr>
+<tr><td>4</td><td><strong>Monotonic version (fencing token)</strong></td><td>A paused/stale holder must be rejectable by downstream systems.</td><td class="bad">No</td><td class="good">zxid / revision</td></tr>
+<tr><td>5</td><td><strong>Liveness-bound ownership + ordered, lossless notification</strong></td><td>Lock holder dies → lock released → waiters told, exactly once, in order.</td><td class="bad">TTL + Pub/Sub (lossy)</td><td class="good">Ephemeral znodes / leases + watches</td></tr>
+</table>
+<p>The next five sections show one failure for each row. Each has a step-through sequence diagram or a simulator. Use <kbd>Next ▶</kbd> to advance; the caption explains the step.</p>
+
+<!-- ============================================================ -->
+<h2 id="f1">2. Failure 1: an acknowledged write is lost on failover</h2>
+<p>This is the root failure. Everything else is a consequence of it. Redis replication is asynchronous: the primary replies <code>OK</code> to the client and then, separately, streams the command to replicas. If the primary dies in between, the write existed only in a dead process's RAM.</p>
+
+<h3 id="f1-redis"><span class="pill redis">Redis</span> Distributed lock, primary dies after ack</h3>
+<div class="legend"><span>request / command</span><span class="dash">reply</span><span class="lost">message lost</span></div>
+<div id="seq-redis-lock"></div>
+
+<h3 id="f1-etcd"><span class="pill etcd">etcd</span> Same lock, same crash, Raft commit</h3>
+<div id="seq-etcd-lock"></div>
+
+<div class="callout">
+<strong>Where exactly they diverge.</strong> Compare step 3 in each diagram. Redis says OK after a memory write on one node. etcd says OK only after a majority has fsynced the entry. That single ordering difference, "ack before replicate" vs "replicate (to a majority) before ack", is the whole story. Raft's <em>Leader Completeness</em> property then guarantees any future leader has the entry, because a node missing a committed entry cannot win a majority vote.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="f2">3. Failure 2: split brain during a network partition</h2>
+<p>Redis Sentinel and Redis Cluster both detect a dead primary by timeout and promote a replica. But the old primary is not dead, it is merely unreachable from the Sentinels. It keeps serving its own clients. Now there are two primaries, and when the partition heals one of them is demoted and <em>resynced from the other, discarding everything it accepted in between</em>. The Redis Sentinel documentation shows exactly this scenario.</p>
+
+<div class="sim" id="psim">
+  <div class="bar">
+    <strong>Partition simulator</strong>
+    <span class="seg" id="psim-mode">
+      <button data-m="redis" class="on redis">Redis + Sentinel</button>
+      <button data-m="etcd">etcd (Raft)</button>
+    </span>
+    <label style="font-size:14px"><input type="checkbox" id="psim-minrep"> Redis: <code>min-replicas-to-write 2</code> / <code>max-lag 10</code></label>
+    <span class="muted" style="font-size:13px;margin-left:auto">Click a node to move it across the partition</span>
+  </div>
+  <div class="sides">
+    <div class="side" id="psim-A"><h4>Side A &nbsp;·&nbsp; <span class="chip client">Client X</span></h4><div class="chips" id="psim-A-chips"></div><div class="sideout" id="psim-A-out"></div></div>
+    <div class="gap">||</div>
+    <div class="side" id="psim-B"><h4>Side B &nbsp;·&nbsp; <span class="chip client">Client Y</span></h4><div class="chips" id="psim-B-chips"></div><div class="sideout" id="psim-B-out"></div></div>
+  </div>
+  <div class="verdict" id="psim-verdict"></div>
+  <p class="muted" style="font-size:13px;margin:10px 0 0">Model: 5 nodes. Redis mode: N1 is the primary, N2–N5 replicas, one Sentinel co-located on every node (Sentinel quorum 3, failover authorisation needs a majority of Sentinels). etcd mode: N1 is the current Raft leader; a side needs 3 of 5 to elect or keep a leader. Client X can only reach Side A, Client Y only Side B.</p>
+</div>
+
+<div class="callout warn">
+<strong>Doesn't <code>min-replicas-to-write</code> fix this?</strong> It narrows the window. The old primary stops accepting writes once it has fewer than N replicas acknowledging within <code>min-replicas-max-lag</code> seconds (default 10). Everything written in those ~10 seconds is still lost when it is demoted, and if the old primary's side keeps enough replicas the check never fires at all. Toggle the checkbox above and move replicas around to see both cases. This is the Redis docs' own position: the setting "makes the window of lost writes smaller", it does not eliminate it.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="f3">4. Failure 3: no fencing token for a paused lock holder</h2>
+<p>This failure is independent of replication, and it is the one Martin Kleppmann's Redlock critique centres on. A client acquires a lock with a TTL, then stalls (GC pause, VM migration, swapped out, slow network). The TTL expires, another client takes the lock, and then the first client wakes up and keeps working. <em>No lock service can prevent that wake-up.</em> What a coordination service can do is hand every lock holder a monotonically increasing token, so the downstream resource can reject the stale one. Redis does not have such a token; etcd and ZooKeeper do.</p>
+
+<div class="sim">
+  <div class="bar">
+    <strong>Fencing simulator</strong>
+    <span class="seg" id="fsim-mode">
+      <button data-m="redis" class="on redis">Redis lock (no token)</button>
+      <button data-m="etcd">etcd / ZK lock (revision as fencing token)</button>
+    </span>
+  </div>
+  <div id="seq-fence"></div>
+</div>
+
+<div class="callout">
+<strong>Why not <code>INCR</code> a counter in Redis and use that as the token?</strong> Because the counter lives in the same asynchronously replicated Redis. After the failover in Failure 1 the counter can go <em>backwards</em>, and a token that is not monotonic across failover is not a fencing token. etcd's revision and ZooKeeper's zxid are produced by the consensus log itself, so they are monotonic across any sequence of leader changes. Note Jepsen's 2020 etcd analysis made the same point from the other direction: etcd's lock API is also unsafe as a mutex <em>unless the protected resource checks the revision</em>. The token is only half the mechanism; the storage system has to verify it.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="f4">5. Failure 4: missed notifications (config push, lock release, membership)</h2>
+<p>Service discovery and config management are not "read a key". They are "be told, reliably and in order, every time the key changes". Redis offers Pub/Sub and keyspace notifications, which are fire-and-forget: a message published while a subscriber is disconnected is gone. etcd watches carry a revision and can resume from any revision still in history; ZooKeeper watches are one-shot but ordered with the data and guaranteed not to be silently dropped while the session is alive.</p>
+
+<div class="sim">
+  <div class="bar">
+    <strong>Watch simulator</strong>
+    <span class="seg" id="wsim-mode">
+      <button data-m="redis" class="on redis">Redis keyspace notifications</button>
+      <button data-m="etcd">etcd Watch</button>
+      <button data-m="zk">ZooKeeper watch</button>
+    </span>
+    <button id="wsim-change" class="primary">Change config on server</button>
+    <button id="wsim-conn">Disconnect client</button>
+    <button id="wsim-poll">Client polls (GET)</button>
+    <button id="wsim-reset">Reset</button>
+  </div>
+  <div class="cols">
+    <div class="box"><h4>Server: <code>/config/rate_limit</code></h4><div>value <span class="big" id="wsim-sv">100</span> &nbsp; <span class="muted">rev <span id="wsim-sr">1</span></span></div><div class="muted" id="wsim-hist" style="font-size:13px"></div></div>
+    <div class="box"><h4>Client view <span id="wsim-connlbl" class="fresh">● connected</span></h4><div>value <span class="big" id="wsim-cv">100</span> &nbsp; <span class="muted">last seen rev <span id="wsim-cr">1</span></span></div><div id="wsim-status" style="font-size:13px"></div></div>
+  </div>
+  <div class="log" id="wsim-log" style="margin-top:12px"></div>
+  <p class="muted" style="font-size:13px;margin:10px 0 0">Try: change twice, disconnect, change three times, reconnect. In Redis mode the client stays stale until something polls. In etcd mode the watch resumes from the last revision and replays every missed event in order. In ZooKeeper mode the client gets a disconnect event, re-reads on reconnect, and sees the latest state (intermediate values are not replayed; that is fine for config, and ZK guarantees you never miss the <em>fact</em> that something changed).</p>
+</div>
+
+<div class="callout bad">
+<strong>Why a missed event is worse than it sounds.</strong> For config, a missed event means stale config until the next poll. For a <em>lock queue</em> (waiters watching the holder's key) or <em>leader election</em> (followers watching the leader's ephemeral node), a missed "deleted" event means the waiter never wakes up. The system is stuck with no leader and nobody notices until an alarm fires. Polling "fixes" it at the cost of N clients × poll rate, which is exactly the hot-spot load you were trying to avoid.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="f5">6. Failure 5: stale reads with no way to detect them</h2>
+<p>"Who is the current leader?" is a read. On Redis, if the read goes to a replica it may be arbitrarily stale, and the response contains no version you could compare against anything. On ZooKeeper, a follower may also serve a stale read (reads are sequentially consistent, not linearizable), but every read carries the zxid, and <code>sync()</code> before a read forces linearizability. etcd reads are linearizable by default: the leader confirms it is still leader (ReadIndex) before answering.</p>
+<div id="seq-stale"></div>
+<table>
+<tr><th></th><th>Redis replica read</th><th>ZooKeeper follower read</th><th>etcd read (default)</th></tr>
+<tr><td>Can be stale?</td><td class="bad">Yes, unbounded</td><td class="warn">Yes, bounded by sync lag; <code>sync()</code> removes it</td><td class="good">No (linearizable). <code>--consistency=s</code> opts into stale.</td></tr>
+<tr><td>Version returned?</td><td class="bad">None</td><td class="good">zxid, version, cversion</td><td class="good">revision, mod_revision, version</td></tr>
+<tr><td>Can I tell two clients saw the same state?</td><td class="bad">No</td><td class="good">Compare zxid</td><td class="good">Compare revision</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="objections">7. "But what about…" (objections you will hear in an interview)</h2>
+
+<h3><code>WAIT numreplicas timeout</code></h3>
+<p><code>WAIT 1 1000</code> blocks until at least one replica has acknowledged the write. It raises the odds the write survives, but the Redis docs are explicit that it does not make Redis strongly consistent: Sentinel/Cluster may still promote a replica that did not receive the write (the one that acked may itself be dead or partitioned), and <code>WAIT</code> does not fsync anything (<code>WAITAOF</code> in 7.2 does, locally). Majority ack plus leader completeness is what Raft gives you; <code>WAIT</code> gives you neither.</p>
+
+<h3>Redlock</h3>
+<p>Redlock acquires the lock on N independent Redis masters (majority wins) with a TTL. It fixes the single-node loss in Failure 1 only under timing assumptions: that clocks do not jump and that processes do not pause for longer than the TTL. Kleppmann's critique ("How to do distributed locking", 2016) is that these assumptions are exactly what you cannot make in a real system, and that Redlock has no fencing token (Failure 3). antirez's reply argues the timing assumptions are reasonable in practice. The interview-safe position: Redlock is acceptable for <em>efficiency</em> locks (avoid duplicate work) and not for <em>correctness</em> locks (prevent corruption). The distinction is Kleppmann's and interviewers know it.</p>
+
+<h3>Redis Cluster</h3>
+<p>Changes nothing here. Cluster shards keys across primaries; each shard still uses asynchronous replication and timeout-based failover. The Cluster spec itself says it is "not able to guarantee strong consistency" and gives the lost-write-on-failover example.</p>
+
+<h3>"I'll put <code>appendfsync always</code> on"</h3>
+<p>That makes a single node's writes durable to its own disk. It does nothing for replication or failover, and the acknowledging node's disk is unreachable when that node is the one that is partitioned away.</p>
+
+<h3>"I'll just use SET NX with a TTL and accept the risk"</h3>
+<p>Often the right call, when the thing being protected is idempotent or cheap to redo. State it as a conscious trade: "this is an efficiency lock; duplicate execution is tolerable; I'm choosing Redis for latency and because I already run it". The failure is not choosing Redis, it is choosing it without naming what happens when it lies.</p>
+
+<!-- ============================================================ -->
+<h2 id="how">8. How ZooKeeper and etcd actually get there</h2>
+<p>Both are a replicated log driven by a leader-based consensus protocol, with a small in-memory key-value state machine on top. The guarantees in sections 2–6 all fall out of four mechanical facts:</p>
+<ol>
+<li><strong>Every write goes through the leader</strong> and is appended to a write-ahead log. No write is acknowledged until a majority of nodes have fsynced it. (ZooKeeper: ZAB proposal + ACK + COMMIT. etcd: Raft AppendEntries + majority match index.)</li>
+<li><strong>Elections require a majority</strong>, and a voter refuses to vote for a candidate whose log is behind its own. So the new leader always has every committed write. Two sides of a partition cannot both have a majority.</li>
+<li><strong>The log index is exposed as a version.</strong> ZooKeeper: zxid (64-bit, epoch + counter) and per-znode <code>version</code>. etcd: a cluster-wide <code>revision</code> that increments on every transaction, plus per-key <code>mod_revision</code>. These are your fencing tokens and your CAS targets.</li>
+<li><strong>Liveness is bound to the server-side notion of a client</strong>, not to a key TTL that a client refreshes. ZooKeeper: a session with heartbeats; ephemeral znodes vanish when the session expires, atomically and in log order. etcd: a lease with a TTL and keepalives; keys attached to a lease are deleted when it expires, as a logged transaction (so watchers see it at a specific revision).</li>
+</ol>
+
+<h3>The quorum write, step by step</h3>
+<div id="seq-quorum"></div>
+
+<h3>Data model primitives you build everything from</h3>
+<table>
+<tr><th>Recipe</th><th><span class="pill zk">ZooKeeper</span></th><th><span class="pill etcd">etcd</span></th></tr>
+<tr><td>Leader election</td><td>Each candidate creates an <em>ephemeral sequential</em> znode under <code>/election/</code>; lowest sequence number is leader; each node watches only its predecessor (avoids the herd).</td><td><code>Txn(If create_revision(key)==0).Then(Put key, lease)</code>; or the <code>concurrency.Election</code> package, which uses a prefix and picks the lowest create_revision.</td></tr>
+<tr><td>Lock</td><td>Same pattern under <code>/lock/</code>; the znode's zxid is the fencing token.</td><td><code>concurrency.Mutex</code>: key per waiter under a prefix, lowest create_revision holds; header revision is the fencing token.</td></tr>
+<tr><td>Service registry</td><td>Service creates ephemeral znode <code>/services/api/host:port</code>; consumers <code>getChildren</code> + watch. Crash → session expiry → znode gone → watchers notified.</td><td><code>Put /services/api/host:port</code> with a lease; consumers <code>Get</code> prefix + <code>Watch</code> prefix from that revision.</td></tr>
+<tr><td>Config</td><td><code>setData(path, data, expectedVersion)</code> for CAS; readers watch.</td><td><code>Txn(If mod_revision(key)==N).Then(Put)</code>; readers watch from revision.</td></tr>
+<tr><td>Group membership</td><td>Ephemeral children of a group znode.</td><td>Leased keys under a prefix.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="zk-vs-etcd">9. ZooKeeper vs etcd: when to pick which</h2>
+<table>
+<tr><th></th><th><span class="pill zk">ZooKeeper</span></th><th><span class="pill etcd">etcd</span></th></tr>
+<tr><td>Consensus</td><td>ZAB (ZooKeeper Atomic Broadcast). Leader-based, majority quorum.</td><td>Raft. Leader-based, majority quorum. Equivalent guarantees in practice.</td></tr>
+<tr><td>Data model</td><td>Hierarchical znodes (a tree). Children listing is a first-class op. 1 MB per znode.</td><td>Flat keys in a sorted keyspace; "directories" are prefix range queries. 1.5 MB request limit, 8 GB default DB quota.</td></tr>
+<tr><td>Liveness</td><td>Session (heartbeat) → ephemeral znodes.</td><td>Lease (TTL + keepalive) → attached keys. One lease can cover many keys.</td></tr>
+<tr><td>Sequential nodes</td><td>Built in (<code>CreateMode.EPHEMERAL_SEQUENTIAL</code>). Natural fair queues.</td><td>Emulate with create_revision ordering.</td></tr>
+<tr><td>Watches</td><td>One-shot: fire once, must re-register. Ordered with reads, never silently dropped while session alive. You may miss intermediate <em>values</em>, never the fact of change.</td><td>Streaming: every event, in order, with revision. Resume from any revision not yet compacted. Prefix watches.</td></tr>
+<tr><td>Read consistency</td><td>Sequential consistency from followers; <code>sync()</code> for linearizable.</td><td>Linearizable by default; serializable (possibly stale) on request.</td></tr>
+<tr><td>Versions</td><td>zxid (global), version / cversion / aversion per znode.</td><td>revision (global), mod_revision / create_revision / version per key.</td></tr>
+<tr><td>Transactions</td><td><code>multi()</code>: all-or-nothing batch with version checks.</td><td><code>Txn</code>: If / Then / Else with compares on version, value, revision, lease.</td></tr>
+<tr><td>Client</td><td>Thick Java client; Curator for recipes. Session semantics are subtle (CONNECTIONLOSS vs SESSIONEXPIRED).</td><td>gRPC + HTTP/JSON gateway; thin clients in every language. <code>clientv3/concurrency</code> for recipes.</td></tr>
+<tr><td>Ops</td><td>JVM, <code>zoo.cfg</code>, dynamic reconfiguration since 3.5. Snapshot + txn logs.</td><td>Single Go binary, TLS/RBAC built in, <code>etcdctl</code>, defrag/compaction to manage.</td></tr>
+<tr><td>Ecosystem</td><td>Kafka (before KRaft), HBase, Hadoop HA, Solr, Flink HA, Pulsar, ClickHouse (or Keeper).</td><td>Kubernetes, CoreDNS, Calico, Vitess topology, many Go systems.</td></tr>
+<tr><td>Pick it when</td><td>The platform already depends on it (Kafka/Hadoop/HBase shop), you want native sequential nodes and hierarchy, or the team already operates it.</td><td>Greenfield, Kubernetes-adjacent, you want resumable watches and gRPC clients, or you want linearizable reads without thinking about <code>sync()</code>.</td></tr>
+</table>
+<p class="muted">Consul (Raft, plus health checks and DNS) is the third common answer and is fine to name. Google's Chubby (2006) is the ancestor of all of them; mentioning that the lock-service design pattern comes from Chubby signals you know why it exists.</p>
+
+<!-- ============================================================ -->
+<h2 id="redis-good">10. When Redis is the right answer</h2>
+<p>None of the above says Redis is bad. It says Redis is a data-plane store, not a control-plane store. Reach for Redis when the question is throughput, latency, or data size and a lost or stale value is a performance event rather than a correctness event.</p>
+<table>
+<tr><th>Use case</th><th>Why Redis fits</th><th>What a lost write costs</th></tr>
+<tr><td>Cache</td><td>Sub-ms, 100k+ ops/s, eviction policies</td><td>A cache miss</td></tr>
+<tr><td>Session store</td><td>Fast reads on every request</td><td>A user logs in again</td></tr>
+<tr><td>Rate limiting</td><td><code>INCR</code> + <code>EXPIRE</code>, Lua for sliding windows</td><td>A few extra requests get through</td></tr>
+<tr><td>Leaderboards, counters, geo queries</td><td>Sorted sets, HyperLogLog, GEO</td><td>Slightly wrong number</td></tr>
+<tr><td>Pub/Sub fan-out, Streams</td><td>Millions of messages/s</td><td>At-most-once (Pub/Sub) or redelivery (Streams)</td></tr>
+<tr><td><em>Efficiency</em> lock / de-dup</td><td><code>SET NX PX</code>, cheap</td><td>Duplicate work happens occasionally</td></tr>
+</table>
+<p>The common real-world architecture: etcd or ZooKeeper holds <em>who</em> is leader and <em>which</em> shards exist (kilobytes, a few writes a second). Redis holds the <em>data</em> those leaders serve (gigabytes, tens of thousands of writes a second). Never route data-plane traffic through the coordination service: a 5-node etcd cluster will fall over around 10k writes/s and every write pays a cross-node fsync.</p>
+
+<!-- ============================================================ -->
+<h2 id="decide">11. Decision helper</h2>
+<div class="sim quiz" id="quiz">
+  <fieldset><legend>1. If two processes act on this at the same time, what happens?</legend>
+    <label><input type="radio" name="q1" value="eff"> Wasted work, a duplicate email, a cache refresh done twice. Annoying but recoverable.</label>
+    <label><input type="radio" name="q1" value="corr"> Corrupted data, a double charge, two leaders writing to the same shard. Not recoverable without manual repair.</label>
+  </fieldset>
+  <fieldset><legend>2. Do other processes need to be told reliably when this value changes?</legend>
+    <label><input type="radio" name="q2" value="poll"> No, polling every few seconds is fine, or it's read on demand.</label>
+    <label><input type="radio" name="q2" value="watch"> Yes. A missed change means a stuck waiter, a stale leader, or a wrong routing table.</label>
+  </fieldset>
+  <fieldset><legend>3. How much traffic hits this store?</legend>
+    <label><input type="radio" name="q3" value="low"> A few writes per second, kilobytes to megabytes of total state.</label>
+    <label><input type="radio" name="q3" value="high"> Thousands of writes per second, or gigabytes of state.</label>
+  </fieldset>
+  <div class="result" id="quiz-result"><span class="muted">Answer all three to get a recommendation.</span></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="interview">12. Interview phrasing and cheat sheet</h2>
+<div class="callout good">
+<strong>Say it proactively, in one breath, before the interviewer asks "why not Redis":</strong><br>
+"For the coordination piece, leader election and shard ownership, I want a store whose acknowledgement means a majority has durably committed the write, that gives me a monotonic revision I can use as a fencing token, and whose watches can't silently drop a change. That's etcd or ZooKeeper, and it only has to handle a few writes a second. Redis acks on one node's RAM with async replication, so an acked lock can vanish on failover and both sides of a partition can accept writes. I'll still use Redis for the hot data path, where a lost write is a cache miss, not a correctness bug."
+</div>
+<p>Follow-ups you should be ready for, with the one-line answer:</p>
+<ul>
+<li><strong>"Can't WAIT fix it?"</strong> No majority election semantics; a replica that never got the write can still be promoted.</li>
+<li><strong>"What about Redlock?"</strong> Fine for efficiency locks; no fencing token and timing-dependent, so not for correctness locks.</li>
+<li><strong>"Doesn't etcd have the GC-pause problem too?"</strong> Yes. Nothing prevents a stale holder from waking up. etcd gives you the revision so the <em>resource</em> can reject it. The resource must check.</li>
+<li><strong>"Why not put everything in etcd then?"</strong> Every write is a cross-node fsync. ~10k writes/s, small values, and compaction to manage. It is a control plane.</li>
+<li><strong>"ZooKeeper or etcd?"</strong> Same guarantees. ZK if the ecosystem already has it or you want sequential ephemeral nodes; etcd if greenfield, k8s-adjacent, or you want resumable watches and linearizable reads by default.</li>
+<li><strong>"How does the leader know it is still the leader?"</strong> It doesn't, in the absolute. It holds a lease/session and must stop acting when it cannot renew within the timeout, and downstream writes carry the fencing token.</li>
+</ul>
+
+<h3>Cheat sheet</h3>
+<table>
+<tr><th>Property</th><th><span class="pill redis">Redis</span></th><th><span class="pill zk">ZooKeeper</span></th><th><span class="pill etcd">etcd</span></th></tr>
+<tr><td>Replication</td><td>Async, primary → replicas</td><td>ZAB, majority fsync</td><td>Raft, majority fsync</td></tr>
+<tr><td>Failover</td><td>Sentinel / Cluster, timeout-based, can lose acked writes</td><td>Leader election, no committed write lost</td><td>Leader election, no committed write lost</td></tr>
+<tr><td>Partition behaviour</td><td>Both sides may accept writes (AP-ish, then discard)</td><td>Minority side read-only / unavailable (CP)</td><td>Minority side unavailable (CP)</td></tr>
+<tr><td>Version / fencing</td><td>None durable</td><td>zxid, version</td><td>revision, mod_revision</td></tr>
+<tr><td>CAS</td><td><code>SET NX</code>, <code>WATCH/MULTI</code>, Lua (per node)</td><td><code>setData(v)</code>, <code>create</code>, <code>multi</code></td><td><code>Txn</code> If/Then/Else</td></tr>
+<tr><td>Liveness</td><td>Key TTL refreshed by client</td><td>Session → ephemeral znodes</td><td>Lease → attached keys</td></tr>
+<tr><td>Notifications</td><td>Pub/Sub, at-most-once, no replay</td><td>One-shot watches, ordered, not dropped</td><td>Streaming watches, resumable by revision</td></tr>
+<tr><td>Reads</td><td>Replica reads stale, no version</td><td>Sequential; <code>sync()</code> for linearizable</td><td>Linearizable default</td></tr>
+<tr><td>Throughput</td><td>100k+ ops/s/node</td><td>~10k writes/s cluster</td><td>~10k writes/s cluster</td></tr>
+<tr><td>Data size</td><td>GBs+</td><td>MBs, 1 MB/znode</td><td>GBs quota, 1.5 MB/request, keep small</td></tr>
+<tr><td>Best for</td><td>Cache, sessions, rate limits, leaderboards, queues, efficiency locks</td><td>Election, locks, membership, config for Hadoop-era stacks</td><td>k8s control plane, discovery, config, election, locks</td></tr>
+</table>
+
+<h2 id="drain">13. Worked design: graceful drain with gradual session migration</h2>
+<p>Scenario: five nodes on a consistent hash ring; sessions hash to one of 4096 partitions and partitions are assigned to nodes by the ring. Node1 is asked to shut down. It must stop taking new sessions but keep serving and holding state for its existing sessions until each has been handed off. A session-manager leader (elected via etcd) drives the migration; standby session managers see the same etcd state but do nothing until one of them becomes leader.</p>
+
+<div class="callout warn">
+<strong>One change to the stated design: Node1 must <em>not</em> give up its lease at the start.</strong> A lease that disappears is indistinguishable from a crash, and the crash path (instant reassignment, state rebuilt or lost) is exactly what a graceful drain is trying to avoid. Instead Node1 keeps its lease alive and flips its registration to <code>DRAINING</code>. It revokes the lease only after the last session has moved. If Node1 dies mid-drain, the lease expires and the leader falls back to the crash path for whatever had not migrated yet, which is the correct degradation.
+</div>
+
+<div id="seq-drain"></div>
+
+<h3>Design notes that the diagram relies on</h3>
+<ul>
+<li><strong>The coordination unit is the partition, not the session.</strong> Sessions hash to one of a fixed number of partitions (4096 here; Redis Cluster uses 16384 slots, Cassandra uses vnodes, Kafka uses partitions). etcd holds <code>/partitions/Pn = {owner, epoch, state}</code>: thousands of keys, two writes per partition per move. A design that writes a key per session into etcd does not survive a million sessions, and migrating 10k sessions an hour would be 10k consensus writes an hour for no benefit.</li>
+<li><strong>Two rings during a drain.</strong> The <em>routing</em> ring (epoch 100) still includes Node1, so existing partitions stay reachable. The <em>placement</em> ring (epoch 101) excludes Node1, so no new session lands there. Both live in the one <code>/ring</code> key; routing flips at the end.</li>
+<li><strong>Per-partition state machine: STABLE(node1) → MIGRATING(node1→node3) → STABLE(node3).</strong> While MIGRATING, the source serves sessions it still holds and answers <code>ASK target</code> for ones already moved; the target serves what it has and bounces (or pulls on demand) what it does not. This is Redis Cluster's slot-migration protocol (<code>CLUSTER SETSLOT … MIGRATING / IMPORTING</code>, <code>ASK</code> redirects), and it is safe to name as the precedent.</li>
+<li><strong>The per-session loop is pairwise.</strong> Source freezes the session, transfers, target acks and serves. Only two nodes are ever involved and both carry the partition epoch, so at most one node serves a session at any instant without any central record of that session.</li>
+<li><strong>Fencing token = partition epoch.</strong> Every write to the durable session store carries it; the store rejects a lower epoch for that partition. A Node1 that missed the handoff cannot overwrite Node3's work.</li>
+<li><strong>Every leader write is a Txn conditioned on the leader key.</strong> <code>If create_revision(/leader/sm) == &lt;my election revision&gt;</code>. A deposed leader cannot corrupt the ring or partition map.</li>
+<li><strong>Leader only sequences; it is not on the data path.</strong> It chooses which K partitions are MIGRATING at once (the gradualness knob) and records transitions. If it dies, in-flight partition migrations keep going; the new leader reads the <code>/partitions/</code> prefix and resumes.</li>
+<li><strong>Standbys watch, never act.</strong> Their view is warm; on leader-key expiry one campaigns and continues.</li>
+<li><strong>Clients heal by redirect.</strong> <code>ASK</code> during migration, partition-map watch for the final flip. No central "where is session_i" lookup on the hot path.</li>
+<li><strong>Crash degradation.</strong> Node1 dying mid-drain expires its lease; the leader sets its remaining partitions to their ring-101 owners at a higher epoch; targets rebuild missing sessions from the durable store. Graceful degrades to crash semantics, never to two owners.</li>
+</ul>
+
+<h2 id="sources">Sources</h2>
+<ul style="font-size:14.5px">
+<li>Redis docs: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/replication/">Replication</a> (asynchronous by default, <code>min-replicas-to-write</code>), <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/">Sentinel</a> (lost-writes-under-partition example), <a href="https://redis.io/docs/latest/commands/wait/">WAIT</a> ("does not make Redis a strongly consistent store"), <a href="https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/">Cluster spec</a> (consistency guarantees), <a href="https://redis.io/docs/latest/develop/use/patterns/distributed-locks/">Distributed locks / Redlock</a>.</li>
+<li>Martin Kleppmann, <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html">How to do distributed locking</a> (2016); antirez, <a href="http://antirez.com/news/101">Is Redlock safe?</a> (reply). Kleppmann, <em>Designing Data-Intensive Applications</em>, ch. 8–9 (fencing tokens, linearizability, consensus).</li>
+<li>Hunt, Konar, Junqueira, Reed, <a href="https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf">ZooKeeper: Wait-free coordination for Internet-scale systems</a> (USENIX ATC 2010). <a href="https://zookeeper.apache.org/doc/current/zookeeperProgrammers.html#ch_zkGuarantees">ZooKeeper Programmer's Guide: consistency guarantees</a>.</li>
+<li>Ongaro, Ousterhout, <a href="https://raft.github.io/raft.pdf">In Search of an Understandable Consensus Algorithm</a> (Raft, 2014). etcd docs: <a href="https://etcd.io/docs/latest/learning/api_guarantees/">API guarantees</a>, <a href="https://etcd.io/docs/latest/learning/why/">Why etcd</a> (comparison with ZooKeeper, Consul, and key-value stores), <a href="https://etcd.io/docs/latest/learning/api/">API: revisions, leases, watches, Txn</a>.</li>
+<li>Jepsen analyses: <a href="https://aphyr.com/posts/283-jepsen-redis">Redis</a> (2013, Sentinel loses acked writes), <a href="https://jepsen.io/analyses/redis-raft-1b3fbf6">Redis-Raft</a> (2020), <a href="https://aphyr.com/posts/291-jepsen-zookeeper">ZooKeeper</a> (2013), <a href="https://jepsen.io/analyses/etcd-3.4.3">etcd 3.4.3</a> (2020, locks require fencing).</li>
+<li>Burrows, <a href="https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/">The Chubby lock service for loosely-coupled distributed systems</a> (OSDI 2006).</li>
+</ul>
+<footer>Generated 2026-10-04 for interview prep. Self-contained; no external scripts.</footer>
+</main>
+</div>
+
+<script>
+/* ---------- sequence diagram engine ---------- */
+(function(){
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+window.seqDiagram=function(containerId,spec){
+  const container=document.getElementById(containerId);
+  container.innerHTML='';container.classList.add('seq-wrap');
+  const actors=spec.actors,steps=spec.steps;
+  const colW=spec.colW||190,padX=colW/2+10,headH=42,top=12,rowH=spec.rowH||46;
+  const n=actors.length,W=padX*2+colW*(n-1),H=top+headH+rowH*(steps.length+1);
+  const xOf=i=>padX+colW*i;
+  const ix=id=>{const i=actors.findIndex(a=>a.id===id);if(i<0)throw new Error('unknown actor '+id);return i;};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,class:'seq'});
+  const defs=el('defs',{},svg);
+  ['default','bad','good','warn','muted'].forEach(c=>{const m=el('marker',{id:`arr-${containerId}-${c}`,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'8',markerHeight:'8',orient:'auto-start-reverse'},defs);el('path',{d:'M0,0 L10,5 L0,10 z',class:`arrhead ${c}`},m);});
+  actors.forEach((a,i)=>{const g=el('g',{class:'actor '+(a.cls||'')},svg);const x=xOf(i);
+    el('rect',{x:x-colW/2+10,y:top,width:colW-20,height:headH-10,rx:6},g);
+    el('text',{x,y:top+(headH-10)/2+4.5,'text-anchor':'middle',class:'actor-label'},g,a.label);
+    el('line',{x1:x,y1:top+headH,x2:x,y2:H-4,class:'lifeline'},g);});
+  const marker=c=>`url(#arr-${containerId}-${c||'default'})`;
+  steps.forEach((s,i)=>{const y=top+headH+rowH*(i+1);const g=el('g',{class:`step kind-${s.kind} ${s.cls||''}`},svg);
+    if(s.kind==='msg'||s.kind==='reply'||s.kind==='lost'){
+      const x1=xOf(ix(s.from)),x2=xOf(ix(s.to)),dir=x2>x1?1:-1;let xe=x2-dir*6;
+      if(s.kind==='lost')xe=x1+(x2-x1)*0.55;
+      const line=el('line',{x1,y1:y,x2:xe,y2:y,class:'arrow'},g);
+      if(s.kind!=='lost')line.setAttribute('marker-end',marker(s.cls));
+      if(s.kind==='reply')line.setAttribute('stroke-dasharray','6 4');
+      if(s.kind==='lost'){const xx=xe+dir*8;el('path',{d:`M${xx-6},${y-6} L${xx+6},${y+6} M${xx+6},${y-6} L${xx-6},${y+6}`,class:'lostx'},g);}
+      el('text',{x:(x1+x2)/2,y:y-7,'text-anchor':'middle',class:'msg-label'},g,s.label);
+    }else if(s.kind==='self'){const x=xOf(ix(s.at));
+      el('path',{d:`M${x},${y-14} h26 v22 h-20`,class:'arrow',fill:'none','marker-end':marker(s.cls)},g);
+      el('text',{x:x+34,y:y-1,class:'msg-label left'},g,s.label);
+    }else if(s.kind==='note'){const ids=s.over||[s.at];const xs=ids.map(id=>xOf(ix(id)));
+      const x1=Math.min(...xs)-colW/2+14,x2=Math.max(...xs)+colW/2-14;
+      el('rect',{x:x1,y:y-16,width:x2-x1,height:30,rx:4,class:'note'},g);
+      el('text',{x:(x1+x2)/2,y:y+3.5,'text-anchor':'middle',class:'note-label'},g,s.label);
+    }else if(s.kind==='state'){el('rect',{x:16,y:y-16,width:W-32,height:30,rx:6,class:'state'},g);
+      el('text',{x:W/2,y:y+4,'text-anchor':'middle',class:'state-label'},g,s.label);
+    }else if(s.kind==='crash'){const x=xOf(ix(s.at));
+      el('path',{d:`M${x-10},${y-10} L${x+10},${y+10} M${x+10},${y-10} L${x-10},${y+10}`,class:'crashx'},g);
+      el('line',{x1:x,y1:y+10,x2:x,y2:H-4,class:'lifeline dead'},g);
+      el('text',{x:x+16,y:y+4,class:'msg-label left bad'},g,s.label||'crash');}
+  });
+  const ctr=document.createElement('div');ctr.className='seq-controls';
+  ctr.innerHTML='<button data-a="reset">⟲ Reset</button><button data-a="prev">◀ Prev</button><button data-a="next" class="primary">Next ▶</button><button data-a="all">Show all</button><span class="seq-pos"></span>';
+  const cap=document.createElement('div');cap.className='seq-caption';
+  container.appendChild(ctr);container.appendChild(svg);container.appendChild(cap);
+  let cur=-1;
+  function render(){svg.querySelectorAll('.step').forEach((g,i)=>{g.classList.toggle('shown',i<=cur);g.classList.toggle('cur',i===cur);});
+    ctr.querySelector('.seq-pos').textContent=`${cur+1} / ${steps.length}`;
+    if(cur<0){cap.innerHTML='<em>'+(spec.intro||'Click Next to step through.')+'</em>';cap.className='seq-caption';}
+    else{const s=steps[cur];cap.innerHTML='<strong>Step '+(cur+1)+'.</strong> '+(s.caption||s.label);cap.className='seq-caption '+(s.cls||'');}}
+  ctr.addEventListener('click',e=>{const a=e.target.dataset.a;if(!a)return;
+    if(a==='reset')cur=-1;else if(a==='prev')cur=Math.max(-1,cur-1);else if(a==='next')cur=Math.min(steps.length-1,cur+1);else if(a==='all')cur=steps.length-1;render();});
+  render();
+};
+})();
+
+/* ---------- Diagram: Redis lock lost on failover ---------- */
+seqDiagram('seq-redis-lock',{
+  intro:'Two clients want a lock. Redis primary with one replica, Sentinel watching. Step through to see where the guarantee breaks.',
+  actors:[{id:'A',label:'Client A',cls:'client'},{id:'B',label:'Client B',cls:'client'},{id:'P',label:'Redis Primary',cls:'redis'},{id:'R',label:'Redis Replica',cls:'redis'},{id:'S',label:'Sentinel',cls:'redis'}],
+  steps:[
+    {kind:'msg',from:'A',to:'P',label:'SET lock A NX PX 30000',caption:'Client A asks for the lock. <code>NX</code> = set only if absent, <code>PX</code> = 30 s TTL. This is the textbook Redis lock.'},
+    {kind:'self',at:'P',label:'lock=A in RAM',caption:'Primary writes the key in memory. With default config nothing is fsynced and no replica has been contacted yet.'},
+    {kind:'reply',from:'P',to:'A',label:'OK',cls:'good',caption:'Primary acknowledges. Client A now believes it holds the lock. <strong>What OK means here: one process\'s RAM contains the key.</strong>'},
+    {kind:'lost',from:'P',to:'R',label:'replication stream: SET lock A',cls:'bad',caption:'Replication is asynchronous: the primary pushes the command to the replica <em>after</em> replying. Here the primary dies before the bytes leave the box (or they are in flight and dropped).'},
+    {kind:'crash',at:'P',label:'primary crashes',cls:'bad',caption:'Process killed, kernel panic, host loses power, or just a network partition that isolates the primary. Same effect for this scenario.'},
+    {kind:'note',at:'S',label:'down-after-milliseconds elapses',caption:'Sentinel notices the primary is unreachable. By default it waits 30 s; meanwhile A is doing its "exclusive" work.'},
+    {kind:'msg',from:'S',to:'R',label:'promote (REPLICAOF NO ONE)',caption:'Sentinels agree (quorum) and promote the replica. The replica never received <code>SET lock A</code>. From its point of view, no lock exists.'},
+    {kind:'msg',from:'B',to:'R',label:'SET lock B NX PX 30000',caption:'Client B, pointed at the new primary by Sentinel, tries to take the lock.'},
+    {kind:'reply',from:'R',to:'B',label:'OK',cls:'bad',caption:'<code>NX</code> succeeds because the key is absent. Client B now also believes it holds the lock. Both clients are inside the critical section.'},
+    {kind:'state',label:'⚠ Two clients hold the same lock. Mutual exclusion is violated.',cls:'bad',caption:'Nobody did anything wrong at the application level. The failure is in what Redis\'s OK promised versus what it delivered. Jepsen demonstrated this in 2013 against Sentinel.'},
+    {kind:'note',over:['A','B'],label:'both write the shared resource → corruption / double processing',cls:'bad',caption:'If the lock guarded "process this payment once" or "only one node compacts this SSTable", the damage is now done. Whether this matters is the efficiency-vs-correctness question in section 7.'}
+  ]});
+
+/* ---------- Diagram: etcd lock survives failover ---------- */
+seqDiagram('seq-etcd-lock',{
+  intro:'Same two clients, same crash. Three etcd nodes running Raft.',
+  actors:[{id:'A',label:'Client A',cls:'client'},{id:'B',label:'Client B',cls:'client'},{id:'L',label:'etcd n1 (leader)',cls:'etcd'},{id:'F2',label:'etcd n2',cls:'etcd'},{id:'F3',label:'etcd n3',cls:'etcd'}],
+  steps:[
+    {kind:'msg',from:'A',to:'L',label:'Txn: if create_rev(/lock)==0 → Put /lock=A lease L1',caption:'Client A asks for the lock as a transaction: "if the key has never been created, create it, attached to my lease L1". Lease L1 has a TTL that A keeps alive with heartbeats.'},
+    {kind:'self',at:'L',label:'append idx 42 to WAL, fsync',caption:'The leader appends the entry to its write-ahead log and fsyncs. It does <em>not</em> reply yet.'},
+    {kind:'msg',from:'L',to:'F2',label:'AppendEntries(idx 42)',caption:'Leader replicates the entry to followers in parallel.'},
+    {kind:'msg',from:'L',to:'F3',label:'AppendEntries(idx 42)',cls:'muted',caption:'n3 is slow (GC, disk stall, lossy link). Raft does not wait for it.'},
+    {kind:'self',at:'F2',label:'append, fsync',caption:'n2 persists the entry to its own disk.'},
+    {kind:'reply',from:'F2',to:'L',label:'ack idx 42',caption:'n2 acknowledges. Leader + n2 = 2 of 3 = majority. The entry is now <strong>committed</strong>: it exists on disk on a majority of nodes.'},
+    {kind:'reply',from:'L',to:'A',label:'OK, revision 42',cls:'good',caption:'Only now does the leader answer. <strong>What OK means here: a majority of nodes have fsynced this write, and it has a cluster-wide monotonic revision (42).</strong> Note this took a cross-node round trip plus two fsyncs, which is why it is ~1–10 ms rather than ~0.1 ms.'},
+    {kind:'crash',at:'L',label:'leader crashes',cls:'bad',caption:'Same crash as the Redis scenario, at the same moment: right after the ack.'},
+    {kind:'note',over:['F2','F3'],label:'election: n2 has idx 42, n3 does not',caption:'Followers time out and start an election. Raft\'s voting rule: a node refuses to vote for a candidate whose log is less up-to-date than its own. n2 will not vote for n3; n3 cannot reach a majority without n2. So n2 wins (or n3 first catches up).'},
+    {kind:'note',at:'F2',label:'n2 is leader; /lock=A (rev 42) is present',cls:'good',caption:'This is Raft\'s <em>Leader Completeness</em> property: every committed entry is in the log of every future leader. Lease L1 is also replicated state, so the lock\'s liveness tracking continues on the new leader.'},
+    {kind:'msg',from:'B',to:'F2',label:'Txn: if create_rev(/lock)==0 → Put /lock=B',caption:'Client B tries the same transaction against the new leader.'},
+    {kind:'reply',from:'F2',to:'B',label:'FAILED (compare false): /lock exists, rev 42',cls:'good',caption:'The compare fails. B is told the lock is held, and gets revision 42 so it can watch for the key\'s deletion and wake exactly when A releases or A\'s lease expires.'},
+    {kind:'state',label:'✓ Exactly one holder. The lock survived the leader failure.',cls:'good',caption:'Same crash, opposite outcome, because the acknowledgement was deferred until a majority had the write.'}
+  ]});
+
+/* ---------- Diagram: fencing, two variants ---------- */
+const fenceRedis={
+  intro:'Client A takes a Redis lock, then pauses. No replication failure anywhere in this scenario; the problem is different.',
+  actors:[{id:'A',label:'Client A',cls:'client'},{id:'B',label:'Client B',cls:'client'},{id:'L',label:'Redis lock',cls:'redis'},{id:'S',label:'Storage / DB',cls:'store'}],
+  steps:[
+    {kind:'msg',from:'A',to:'L',label:'SET lock A NX PX 10000',caption:'A takes the lock with a 10 s TTL.'},
+    {kind:'reply',from:'L',to:'A',label:'OK',cls:'good',caption:'A holds the lock and starts a job that normally takes 2 s.'},
+    {kind:'self',at:'A',label:'stop-the-world pause, 15 s',cls:'warn',caption:'GC pause, VM live-migration, page-in from swap, a synchronous disk fsync, or the OS deschedules the process. A\'s lock-renewal timer is frozen along with everything else. A cannot notice this is happening.'},
+    {kind:'self',at:'L',label:'TTL expires → DEL lock',caption:'Redis deletes the key at 10 s. From Redis\'s point of view the lock is free.'},
+    {kind:'msg',from:'B',to:'L',label:'SET lock B NX PX 10000',caption:'B asks for the lock.'},
+    {kind:'reply',from:'L',to:'B',label:'OK',caption:'B legitimately gets it. So far every component behaved correctly.'},
+    {kind:'msg',from:'B',to:'S',label:'write(record, v2)',caption:'B does its work and writes the result.'},
+    {kind:'reply',from:'S',to:'B',label:'OK',cls:'good',caption:'Storage accepts. The record is now v2.'},
+    {kind:'note',at:'A',label:'pause ends; A resumes mid-critical-section',cls:'warn',caption:'A wakes up and continues from exactly where it left off. It has no idea 15 s passed. It still believes it holds the lock, and it did check the lock before it paused.'},
+    {kind:'msg',from:'A',to:'S',label:'write(record, v1-stale)',cls:'bad',caption:'A writes its (now stale) result.'},
+    {kind:'reply',from:'S',to:'A',label:'OK',cls:'bad',caption:'Storage has no way to know that A\'s claim to the lock expired. The write looks like any other write.'},
+    {kind:'state',label:'⚠ B\'s write is overwritten by a client that no longer holds the lock.',cls:'bad',caption:'Redis gave A nothing it could pass along to prove "I am the current holder". An <code>INCR</code> counter would not help either, because it rolls back on failover (Failure 1).'}
+  ]};
+const fenceEtcd={
+  intro:'Same pause, but the lock service hands out a monotonic revision and the storage system checks it.',
+  actors:[{id:'A',label:'Client A',cls:'client'},{id:'B',label:'Client B',cls:'client'},{id:'L',label:'etcd / ZK',cls:'etcd'},{id:'S',label:'Storage / DB',cls:'store'}],
+  steps:[
+    {kind:'msg',from:'A',to:'L',label:'Put /lock=A lease L1',caption:'A takes the lock, attached to lease L1 (10 s TTL, kept alive by A).'},
+    {kind:'reply',from:'L',to:'A',label:'OK, revision 33',cls:'good',caption:'The ack carries revision 33. In etcd this is the cluster-wide <code>mod_revision</code>; in ZooKeeper it is the znode\'s zxid. It is produced by the consensus log, so it is monotonic across failovers.'},
+    {kind:'self',at:'A',label:'stop-the-world pause, 15 s',cls:'warn',caption:'Same pause. etcd cannot prevent this any more than Redis can. A\'s keepalives stop.'},
+    {kind:'self',at:'L',label:'lease L1 expires → DEL /lock (rev 34)',caption:'The lease expires and the key is deleted. The deletion is itself a logged transaction at revision 34, so watchers see it at a precise point in history.'},
+    {kind:'msg',from:'B',to:'L',label:'Put /lock=B lease L2',caption:'B takes the lock.'},
+    {kind:'reply',from:'L',to:'B',label:'OK, revision 35',caption:'B\'s token is 35. Strictly greater than A\'s 33, always.'},
+    {kind:'msg',from:'B',to:'S',label:'write(record, v2, token=35)',caption:'B includes its token with the write. This is the part of the protocol that lives <em>outside</em> the lock service.'},
+    {kind:'note',at:'S',label:'highest token seen for record: 35',caption:'Storage remembers the highest token per protected resource (one extra column, or a conditional write on the token).'},
+    {kind:'reply',from:'S',to:'B',label:'OK',cls:'good',caption:'Accepted.'},
+    {kind:'note',at:'A',label:'pause ends; A resumes mid-critical-section',cls:'warn',caption:'A wakes up with the same false belief as before.'},
+    {kind:'msg',from:'A',to:'S',label:'write(record, v1, token=33)',cls:'warn',caption:'A sends its stale write, carrying the token it was given.'},
+    {kind:'reply',from:'S',to:'A',label:'REJECTED: 33 < 35',cls:'good',caption:'Storage rejects it. A now learns it lost the lock and can abort or retry from scratch.'},
+    {kind:'state',label:'✓ Stale writer fenced off. The lock service supplied the token; the storage enforced it.',cls:'good',caption:'This is why Jepsen\'s etcd report says etcd locks are unsafe as mutexes <em>unless</em> the protected resource checks the revision. The token is necessary, not sufficient. ZooKeeper\'s zxid and HBase/HDFS fencing work the same way.'}
+  ]};
+seqDiagram('seq-fence',fenceRedis);
+document.getElementById('fsim-mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#fsim-mode button').forEach(x=>{x.classList.remove('on','redis','etcd');});b.classList.add('on',b.dataset.m);
+  seqDiagram('seq-fence',b.dataset.m==='redis'?fenceRedis:fenceEtcd);});
+
+/* ---------- Diagram: stale read ---------- */
+seqDiagram('seq-stale',{
+  intro:'"Who is the leader?" asked against a replica/follower in each system.',
+  colW:200,
+  actors:[{id:'C',label:'Client',cls:'client'},{id:'RR',label:'Redis replica',cls:'redis'},{id:'ZF',label:'ZK follower',cls:'zk'},{id:'EF',label:'etcd follower',cls:'etcd'}],
+  steps:[
+    {kind:'note',over:['RR','ZF','EF'],label:'leader changed from n1 → n2 one second ago; this node has not caught up',caption:'All three nodes are behind. The question is what the client can know about that.'},
+    {kind:'msg',from:'C',to:'RR',label:'GET leader',caption:'Redis replica read.'},
+    {kind:'reply',from:'RR',to:'C',label:'"n1"',cls:'bad',caption:'Stale answer, no version attached, no way to detect it. The client will send traffic to a node that is no longer leader.'},
+    {kind:'msg',from:'C',to:'ZF',label:'getData(/leader)',caption:'ZooKeeper follower read, no sync.'},
+    {kind:'reply',from:'ZF',to:'C',label:'"n1", zxid 0x5e',cls:'warn',caption:'Possibly stale, but tagged with zxid 0x5e. The client can compare zxids across reads, and ZooKeeper guarantees it never sees state older than something it has already seen (sequential consistency per client).'},
+    {kind:'msg',from:'C',to:'ZF',label:'sync(/leader); getData(/leader)',caption:'<code>sync()</code> forces the follower to catch up with the leader before the read is served.'},
+    {kind:'reply',from:'ZF',to:'C',label:'"n2", zxid 0x61',cls:'good',caption:'Now linearizable. Costs a round trip to the leader.'},
+    {kind:'msg',from:'C',to:'EF',label:'Get /leader (linearizable, default)',caption:'etcd default read.'},
+    {kind:'self',at:'EF',label:'ReadIndex → leader confirms commit index',caption:'The follower asks the leader for its current commit index and waits until its own state machine has applied up to it. The leader confirms it is still leader by a heartbeat round.'},
+    {kind:'reply',from:'EF',to:'C',label:'"n2", revision 61',cls:'good',caption:'Linearizable by default, with revision. <code>--consistency=s</code> (serializable) opts into a cheaper, possibly stale read when you explicitly want that.'}
+  ]});
+
+/* ---------- Diagram: quorum write (ZAB-flavoured) ---------- */
+seqDiagram('seq-quorum',{
+  intro:'A ZooKeeper setData, same shape as a Raft Put. 5 nodes so the majority is 3.',
+  colW:160,
+  actors:[{id:'C',label:'Client',cls:'client'},{id:'L',label:'Leader',cls:'zk'},{id:'F1',label:'Follower 1',cls:'zk'},{id:'F2',label:'Follower 2',cls:'zk'},{id:'F3',label:'Follower 3',cls:'zk'},{id:'F4',label:'Follower 4',cls:'zk'}],
+  steps:[
+    {kind:'msg',from:'C',to:'F1',label:'setData(/cfg, v, version=7)',caption:'Clients may connect to any node. Reads are served locally; writes are forwarded to the leader.'},
+    {kind:'msg',from:'F1',to:'L',label:'forward write',caption:'Follower forwards to the leader. All writes are totally ordered by the leader.'},
+    {kind:'self',at:'L',label:'assign zxid 0x3a; PROPOSE',caption:'Leader assigns the next zxid (epoch + counter), appends to its txn log, fsyncs, and broadcasts a PROPOSE to all followers.'},
+    {kind:'msg',from:'L',to:'F1',label:'PROPOSE 0x3a',cls:'muted'},
+    {kind:'msg',from:'L',to:'F2',label:'PROPOSE 0x3a',cls:'muted'},
+    {kind:'msg',from:'L',to:'F3',label:'PROPOSE 0x3a',cls:'muted',caption:'Proposals go to everyone (F4 too; omitted for space).'},
+    {kind:'reply',from:'F1',to:'L',label:'ACK (after fsync)',caption:'Each follower appends to its own log, fsyncs, then ACKs.'},
+    {kind:'reply',from:'F2',to:'L',label:'ACK (after fsync)',caption:'Leader + F1 + F2 = 3 of 5. Majority reached. F3 and F4 are not needed for this write.'},
+    {kind:'self',at:'L',label:'COMMIT 0x3a; apply to in-memory tree',caption:'Leader commits, applies to its data tree, and broadcasts COMMIT. Watchers on /cfg are triggered as part of applying the change, in zxid order.'},
+    {kind:'msg',from:'L',to:'F1',label:'COMMIT 0x3a',cls:'muted'},
+    {kind:'reply',from:'F1',to:'C',label:'OK, new version=8, zxid 0x3a',cls:'good',caption:'Client is told the write committed, with its new version and zxid. If the compare (version=7) had failed, the client would get BadVersion and nothing would be written.'},
+    {kind:'state',label:'Cost of this guarantee: 1 cross-node RTT + 2 fsyncs on the critical path. ~1–10 ms per write, ~10k writes/s per cluster.',cls:'warn',caption:'Every write pays this. That is why coordination services hold small, rarely-changing state, and why Redis can be 10–100× faster: it skips all of it.'}
+  ]});
+
+/* ---------- Partition simulator ---------- */
+(function(){
+const st={mode:'redis',side:{N1:'A',N2:'A',N3:'B',N4:'B',N5:'B'},minrep:false};
+const Achips=document.getElementById('psim-A-chips'),Bchips=document.getElementById('psim-B-chips');
+function role(n){if(st.mode==='redis')return n==='N1'?'primary + sentinel':'replica + sentinel';return n==='N1'?'leader':'follower';}
+function render(){
+  Achips.innerHTML='';Bchips.innerHTML='';
+  for(const n of Object.keys(st.side)){const c=document.createElement('div');c.className='chip'+(n==='N1'?' leader':'');c.textContent=`${n} · ${role(n)}`;c.title='click to move across the partition';
+    c.onclick=()=>{st.side[n]=st.side[n]==='A'?'B':'A';render();};(st.side[n]==='A'?Achips:Bchips).appendChild(c);}
+  const cnt={A:0,B:0};for(const n in st.side)cnt[st.side[n]]++;
+  const out={},cls={};let writable={A:false,B:false};
+  if(st.mode==='redis'){
+    const pside=st.side.N1;
+    for(const s of ['A','B']){const nodes=cnt[s],hasP=s===pside,replicas=nodes-(hasP?1:0),sentinels=nodes;const client=s==='A'?'Client X':'Client Y';
+      if(hasP){
+        if(st.minrep&&replicas<2){out[s]=`<b>Old primary N1</b> is here with ${replicas} replica(s). With <code>min-replicas-to-write 2</code> it keeps accepting ${client}'s writes for up to <code>max-lag</code> (~10 s), then returns errors. <span class="stale">Writes in that window are still accepted and will be lost if the other side fails over.</span>`;writable[s]='window';}
+        else{out[s]=`<b>Old primary N1</b> is here. It cannot see the other side but has no way to know it has been "replaced". It keeps accepting <b>${client}</b>'s writes and replicating to its ${replicas} local replica(s).`;writable[s]=true;}
+      }else{
+        if(sentinels>=3&&replicas>=1){out[s]=`${sentinels} Sentinels here see N1 as down (quorum 3 reached, majority available for authorisation). They <b>promote a replica</b> to primary and redirect <b>${client}</b> to it. Writes accepted.`;writable[s]=true;}
+        else if(replicas>=1){out[s]=`Only ${sentinels} Sentinel(s) here: below quorum, no failover. Replicas serve <span class="stale">stale reads</span>; writes from ${client} fail with READONLY.`;}
+        else{out[s]=`No Redis nodes here. ${client} gets connection errors.`;}
+      }
+      cls[s]=writable[s]?'writable':'readonly';}
+    const both=(writable.A&&writable.B);
+    const v=document.getElementById('psim-verdict');
+    if(both){cls.A='split';cls.B='split';v.className='verdict bad';
+      v.innerHTML=`⚠ <b>Split brain.</b> Two primaries accept writes. When the partition heals, Sentinel demotes N1 and makes it a replica of the new primary. N1 performs a full resync, <u>discarding every write it accepted during the partition</u>${(writable.A==='window'||writable.B==='window')?' (bounded to the max-lag window by min-replicas-to-write, but not zero)':''}. ${pside==='A'?'Client X':'Client Y'}'s acknowledged writes are gone.`;}
+    else{v.className='verdict warn';v.innerHTML=`No split brain <i>in this arrangement</i>: only the side with the primary can write. The other side serves stale reads. Move N1 to the smaller side to see the failover case. Note that even here, acked writes that had not yet replicated are lost if N1 dies (Failure 1).`;}
+  }else{
+    for(const s of ['A','B']){const nodes=cnt[s],client=s==='A'?'Client X':'Client Y';
+      if(nodes>=3){out[s]=`${nodes} of 5 nodes: <b>majority</b>. ${st.side.N1===s?'N1 stays leader':'N1 is unreachable; after an election timeout a follower here is elected leader'} and commits writes from <b>${client}</b> once 3 nodes have fsynced them.`;writable[s]=true;cls[s]='writable';}
+      else{out[s]=`${nodes} of 5 nodes: <b>minority</b>. ${st.side.N1===s?'N1 is here but cannot get a majority of acks, so it cannot commit anything and steps down (CheckQuorum). ':''}Writes from ${client} time out. Linearizable reads also fail (no leader to confirm against); only explicitly serializable reads succeed, and they are labelled as possibly stale.`;cls[s]='readonly';}}
+    const v=document.getElementById('psim-verdict');v.className='verdict good';
+    v.innerHTML=`✓ <b>Exactly one side can write.</b> No acknowledged write is lost, and no two leaders can both commit. The price is that the minority side is <u>unavailable for writes</u> until the partition heals. That is the CP trade: coordination data is small and the control plane can tolerate seconds of unavailability, so this is the right trade for it.`;}
+  for(const s of ['A','B']){document.getElementById('psim-'+s).className='side '+cls[s];document.getElementById('psim-'+s+'-out').innerHTML=out[s];}
+}
+document.getElementById('psim-mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;st.mode=b.dataset.m;
+  document.querySelectorAll('#psim-mode button').forEach(x=>x.classList.remove('on','redis','etcd'));b.classList.add('on',b.dataset.m);render();});
+document.getElementById('psim-minrep').addEventListener('change',e=>{st.minrep=e.target.checked;render();});
+render();
+})();
+
+/* ---------- Watch simulator ---------- */
+(function(){
+const logEl=document.getElementById('wsim-log');
+let st;
+function reset(mode){st={mode:mode||(st&&st.mode)||'redis',sv:100,sr:1,hist:[{rev:1,v:100}],connected:true,cv:100,cr:1,missed:0};logEl.innerHTML='';
+  log('m',`[${label()}] client connected, initial read: value=100 rev=1`+(st.mode==='etcd'?'. Watch(/config, start_revision=2) opened.':st.mode==='zk'?'. getData(/config, watch=true) registered.':'. SUBSCRIBE __keyspace@0__:/config/rate_limit.'));render();}
+function label(){return st.mode==='redis'?'Redis':st.mode==='etcd'?'etcd':'ZooKeeper';}
+function log(c,t){const d=document.createElement('div');d.className=c;d.textContent=t;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight;}
+function render(){
+  document.getElementById('wsim-sv').textContent=st.sv;document.getElementById('wsim-sr').textContent=st.sr;
+  document.getElementById('wsim-cv').textContent=st.cv;document.getElementById('wsim-cr').textContent=st.cr;
+  document.getElementById('wsim-hist').textContent='history: '+st.hist.map(h=>`r${h.rev}=${h.v}`).join(' → ');
+  const cl=document.getElementById('wsim-connlbl');cl.textContent=st.connected?'● connected':'○ disconnected';cl.className=st.connected?'fresh':'stale';
+  const stale=st.cv!==st.sv;
+  document.getElementById('wsim-status').innerHTML=stale?`<span class="stale">STALE</span>: server is ${st.sv} (rev ${st.sr}), client believes ${st.cv} (rev ${st.cr})`:`<span class="fresh">in sync</span>`;
+  document.getElementById('wsim-conn').textContent=st.connected?'Disconnect client':'Reconnect client';
+  document.getElementById('wsim-cv').style.color=stale?'var(--bad)':'inherit';
+  document.querySelectorAll('#wsim-mode button').forEach(b=>{b.classList.toggle('on',b.dataset.m===st.mode);b.classList.toggle(st.mode,b.dataset.m===st.mode);if(b.dataset.m!==st.mode)b.classList.remove('redis','etcd','zk');});
+}
+function change(){st.sr++;st.sv+=50;st.hist.push({rev:st.sr,v:st.sv});
+  log('y',`[server] /config/rate_limit = ${st.sv} committed at rev ${st.sr}`);
+  if(st.connected){
+    if(st.mode==='redis'){log('g',`[client] PUBLISH __keyspace@0__:/config/rate_limit "set" received → GET → ${st.sv}`);st.cv=st.sv;st.cr=st.sr;}
+    else if(st.mode==='etcd'){log('g',`[client] watch event: PUT /config/rate_limit value=${st.sv} mod_revision=${st.sr}`);st.cv=st.sv;st.cr=st.sr;}
+    else{log('g',`[client] WatchedEvent NodeDataChanged /config (zxid ${st.sr}) → getData(watch=true) → ${st.sv}`);st.cv=st.sv;st.cr=st.sr;}
+  }else{
+    st.missed++;
+    if(st.mode==='redis')log('b',`[server] published to 0 subscribers → event dropped. Pub/Sub has no memory.`);
+    else if(st.mode==='etcd')log('m',`[server] event retained in MVCC history (rev ${st.sr}); client will resume from its last revision.`);
+    else log('m',`[server] client session alive but connection down; watch stays registered server-side (until session timeout).`);
+  }
+  render();}
+function toggleConn(){
+  if(st.connected){st.connected=false;log('b',`[client] connection lost (network blip / client restart / LB failover)`);}
+  else{st.connected=true;
+    if(st.mode==='redis'){log('m',`[client] reconnected. SUBSCRIBE __keyspace@0__:/config/rate_limit (fresh subscription, no backlog).`);
+      if(st.missed>0)log('b',`[client] ${st.missed} change(s) happened while disconnected. Nothing tells the client. It will stay at ${st.cv} until it polls or the next change fires.`);}
+    else if(st.mode==='etcd'){log('m',`[client] reconnected. Watch(/config, start_revision=${st.cr+1})`);
+      const missed=st.hist.filter(h=>h.rev>st.cr);
+      if(missed.length===0)log('g',`[server] nothing missed.`);
+      missed.forEach(h=>log('g',`[client] replayed: PUT /config/rate_limit value=${h.v} mod_revision=${h.rev}`));
+      if(missed.length)log('g',`[client] caught up: ${missed.length} event(s) replayed in order. (Caveat: if the cluster compacted past rev ${st.cr+1}, the watch gets ErrCompacted and the client must re-read + re-watch.)`);
+      st.cv=st.sv;st.cr=st.sr;}
+    else{log('m',`[client] reconnected within session timeout → Disconnected/SyncConnected events delivered. Client re-reads.`);
+      if(st.missed>0){log('g',`[client] getData(/config, watch=true) → ${st.sv} (zxid ${st.sr}). Intermediate values not replayed, but the client knows something may have changed and reads the latest. If the session had expired instead, all ephemeral nodes and watches would be gone and the client must rebuild state.`);}
+      else log('g',`[client] getData → ${st.sv}, nothing changed.`);
+      st.cv=st.sv;st.cr=st.sr;}
+    st.missed=0;}
+  render();}
+function poll(){log('m',`[client] explicit read → ${st.sv} (rev ${st.sr})`+(st.mode==='redis'?'. This is the workaround: every client polls on a timer. Latency = poll interval; load = clients × rate; intermediate changes invisible.':''));st.cv=st.sv;st.cr=st.sr;render();}
+document.getElementById('wsim-change').onclick=change;
+document.getElementById('wsim-conn').onclick=toggleConn;
+document.getElementById('wsim-poll').onclick=poll;
+document.getElementById('wsim-reset').onclick=()=>reset();
+document.getElementById('wsim-mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;reset(b.dataset.m);});
+reset('redis');
+})();
+
+/* ---------- Diagram: graceful drain + partition migration ---------- */
+seqDiagram('seq-drain',{
+  intro:'Node1 is told to shut down. 4096 partitions; sessions hash to a partition; /partitions/Pn in etcd maps each to an owner. Node1 owns ~820 of them. One partition (P17 → Node3) is shown in detail.',
+  colW:165,rowH:44,
+  actors:[{id:'C',label:'Client',cls:'client'},{id:'N1',label:'Node1 (draining)',cls:'store'},{id:'N3',label:'Node3 (target)',cls:'store'},{id:'E',label:'etcd',cls:'etcd'},{id:'L',label:'SessionMgr leader',cls:'zk'},{id:'S',label:'SessionMgr standby',cls:'zk'}],
+  steps:[
+    {kind:'msg',from:'N1',to:'E',label:'Put /nodes/node1 {state:DRAINING} (lease L1 kept alive)',caption:'Node1 receives SIGTERM. It does <em>not</em> revoke its lease. It flips its registration to DRAINING and keeps sending keepalives. A vanished key would look like a crash.'},
+    {kind:'msg',from:'E',to:'L',label:'watch: /nodes/node1 DRAINING (rev 100)',caption:'The leader\'s watch on the /nodes/ prefix fires with the revision.'},
+    {kind:'msg',from:'E',to:'S',label:'watch: same event',cls:'muted',caption:'Standbys get the identical event and update their in-memory view. They do not act; they are not leader.'},
+    {kind:'self',at:'L',label:'placement ring 101 = ring 100 minus node1 → P17..P836 each get a new owner',caption:'Leader computes the target owner of every partition node1 holds. With consistent hashing only node1\'s ~820 partitions move; the other four nodes\' partitions are untouched.'},
+    {kind:'msg',from:'L',to:'E',label:'Txn: if create_rev(/leader/sm)==mine → Put /ring {routing:100, placement:101, draining:[node1]}',caption:'Conditioned on the leader still holding its election key; a deposed leader\'s write fails. Routing still includes node1 (existing sessions reachable); placement excludes it (nothing new lands there).'},
+    {kind:'reply',from:'E',to:'L',label:'OK rev 101',cls:'good'},
+    {kind:'msg',from:'L',to:'E',label:'Txn: if still leader → Put /partitions/P17 {state:MIGRATING, from:node1, to:node3, epoch:101}',caption:'<strong>The unit of coordination is the partition, never the session.</strong> 4096 keys total. The leader keeps at most K partitions in MIGRATING at a time; that is the pacing knob. At ~250 sessions per partition, 10k sessions/hour is ~40 partitions/hour, so K=2.'},
+    {kind:'msg',from:'E',to:'N1',label:'watch: /partitions/P17 MIGRATING',caption:'Node1 learns P17 is leaving. It stops accepting <em>new</em> sessions for P17 (redirects them to node3).'},
+    {kind:'msg',from:'E',to:'N3',label:'watch: /partitions/P17 MIGRATING',cls:'muted',caption:'Node3 enters IMPORTING for P17: it will accept transferred sessions and serve them.'},
+    {kind:'note',over:['N1','N3'],label:'per-session loop runs between the two nodes only; etcd sees none of it',caption:'This is where the millions of sessions live, and it never touches the coordination service.'},
+    {kind:'self',at:'N1',label:'freeze session_i (buffer requests)',caption:'Node1 picks the next session in P17 and stops mutating it. Requests arriving during the handoff are briefly queued.'},
+    {kind:'msg',from:'N1',to:'N3',label:'transfer(session_i state, epoch 101)',caption:'State pushed source to target with the partition epoch attached.'},
+    {kind:'reply',from:'N3',to:'N1',label:'ack: installed, serving',cls:'good',caption:'Node3 now serves session_i. Node1 marks it MOVED in memory and answers buffered requests with a redirect. Exactly one node served session_i at every instant: Node1 froze before transfer, Node3 served only after install.'},
+    {kind:'msg',from:'C',to:'N1',label:'request(session_j in P17) — not yet moved',caption:'Routing still says P17 → node1. Node1 still holds session_j.'},
+    {kind:'reply',from:'N1',to:'C',label:'OK (served by node1)',caption:'Source keeps serving what it has not moved yet. Redis Cluster calls this the MIGRATING state for a slot.'},
+    {kind:'msg',from:'C',to:'N1',label:'request(session_i in P17) — already moved',caption:'Same partition, a session that has already been transferred.'},
+    {kind:'reply',from:'N1',to:'C',label:'ASK node3 epoch 101',cls:'warn',caption:'Per-session redirect for the duration of the migration. The client retries at node3 for this request only; its partition map is unchanged until P17 flips.'},
+    {kind:'msg',from:'C',to:'N3',label:'request(session_i, epoch 101)',caption:'Node3 (IMPORTING) accepts. If asked for a P17 session it does not hold yet, it redirects back to node1, or pulls it on demand.'},
+    {kind:'reply',from:'N3',to:'C',label:'OK',cls:'good',caption:'Any write Node3 makes to session_i\'s durable state carries epoch 101; the store rejects anything lower. That fences a Node1 that failed to notice the handoff.'},
+    {kind:'note',over:['N1','N3'],label:'repeat freeze → transfer → ack for every session in P17',caption:'Hundreds of sessions, zero etcd writes.'},
+    {kind:'msg',from:'N1',to:'L',label:'drained(P17)',caption:'Node1 holds no sessions for P17. It reports to the leader over RPC.'},
+    {kind:'msg',from:'L',to:'E',label:'Txn: if still leader → Put /partitions/P17 {state:STABLE, owner:node3, epoch:101}',caption:'Second and last etcd write for P17. ~820 partitions × 2 writes ≈ 1.6k writes for the whole drain, whether node1 held a thousand sessions or a million.'},
+    {kind:'msg',from:'E',to:'C',label:'watch: /partitions/P17 → node3',caption:'Clients and all nodes update their partition map. Node1 drops its MOVED tombstones for P17; Node3 serves without ASK semantics. The leader picks the next partition.'},
+    {kind:'note',over:['N1','L'],label:'repeat for P18..P836, K partitions in flight at a time',caption:'Progress is fully described by the /partitions/ prefix in etcd.'},
+    {kind:'crash',at:'L',label:'leader dies mid-drain',cls:'bad',caption:'Worst moment: some partitions STABLE on new owners, some MIGRATING, some still on node1.'},
+    {kind:'note',over:['N1','N3'],label:'in-flight partition migrations continue; the pair does not need the leader',caption:'The leader only sequences partitions. The per-session loop is between source and target.'},
+    {kind:'msg',from:'E',to:'S',label:'watch: /leader/sm deleted (lease expired)',caption:'The leader\'s election key is tied to its lease; etcd deletes it when keepalives stop.'},
+    {kind:'msg',from:'S',to:'E',label:'campaign → Put /leader/sm; Get /ring, /partitions/ (prefix)',caption:'A standby wins, reads 4096 partition records (a few hundred KB), finds the ones still owned by node1 or MIGRATING, and resumes sequencing. No leader-to-leader handoff exists or is needed.'},
+    {kind:'msg',from:'N1',to:'E',label:'lease revoke L1 → /nodes/node1 deleted',caption:'Only after node1 owns zero partitions does it revoke its lease. Node1 decides, based on its own empty table.'},
+    {kind:'msg',from:'S',to:'E',label:'Txn: if still leader → Put /ring {routing:101, placement:101, draining:[]}',caption:'Routing ring finally excludes node1.'},
+    {kind:'state',label:'✓ Node1 exits. O(partitions) coordination writes, O(sessions) work kept between nodes, at most one server per session at any instant, drain survives leader failure.',cls:'good',caption:'If Node1 itself crashes mid-drain: lease L1 expires, the leader sees /nodes/node1 deleted with partitions still MIGRATING or owned by node1, and sets each to its ring-101 owner at epoch 102 (crash path). Targets serve what they already received and rebuild the rest from the durable session store. Graceful degrades to crash semantics, never to two owners.'}
+  ]});
+
+/* ---------- Decision quiz ---------- */
+(function(){
+const q=document.getElementById('quiz'),out=document.getElementById('quiz-result');
+q.addEventListener('change',()=>{
+  const g=n=>{const r=q.querySelector(`input[name=${n}]:checked`);return r?r.value:null;};
+  const a=g('q1'),b=g('q2'),c=g('q3');if(!a||!b||!c)return;
+  let html='';
+  if(a==='corr'){
+    html+=`<div class="callout bad"><b>Use ZooKeeper or etcd for this.</b> A lost or duplicated write is a correctness bug, so you need quorum-committed writes, a fencing token, and a single writer per partition. Redis cannot give you any of the three.</div>`;
+    if(c==='high')html+=`<div class="callout warn"><b>But not for the traffic.</b> Thousands of writes/s or gigabytes of state will overwhelm a coordination service. Split the design: etcd/ZK holds ownership and membership (who is leader for shard 7), and a data store (Redis, a DB, Kafka) holds the actual data. Leaders carry the fencing token into the data store.</div>`;
+    if(b==='watch')html+=`<div class="callout good">Watches are the right notification mechanism here. etcd if you need every event replayed; ZK if "something changed, re-read" is enough.</div>`;
+  }else{
+    if(b==='watch')html+=`<div class="callout warn"><b>Lean ZooKeeper/etcd.</b> Correctness is not at stake, but reliable change notification is, and Redis Pub/Sub cannot promise delivery. If you already run etcd/ZK, use it. If you only have Redis, use Pub/Sub for low latency plus a periodic poll as a safety net, and say so.</div>`;
+    else html+=`<div class="callout good"><b>Redis is fine.</b> This is an efficiency problem: a lost write means duplicate work or a stale read for a few seconds, both recoverable. Use <code>SET NX PX</code> for the lock or a key with TTL for discovery, and state the trade-off explicitly: "if Redis fails over we may briefly double-run; that is acceptable here."</div>`;
+    if(c==='high')html+=`<div class="callout">High traffic reinforces Redis: a coordination service would be the bottleneck.</div>`;
+  }
+  out.innerHTML=html;});
+})();
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@ Every BEAM process has its own tiny heap and its own garbage collector. Sending 
 - **Micro-GC, no stop-the-world.** Heaps are small and per-process, so a collection pauses *one* process for microseconds — never the whole VM. This is the property that lets one node hold millions of live processes with predictable latency.
 - **Fault isolation.** A process crashing (or being killed) can't corrupt another's heap; supervisors restart it clean.
 
-The cost is the copy itself — real on a hot path (see [[system-design-concepts/message-fanout]], where `send/2` ran 30–70μs and de-scheduled the caller).
+The cost is the copy itself — real on a hot path (see [message fanout](../system-design-concepts/message-fanout.md), where `send/2` ran 30–70μs and de-scheduled the caller).
 
 ### The large-binary loophole
 Deep-copying a large payload (an image, a long message) on every send would be ruinous, so BEAM makes one exception: **binaries larger than 64 bytes live in a process-external, reference-counted shared heap.** Processes pass a lightweight *reference*, not the bytes; the VM GCs the binary when the last reference drops. So the model is "copy everything small; share (by refcount) everything big" — isolation preserved for the mutable small stuff, copy avoided for the bulk.
@@ -37,12 +37,12 @@ Akka recreates actor semantics on the JVM, but the JVM has **one big shared heap
 > "The actor model's power — micro-second per-process GC, fault isolation — comes from never sharing mutable memory. Erlang enforces that by deep-copying every message into the recipient's mailbox, with one escape hatch: binaries over 64 bytes go to a ref-counted shared heap and are passed by reference, so you don't copy a whole image on every send. Akka gives you the same actor model on the JVM, but the JVM has one shared heap, so it passes pointers locally and relies on you using immutable messages — isolation by convention instead of by copy — and only serializes when a message crosses the network."
 
 ## Connections
-- [[theory/concurrency-primitives]] — actors are green threads (BEAM processes); this is the *memory/messaging* half, that page is the *scheduling* half
-- [[system-design-concepts/message-fanout]] — the copy cost of `send/2` is exactly what makes naive fan-out expensive and motivates Manifold
-- [[theory/pure-functional-programming]] — immutability is what makes Akka's pointer-passing safe; the same property that makes pure FP concurrency-friendly
-- [[tech/elm]] — another BEAM-adjacent / message-driven model (TEA) built on immutable state
-- [[theory/copy-on-write-vs-mvcc]] — same underlying question — when to copy vs share a view of data — one layer down
+- [concurrency primitives](concurrency-primitives.md) — actors are green threads (BEAM processes); this is the *memory/messaging* half, that page is the *scheduling* half
+- [message fanout](../system-design-concepts/message-fanout.md) — the copy cost of `send/2` is exactly what makes naive fan-out expensive and motivates Manifold
+- [pure functional programming](pure-functional-programming.md) — immutability is what makes Akka's pointer-passing safe; the same property that makes pure FP concurrency-friendly
+- [elm](../tech/elm.md) — another BEAM-adjacent / message-driven model (TEA) built on immutable state
+- [copy on write vs mvcc](copy-on-write-vs-mvcc.md) — same underlying question — when to copy vs share a view of data — one layer down
 
 ## Sources
-- [[sources/articles/discord-scaling-elixir-5m-concurrent]] — "Erlang Message Passing vs. JVM (Akka)" and the message-fanout sections
+- [discord scaling elixir 5m concurrent](../reading-notes/discord-scaling-elixir-5m-concurrent.md) — "Erlang Message Passing vs. JVM (Akka)" and the message-fanout sections
 - [How Discord Scaled Elixir to 5,000,000 Concurrent Users](https://discord.com/blog/how-discord-scaled-elixir-to-5-000-000-concurrent-users) — original article

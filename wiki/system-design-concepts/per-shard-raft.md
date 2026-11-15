@@ -8,7 +8,7 @@ How you get **linearizable consistency *and* horizontal scale** out of a consens
 
 ## Why not one big Raft group
 
-Consensus ([[theory/consensus-raft]]) gives linearizability, but a single group has hard ceilings: **all writes serialize through one leader**, the log is one ordered stream, and adding members makes writes *slower* (bigger quorum to wait for), not faster. So one group maxes out at one machine's write rate. Sharding breaks that:
+Consensus ([consensus raft](../theory/consensus-raft.md)) gives linearizability, but a single group has hard ceilings: **all writes serialize through one leader**, the log is one ordered stream, and adding members makes writes *slower* (bigger quorum to wait for), not faster. So one group maxes out at one machine's write rate. Sharding breaks that:
 
 ```
  keyspace ─partition→  shard A     shard B     shard C
@@ -23,7 +23,7 @@ Leaders are **spread across nodes** (a node is leader for some shards, follower 
 
 ## Anatomy
 
-- **Shard = one Raft group.** Its RF nodes are the group members; its leader serves that shard's reads/writes; the partition map (which key → which shard) lives in a control plane, same as the ring in [[theory/consistent-hashing]].
+- **Shard = one Raft group.** Its RF nodes are the group members; its leader serves that shard's reads/writes; the partition map (which key → which shard) lives in a control plane, same as the ring in [consistent hashing](../theory/consistent-hashing.md).
 - **RF=5 is the common choice** (vs 3 for leaderless). Raft needs a **majority alive**, and RF=5 tolerates **2 failures** — the concrete win being **survive a full AZ (2 members) and still form a 3-of-5 majority** across the other AZs. RF=3 tolerates only 1, so an AZ loss + any straggler stalls the group.
 
 ```
@@ -68,13 +68,13 @@ Read scaling matters because the interview's envelope was **read-heavy (≈10:1)
 > "A single Raft group is linearizable but caps at one leader's write rate and gets slower as you add members, so it doesn't scale. The fix is per-shard Raft: partition the keyspace and run an independent Raft group per shard, with leaders spread across nodes, so cluster write throughput is the sum of all shard leaders while each shard stays linearizable. I'd run RF=5 rather than 3, because consensus needs a live majority and RF=5 keeps a 3-of-5 majority through a full-AZ loss. Reads I'd serve with leader leases or ReadIndex so linearizable reads don't pay a round trip each, and follower reads where I can tolerate bounded staleness — important because this workload is read-heavy. The costs I'd name: a round-trip-to-majority per write, a short per-shard write outage during elections, and that anything spanning shards needs 2-phase commit across groups — which is exactly why the KV model steers you to single-partition operations."
 
 ## Connections
-- [[theory/consensus-raft]] — the single-group algorithm this page scales out; majority-commit and elections are per shard here
-- [[system-design-concepts/leaderless-vs-leader-based]] — this is the leader-based arm of the fork; the post-2012 DynamoDB choice
-- [[theory/consistency-models]] — per-shard Raft is how you actually deliver linearizable single-key ops that quorum can't
-- [[theory/consistent-hashing]] — the partition map assigning keys to shards is the same control-plane ring
-- [[theory/durability-math]] — RF=5-for-majority (availability) vs RF=3-for-durability are different reasons to pick RF
-- [[system-design-concepts/hash-vs-range-partitioning]] — how the shard boundaries are drawn; cross-shard = cross-partition = the expensive case
+- [consensus raft](../theory/consensus-raft.md) — the single-group algorithm this page scales out; majority-commit and elections are per shard here
+- [leaderless vs leader based](leaderless-vs-leader-based.md) — this is the leader-based arm of the fork; the post-2012 DynamoDB choice
+- [consistency models](../theory/consistency-models.md) — per-shard Raft is how you actually deliver linearizable single-key ops that quorum can't
+- [consistent hashing](../theory/consistent-hashing.md) — the partition map assigning keys to shards is the same control-plane ring
+- [durability math](../theory/durability-math.md) — RF=5-for-majority (availability) vs RF=3-for-durability are different reasons to pick RF
+- [hash vs range partitioning](hash-vs-range-partitioning.md) — how the shard boundaries are drawn; cross-shard = cross-partition = the expensive case
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §6 per-shard Raft RF=5, §4 AZ+1 majority survival, §2 read-heavy envelope
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §6 per-shard Raft RF=5, §4 AZ+1 majority survival, §2 read-heavy envelope
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes

@@ -36,12 +36,12 @@ Either way, **ordering is the whole game** — reorder a `+1` and a `*2` and rep
 > "State machine replication says: if a service is deterministic, then two replicas fed the same commands in the same order end in the same state. So I don't need to replicate the *state* — I replicate the *input log*. That's exactly what Raft or Paxos build: an agreed, totally-ordered log of commands. The subtlety is determinism — anything like a timestamp or random value has to be decided once and written into the log, not recomputed per replica, or they drift. And a replica's whole state is then summarized by the highest log index it's applied, which is how you get read-your-writes."
 
 ## Connections
-- [[theory/consensus-raft]] — Raft/Paxos are the machinery that *produces* the single ordered log SMR assumes
-- [[system-design-concepts/the-log-abstraction]] — SMR is the theoretical payoff of treating the log as the primitive
-- [[system-design-concepts/table-log-duality]] — a replica's state (table) is the fold of the command log
-- [[theory/durability-rpo-rto]] — event-sourcing replay is SMR in practice; note the non-idempotent-replay hazard
-- [[system-design-concepts/leaderless-vs-leader-based]] — active-active vs primary-backup is the SMR framing of that write-path fork
+- [consensus raft](consensus-raft.md) — Raft/Paxos are the machinery that *produces* the single ordered log SMR assumes
+- [the log abstraction](../system-design-concepts/the-log-abstraction.md) — SMR is the theoretical payoff of treating the log as the primitive
+- [table log duality](../system-design-concepts/table-log-duality.md) — a replica's state (table) is the fold of the command log
+- [durability rpo rto](durability-rpo-rto.md) — event-sourcing replay is SMR in practice; note the non-idempotent-replay hazard
+- [leaderless vs leader based](../system-design-concepts/leaderless-vs-leader-based.md) — active-active vs primary-backup is the SMR framing of that write-path fork
 
 ## Sources
-- [[sources/docs/the-log-jay-kreps]] — the State Machine Replication Principle and its active-active / primary-backup flavors
-- [the-log-jay-kreps.md](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)
+- [the log jay kreps](../reading-notes/the-log-jay-kreps.md) — the State Machine Replication Principle and its active-active / primary-backup flavors
+- [the-log-jay-kreps.md](../../sources/references/the-log-jay-kreps.md) — Jay Kreps, "The Log" (2013)

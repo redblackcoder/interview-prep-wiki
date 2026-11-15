@@ -46,7 +46,7 @@ Setting it to `off`/`local` weakens effective RPO **even under Multi-AZ**, becau
 
 Keeps the Postgres wire protocol but replaces storage with a distributed, 6-way-replicated log-structured layer (auto-grows, 15 low-lag replicas, faster failover).
 
-**Failover windows matter for leases and SLAs.** Multi-AZ instance: detect → DNS flip → standby crash recovery, typically **60–120 s**. Aurora: replicas read the same storage, so promotion needs no data copy — typically **~10–30 s** (lower with RDS Proxy absorbing reconnects). Writes pause for the whole window, so any lease stored in the DB must outlast it, and any latency SLA should carve it out ([[system-design-concepts/distributed-job-scheduler]]). Its cost model introduces a **per-request IO charge**: Aurora **Standard** = lower instance/storage + ~$0.20 per 1M IO (cheap until IO-heavy, then unpredictable); Aurora **I/O-Optimized** = no per-IO charge, higher instance/storage (predictable for IO-heavy).
+**Failover windows matter for leases and SLAs.** Multi-AZ instance: detect → DNS flip → standby crash recovery, typically **60–120 s**. Aurora: replicas read the same storage, so promotion needs no data copy — typically **~10–30 s** (lower with RDS Proxy absorbing reconnects). Writes pause for the whole window, so any lease stored in the DB must outlast it, and any latency SLA should carve it out ([distributed job scheduler](../system-design-concepts/distributed-job-scheduler.md)). Its cost model introduces a **per-request IO charge**: Aurora **Standard** = lower instance/storage + ~$0.20 per 1M IO (cheap until IO-heavy, then unpredictable); Aurora **I/O-Optimized** = no per-IO charge, higher instance/storage (predictable for IO-heavy).
 
 ## Key points
 - Multi-AZ *instance* = 2 nodes, standby closed, ×2 compute; Multi-AZ *cluster* = 3 nodes, readers open, semi-sync quorum-of-1.
@@ -60,15 +60,15 @@ Keeps the Postgres wire protocol but replaces storage with a distributed, 6-way-
 > "RDS Multi-AZ comes in two shapes. The instance form is two nodes — a primary and a synchronous standby that AWS keeps *closed*, purely a zero-RPO failover target — so you pay for two but use one. The cluster form is three nodes, a writer plus two readable standbys, and it acks a commit on a quorum of one of the two, so it's zero-RPO but survives a slow replica and the readers serve traffic. Readability there is a product choice, not a limit — it's the same streaming replication. And 'synchronous' isn't fixed: `synchronous_commit` lets me trade durability for write latency, down to `off`, which widens the loss window but never corrupts because WAL ordering holds. Async read replicas are the separate, RPO>0 feature."
 
 ## Connections
-- [[system-design-concepts/rds-vs-key-value-store]] — RDS as the durable system-of-record side of the decision
-- [[system-design-concepts/cloud-database-cost-model]] — where the instance/storage/IO axes come from; the gp3 small-volume trap
-- [[tech/aws-elasticache-redis]] — the KV counterpart; contrast synchronous WAL commit vs async replicate + snapshot
-- [[theory/durability-rpo-rto]] — WAL/fsync and RPO≈0 made concrete; `synchronous_commit` is the RPO-vs-latency knob
-- [[theory/copy-on-write-vs-mvcc]] — MVCC is how Postgres serves consistent snapshots without readers blocking writers
-- [[system-design-concepts/postgres-as-a-work-queue]] — `SKIP LOCKED` queues, two-step claim, dead tuples under long transactions
-- [[system-design-concepts/database-write-capacity]] — rows vs tx vs IOPS vs memory vs disk
+- [rds vs key value store](../system-design-concepts/rds-vs-key-value-store.md) — RDS as the durable system-of-record side of the decision
+- [cloud database cost model](../system-design-concepts/cloud-database-cost-model.md) — where the instance/storage/IO axes come from; the gp3 small-volume trap
+- [aws elasticache redis](aws-elasticache-redis.md) — the KV counterpart; contrast synchronous WAL commit vs async replicate + snapshot
+- [durability rpo rto](../theory/durability-rpo-rto.md) — WAL/fsync and RPO≈0 made concrete; `synchronous_commit` is the RPO-vs-latency knob
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — MVCC is how Postgres serves consistent snapshots without readers blocking writers
+- [postgres as a work queue](../system-design-concepts/postgres-as-a-work-queue.md) — `SKIP LOCKED` queues, two-step claim, dead tuples under long transactions
+- [database write capacity](../system-design-concepts/database-write-capacity.md) — rows vs tx vs IOPS vs memory vs disk
 
 ## Sources
-- [[sources/docs/rds-vs-kv-store-study-guide]] — §6 RDS specifics (topologies, storage, Aurora), §2 durability
-- [rds-vs-kv-store-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
-- [[sources/docs/design-job-scheduler-mock-interview]] — failover windows vs lease length
+- [rds vs kv store study guide](../../sources/references/rds-vs-kv-store-study-guide.html) — §6 RDS specifics (topologies, storage, Aurora), §2 durability
+- [rds-vs-kv-store-study-guide.html](../../sources/references/rds-vs-kv-store-study-guide.html) — full comparison with pricing tables
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — failover windows vs lease length

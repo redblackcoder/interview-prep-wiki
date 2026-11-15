@@ -125,9 +125,9 @@ The DP computes `f(cell, k) = Σ over ≤8 neighbors of f(neighbor, k−1)/8` �
 > "A `double` is sign + 11-bit biased exponent + 52-bit fraction with an implicit leading 1, so 53 significant bits — about 16 decimal digits. The precision is *relative*: the gap between representable values scales with the magnitude, so a probability near 1e-300 is stored just as precisely, relatively, as one near 1. So the number getting small doesn't cost precision — that's the whole point of a floating exponent. Dividing by 8 is exact because it just decrements the exponent by 3; the mantissa is untouched, so there's no 'running out of mantissa' at N≈18. Real error would come from cancellation, but my sum is all positive terms so nothing cancels, and accumulated rounding is about N times 2⁻⁵² — still 13-plus good digits at N=1000. The actual wall is underflow to zero near 1e-308, which for a geometrically decaying probability is an N in the hundreds to thousands. If I needed exactness or a larger N, I'd count surviving paths as BigIntegers and divide by 8-to-the-N, or move to log-space."
 
 ## Connections
-- [[coding-patterns/bounded-walk-probability-dp]] — the board-walk problem that raised this; the shrinking survival probability is what the precision question is about
-- [[theory/durability-math]] — also multiplies many small probabilities (AFR³·(MTTR/yr)²); same "tiny numbers, order-of-magnitude reasoning" mindset, where log/relative thinking keeps you honest
-- [[theory/latency-numbers]] — the other "know the constants cold" fundamentals table; ULP/epsilon/exponent-range are the floating-point counterparts
+- [bounded walk probability dp](../coding-patterns/bounded-walk-probability-dp.md) — the board-walk problem that raised this; the shrinking survival probability is what the precision question is about
+- [durability math](durability-math.md) — also multiplies many small probabilities (AFR³·(MTTR/yr)²); same "tiny numbers, order-of-magnitude reasoning" mindset, where log/relative thinking keeps you honest
+- [latency numbers](latency-numbers.md) — the other "know the constants cold" fundamentals table; ULP/epsilon/exponent-range are the floating-point counterparts
 
 ## Sources
-- [[sources/problems/3d-board-walk-probability]] — the coding round where the `double`-precision follow-up came up, with the reasoning
+- [bounded diagonal walk](../problems/coding/bounded-diagonal-walk.md) — the coding round where the `double`-precision follow-up came up, with the reasoning

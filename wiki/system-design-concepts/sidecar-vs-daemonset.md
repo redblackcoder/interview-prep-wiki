@@ -16,7 +16,7 @@ Where does a node-local helper — a metrics/log agent, a proxy, a collector —
 ## Networking follows from the choice
 - **Sidecar:** same pod, so `localhost`/loopback, or a **Unix domain socket over a shared `emptyDir` volume**. Cheapest and most private.
 - **DaemonSet:** the app must reach the node agent — either a **`hostPort` + the node IP** (via the downward API), or a **UDS on a `hostPath`** bind-mounted into every pod (the otel/Datadog pattern).
-See [[system-design-concepts/local-ipc-transports]] for the transport-semantics choice on that hop.
+See [local ipc transports](local-ipc-transports.md) for the transport-semantics choice on that hop.
 
 ## Lifecycle nuance
 Historically a sidecar's shared lifecycle caused ordering pain (agent must start before / stop after the app; a dead agent could wedge the pod). Kubernetes **native sidecars** (init containers with `restartPolicy: Always`, GA in 1.29) fix ordering and independent restart. A DaemonSet is lifecycle-independent by construction, but the app must **tolerate the agent being absent** — which fits a fire-and-forget, drop-on-full ingest path anyway.
@@ -34,11 +34,11 @@ Historically a sidecar's shared lifecycle caused ordering pain (agent must start
 > "The reflex answer is 'DaemonSet saves memory' — one per node instead of one per pod — and that's true at density, but it's not why I'd choose it. The real reasons are operational: a sidecar's version is pinned to the app's deploy, so shipping an agent fix means redeploying every service; a DaemonSet the platform team upgrades centrally. The price is that a DaemonSet is a shared dependency — one noisy pod can starve everyone on the node — so I'd add per-source rate limiting and attribution. I'd pick sidecar only when I need strong per-workload isolation or app-specific agent config, which is exactly why meshes use sidecars. For a fleet-wide counter agent, DaemonSet: central upgrades, node-level aggregation, one instance per node. Networking then is a hostPath Unix socket or the node IP, versus a shared-volume socket for a sidecar."
 
 ## Connections
-- [[system-design-concepts/local-ipc-transports]] — how the app talks to the agent once you've placed it (UDS over emptyDir/hostPath, or UDP over the node IP)
-- [[system-design-concepts/edge-shed-vs-core-durability]] — the agent is the edge; its fire-and-forget, tolerate-absence behavior is the "shed" end
-- [[system-design-concepts/compressible-vs-incompressible-resources]] — sizing the agent's requests/limits (memory hard-reserved) is why N idle sidecars actually cost
-- [[system-design-concepts/metrics-pull-vs-push]] — a node DaemonSet is the standard place a scrape target or push-forwarder lives
-- [[system-design-concepts/work-distribution]] — one-per-node is a partitioning-by-node decision; per-source fairness is the anti-starvation requirement it creates
+- [local ipc transports](local-ipc-transports.md) — how the app talks to the agent once you've placed it (UDS over emptyDir/hostPath, or UDP over the node IP)
+- [edge shed vs core durability](edge-shed-vs-core-durability.md) — the agent is the edge; its fire-and-forget, tolerate-absence behavior is the "shed" end
+- [compressible vs incompressible resources](compressible-vs-incompressible-resources.md) — sizing the agent's requests/limits (memory hard-reserved) is why N idle sidecars actually cost
+- [metrics pull vs push](metrics-pull-vs-push.md) — a node DaemonSet is the standard place a scrape target or push-forwarder lives
+- [work distribution](work-distribution.md) — one-per-node is a partitioning-by-node decision; per-source fairness is the anti-starvation requirement it creates
 
 ## Sources
-- [[sources/docs/design-metrics-counters-mock-interview]] — the sidecar-vs-daemonset exchange: resource multiplication, upgradeability, blast radius
+- [operational counter collection](../problems/system-design/operational-counter-collection.md) — the sidecar-vs-daemonset exchange: resource multiplication, upgradeability, blast radius

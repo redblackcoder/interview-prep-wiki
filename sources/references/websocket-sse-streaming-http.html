@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebSocket vs SSE vs Streaming HTTP — Deep Technical Comparison</title>
+<script>
+  /* Set theme before first paint to avoid a flash. Order: saved choice → OS preference → light. */
+  (function () {
+    try {
+      var saved = localStorage.getItem('theme');
+      var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ---------- LIGHT THEME (default) ---------- */
+  :root {
+    --bg:        #f4f6f9;
+    --panel:     #ffffff;
+    --panel-2:   #eaeef3;
+    --border:    #d8e0e8;
+    --ink:       #1a2129;
+    --ink-dim:   #47566a;
+    --ink-faint: #74849a;
+    --ws:        #1f6feb;  /* blue   — WebSocket */
+    --sse:       #1a7f4b;  /* green  — SSE */
+    --http:      #a65d16;  /* amber  — Streaming HTTP */
+    --danger:    #cf222e;
+    --code-bg:   #f6f8fa;
+    --code-ink:  #24292e;
+    --c-com:     #6a737d;
+    --c-key:     #d73a49;
+    --c-str:     #22863a;
+    --c-fn:      #6f42c1;
+    --hover:     rgba(0,0,0,0.035);
+    --shadow:    0 1px 3px rgba(27,31,36,0.08), 0 8px 24px rgba(27,31,36,0.04);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* ---------- DARK THEME ---------- */
+  :root[data-theme="dark"] {
+    --bg:        #0e1116;
+    --panel:     #161b22;
+    --panel-2:   #1c2430;
+    --border:    #2a323d;
+    --ink:       #e6edf3;
+    --ink-dim:   #9fb0c0;
+    --ink-faint: #6b7a8d;
+    --ws:        #6ea8fe;
+    --sse:       #63d29a;
+    --http:      #e0a458;
+    --danger:    #f7768e;
+    --code-bg:   #0b0e13;
+    --code-ink:  #c9d5e1;
+    --c-com:     #5f7285;
+    --c-key:     #ff9e64;
+    --c-str:     #9ece6a;
+    --c-fn:      #7dcfff;
+    --hover:     rgba(255,255,255,0.02);
+    --shadow:    none;
+  }
+
+  /* No-JS fallback: honor OS dark preference when no explicit choice is set. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg:#0e1116; --panel:#161b22; --panel-2:#1c2430; --border:#2a323d;
+      --ink:#e6edf3; --ink-dim:#9fb0c0; --ink-faint:#6b7a8d;
+      --ws:#6ea8fe; --sse:#63d29a; --http:#e0a458; --danger:#f7768e;
+      --code-bg:#0b0e13; --code-ink:#c9d5e1;
+      --c-com:#5f7285; --c-key:#ff9e64; --c-str:#9ece6a; --c-fn:#7dcfff;
+      --hover:rgba(255,255,255,0.02); --shadow:none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.65; font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 48px 24px 120px; }
+
+  /* Theme toggle */
+  #theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    width: 42px; height: 42px; border-radius: 11px;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--border); cursor: pointer;
+    font-size: 1.15rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow);
+    transition: background .2s, border-color .2s, transform .1s;
+  }
+  #theme-toggle:hover { border-color: var(--ws); }
+  #theme-toggle:active { transform: scale(0.94); }
+
+  header.hero { margin-bottom: 40px; }
+  header.hero h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 12px; letter-spacing: -0.02em; }
+  header.hero p.sub { color: var(--ink-dim); font-size: 1.05rem; margin: 0; max-width: 72ch; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 22px 0 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--ink-dim); }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot.ws { background: var(--ws); } .dot.sse { background: var(--sse); } .dot.http { background: var(--http); }
+
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; margin: 34px 0; font-size: 0.9rem; box-shadow: var(--shadow);
+  }
+  nav.toc strong { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; }
+  nav.toc ol { margin: 8px 0 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  nav.toc a { color: var(--ink-dim); text-decoration: none; }
+  nav.toc a:hover { color: var(--ws); }
+
+  section { margin: 56px 0; scroll-margin-top: 20px; }
+  h2 { font-size: 1.4rem; letter-spacing: -0.01em; margin: 0 0 6px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h2 .num { color: var(--ink-faint); font-variant-numeric: tabular-nums; margin-right: 10px; font-weight: 600; }
+  h3 { font-size: 1.08rem; margin: 30px 0 8px; }
+  p { margin: 12px 0; }
+  .lead { color: var(--ink-dim); }
+
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: var(--code-ink); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.6; margin: 16px 0; }
+  pre code { background: none; padding: 0; color: var(--code-ink); }
+  .c-com { color: var(--c-com); } .c-key { color: var(--c-key); } .c-str { color: var(--c-str); } .c-fn { color: var(--c-fn); } .c-hl { color: var(--ws); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 11px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  thead th { color: var(--ink-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 2px solid var(--border); }
+  th.col-ws  { color: var(--ws); }  th.col-sse { color: var(--sse); } th.col-http { color: var(--http); }
+  tbody th { color: var(--ink-dim); font-weight: 600; }
+  td .yes { color: var(--sse); } td .no { color: var(--danger); } td .partial { color: var(--http); }
+  tr:hover td, tr:hover th { background: var(--hover); }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-top-width: 3px; border-radius: 10px; padding: 18px; box-shadow: var(--shadow); }
+  .card.ws   { border-top-color: var(--ws); }
+  .card.sse  { border-top-color: var(--sse); }
+  .card.http { border-top-color: var(--http); }
+  .card h4 { margin: 0 0 4px; font-size: 1rem; }
+  .card .tag { font-size: 0.72rem; color: var(--ink-faint); font-family: var(--mono); }
+  .card ul { margin: 10px 0 0; padding-left: 18px; font-size: 0.85rem; color: var(--ink-dim); }
+  .card li { margin: 5px 0; }
+
+  .callout { border-left: 3px solid var(--ws); background: var(--panel); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 20px 0; font-size: 0.9rem; box-shadow: var(--shadow); }
+  .callout.warn { border-left-color: var(--danger); }
+  .callout.tip  { border-left-color: var(--sse); }
+  .callout b { color: var(--ink); }
+
+  .usecase { background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; margin: 20px 0; box-shadow: var(--shadow); }
+  .usecase .badge { display: inline-block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; margin-bottom: 10px; }
+  .badge.ws   { background: color-mix(in srgb, var(--ws) 15%, transparent);  color: var(--ws);  border: 1px solid color-mix(in srgb, var(--ws) 40%, transparent); }
+  .badge.sse  { background: color-mix(in srgb, var(--sse) 15%, transparent); color: var(--sse); border: 1px solid color-mix(in srgb, var(--sse) 40%, transparent); }
+  .badge.http { background: color-mix(in srgb, var(--http) 15%, transparent); color: var(--http); border: 1px solid color-mix(in srgb, var(--http) 40%, transparent); }
+  .usecase h4 { margin: 0 0 8px; font-size: 1.1rem; }
+  .usecase .why { font-size: 0.88rem; color: var(--ink-dim); }
+
+  svg { max-width: 100%; height: auto; display: block; margin: 20px 0; }
+  .fig-cap { font-size: 0.78rem; color: var(--ink-faint); text-align: center; margin-top: -10px; }
+
+  .footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--ink-faint); font-size: 0.82rem; }
+  .footer a { color: var(--ink-dim); }
+
+  @media (max-width: 720px) {
+    .cards { grid-template-columns: 1fr; }
+    nav.toc ol { columns: 1; }
+  }
+</style>
+</head>
+<body>
+<button id="theme-toggle" aria-label="Toggle light/dark theme" title="Toggle theme">☾</button>
+<div class="wrap">
+
+<header class="hero">
+  <h1>WebSocket &nbsp;·&nbsp; SSE &nbsp;·&nbsp; Streaming HTTP</h1>
+  <p class="sub">Three ways to push data over an already-open connection — but they differ at the wire, transport, and API level in ways that decide which one you should reach for. This is the deep version: handshakes, framing, backpressure, HTTP/2 interactions, and where each one actually lives in production.</p>
+  <div class="legend">
+    <span><i class="dot ws"></i> WebSocket (RFC 6455)</span>
+    <span><i class="dot sse"></i> Server-Sent Events (WHATWG / <code>EventSource</code>)</span>
+    <span><i class="dot http"></i> Streaming HTTP (chunked / HTTP2 data frames)</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#mental">The one-line mental model</a></li>
+    <li><a href="#directionality">Directionality &amp; the OSI picture</a></li>
+    <li><a href="#ws">WebSocket internals</a></li>
+    <li><a href="#sse">SSE internals</a></li>
+    <li><a href="#http">Streaming HTTP internals</a></li>
+    <li><a href="#matrix">Full comparison matrix</a></li>
+    <li><a href="#http2">Interaction with HTTP/2 &amp; HTTP/3</a></li>
+    <li><a href="#decision">How to choose</a></li>
+    <li><a href="#usecases">Real industry use cases</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<section id="mental">
+  <h2><span class="num">01</span>The one-line mental model</h2>
+  <p class="lead">All three keep a connection open so the server can send data without the client re-polling. The distinction is <b>who can talk</b> and <b>what protocol frames the bytes</b>.</p>
+  <div class="cards">
+    <div class="card ws">
+      <div class="tag">full-duplex · message</div>
+      <h4>WebSocket</h4>
+      <p style="font-size:.85rem;color:var(--ink-dim);margin:8px 0 0">A <b>new protocol</b> that hijacks an HTTP connection via an <code>Upgrade</code> handshake, then abandons HTTP semantics entirely. Both sides send messages, anytime.</p>
+    </div>
+    <div class="card sse">
+      <div class="tag">half-duplex · text events</div>
+      <h4>SSE</h4>
+      <p style="font-size:.85rem;color:var(--ink-dim);margin:8px 0 0">A <b>standardized text format</b> (<code>text/event-stream</code>) layered on a normal, never-closing HTTP GET response. Server → client only, with a browser API and auto-reconnect.</p>
+    </div>
+    <div class="card http">
+      <div class="tag">raw byte stream</div>
+      <h4>Streaming HTTP</h4>
+      <p style="font-size:.85rem;color:var(--ink-dim);margin:8px 0 0">The <b>underlying transport mechanism</b> — chunked transfer (HTTP/1.1) or DATA frames (HTTP/2+). No event framing, no client API; you read the byte stream yourself. SSE is one convention built on top of it.</p>
+    </div>
+  </div>
+  <div class="callout tip">
+    <b>Key hierarchy:</b> Streaming HTTP is the raw layer. SSE is a <em>protocol convention</em> sitting on streaming HTTP. WebSocket is a <em>separate protocol</em> that only <em>starts</em> as HTTP. So "SSE vs Streaming HTTP" is partly a category error — SSE <em>is</em> streaming HTTP with rules bolted on.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="directionality">
+  <h2><span class="num">02</span>Directionality &amp; the OSI picture</h2>
+  <svg viewBox="0 0 900 300" role="img" aria-label="Directionality diagram">
+    <style>
+      .lbl  { fill: var(--ink);     font: 600 14px var(--sans); }
+      .node { fill: var(--panel-2); stroke: var(--border); }
+      .cap  { fill: var(--ink-dim); font: 12px var(--sans); }
+      .t-ws { fill: var(--ws); }  .t-sse { fill: var(--sse); }  .t-http { fill: var(--http); }
+      .f-ws   { stroke: var(--ws);   stroke-width: 2.5; }
+      .f-sse  { stroke: var(--sse);  stroke-width: 2.5; }
+      .f-http { stroke: var(--http); stroke-width: 2.5; }
+      .f-http-d { stroke: var(--http); stroke-width: 2.5; stroke-dasharray: 4 4; }
+      #a-ws  path { fill: var(--ws); }  #a-sse path { fill: var(--sse); }  #a-http path { fill: var(--http); }
+    </style>
+    <defs>
+      <marker id="a-ws"  markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z"/></marker>
+      <marker id="a-sse" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z"/></marker>
+      <marker id="a-http" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z"/></marker>
+    </defs>
+
+    <!-- WebSocket row -->
+    <text x="20" y="45" class="lbl t-ws">WebSocket</text>
+    <rect x="150" y="25" width="90" height="40" rx="7" class="node"/><text x="195" y="50" text-anchor="middle" class="cap">Client</text>
+    <rect x="700" y="25" width="90" height="40" rx="7" class="node"/><text x="745" y="50" text-anchor="middle" class="cap">Server</text>
+    <line x1="245" y1="38" x2="695" y2="38" class="f-ws" marker-end="url(#a-ws)"/>
+    <line x1="695" y1="52" x2="245" y2="52" class="f-ws" marker-end="url(#a-ws)"/>
+    <text x="470" y="18" text-anchor="middle" class="cap t-ws">full-duplex, both send anytime</text>
+
+    <!-- SSE row -->
+    <text x="20" y="150" class="lbl t-sse">SSE</text>
+    <rect x="150" y="130" width="90" height="40" rx="7" class="node"/><text x="195" y="155" text-anchor="middle" class="cap">Client</text>
+    <rect x="700" y="130" width="90" height="40" rx="7" class="node"/><text x="745" y="155" text-anchor="middle" class="cap">Server</text>
+    <line x1="695" y1="150" x2="245" y2="150" class="f-sse" marker-end="url(#a-sse)"/>
+    <text x="470" y="123" text-anchor="middle" class="cap t-sse">server → client stream; client uses separate HTTP requests to talk back</text>
+
+    <!-- Streaming HTTP row -->
+    <text x="20" y="255" class="lbl t-http">Streaming&#160;HTTP</text>
+    <rect x="150" y="235" width="90" height="40" rx="7" class="node"/><text x="195" y="260" text-anchor="middle" class="cap">Client</text>
+    <rect x="700" y="235" width="90" height="40" rx="7" class="node"/><text x="745" y="260" text-anchor="middle" class="cap">Server</text>
+    <line x1="245" y1="248" x2="695" y2="248" class="f-http-d" marker-end="url(#a-http)"/>
+    <line x1="695" y1="262" x2="245" y2="262" class="f-http" marker-end="url(#a-http)"/>
+    <text x="470" y="228" text-anchor="middle" class="cap t-http">1 req (or streamed req w/ HTTP2) → long streamed response body</text>
+  </svg>
+
+  <p>All three ride on a single <b>TCP</b> connection (or QUIC/UDP for HTTP/3). The difference is what sits at the <b>application layer (L7)</b>:</p>
+  <ul>
+    <li><b>WebSocket</b> replaces HTTP at L7 after the handshake — it's its own framed protocol (<code>ws://</code> / <code>wss://</code>).</li>
+    <li><b>SSE &amp; Streaming HTTP</b> stay HTTP at L7 the entire time. That's why they inherit HTTP caching, auth headers, cookies, proxies, and redirects for free.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="ws">
+  <h2><span class="num">03</span>WebSocket internals</h2>
+
+  <h3>The opening handshake</h3>
+  <p>A WebSocket connection is born as an ordinary HTTP/1.1 <code>GET</code> carrying upgrade headers. If the server agrees, it returns <code>101 Switching Protocols</code> and the socket stops being HTTP.</p>
+<pre><code><span class="c-com"># Client → Server</span>
+<span class="c-key">GET</span> /chat HTTP/1.1
+Host: api.example.com
+<span class="c-hl">Upgrade: websocket</span>
+<span class="c-hl">Connection: Upgrade</span>
+<span class="c-hl">Sec-WebSocket-Key:</span> dGhlIHNhbXBsZSBub25jZQ==   <span class="c-com"># base64 of 16 random bytes</span>
+<span class="c-hl">Sec-WebSocket-Version:</span> 13
+Sec-WebSocket-Protocol: graphql-ws          <span class="c-com"># optional subprotocol negotiation</span>
+
+<span class="c-com"># Server → Client</span>
+<span class="c-key">HTTP/1.1 101</span> Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+<span class="c-hl">Sec-WebSocket-Accept:</span> s3pPLMBiTxaQ9kYGzzhZRbK+xOo=</code></pre>
+
+  <div class="callout">
+    <b>Why <code>Sec-WebSocket-Accept</code>?</b> The server computes <code>base64( SHA1( Sec-WebSocket-Key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" ) )</code>. This magic GUID proves the server actually understands the WebSocket protocol — not just an HTTP cache or a naïve proxy blindly echoing headers. It is <em>not</em> a security mechanism (the key is not secret); it's a protocol-confirmation handshake.
+  </div>
+
+  <h3>The frame format</h3>
+  <p>After <code>101</code>, all data is exchanged as binary <b>frames</b> — not requests. Every frame:</p>
+<pre><code> 0               1               2               3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-------+-+-------------+-------------------------------+
+|F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+|I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+|N|V|V|V|       |S|             |                               |
+| |1|2|3|       |K|             |                               |
++-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+|     Masking-key (32 bits, client→server only)  |  Payload... |
++---------------------------------------------------------------+</code></pre>
+  <ul>
+    <li><b>FIN</b> — is this the last fragment of a message? (messages can span multiple frames)</li>
+    <li><b>opcode</b> — <code>0x1</code> text (UTF-8), <code>0x2</code> binary, <code>0x0</code> continuation, <code>0x8</code> close, <code>0x9</code> ping, <code>0xA</code> pong.</li>
+    <li><b>MASK</b> — <span style="color:var(--danger)">client→server frames MUST be masked</span> with a random 32-bit key (payload XOR key). This prevents malicious JS from crafting bytes that a transparent proxy might misread as a real HTTP request → cache poisoning. Server→client frames are never masked.</li>
+    <li><b>Payload len</b> — 7 bits, or 7+16, or 7+64 bits for larger payloads.</li>
+  </ul>
+
+  <div class="callout warn">
+    <b>What you lose after the upgrade:</b> no per-message HTTP headers, no HTTP status codes, no HTTP caching, no automatic <code>Authorization</code> replay. Auth must happen <em>during</em> the handshake (cookie, token in the URL query string, or a subprotocol token). Reconnection, heartbeat (ping/pong), and backpressure are <b>your</b> responsibility — the browser <code>WebSocket</code> API gives you almost none of it.
+  </div>
+
+<pre><code><span class="c-com">// Browser client</span>
+<span class="c-key">const</span> ws = <span class="c-key">new</span> <span class="c-fn">WebSocket</span>(<span class="c-str">'wss://api.example.com/chat'</span>, <span class="c-str">'graphql-ws'</span>);
+ws.onopen    = () => ws.<span class="c-fn">send</span>(<span class="c-str">'hello'</span>);   <span class="c-com">// client can push too</span>
+ws.onmessage = (e) => <span class="c-fn">render</span>(e.data);
+ws.onclose   = (e) => reconnect(e.code); <span class="c-com">// 1000 normal, 1006 abnormal</span></code></pre>
+</section>
+
+<!-- ============================================================ -->
+<section id="sse">
+  <h2><span class="num">04</span>SSE internals</h2>
+  <p>SSE never leaves HTTP. The client makes a plain GET; the server replies with a response that <b>never ends</b> and a specific content type. Data arrives as newline-delimited text events.</p>
+
+<pre><code><span class="c-com"># Server response — stays open forever</span>
+<span class="c-key">HTTP/1.1 200</span> OK
+<span class="c-hl">Content-Type: text/event-stream</span>
+Cache-Control: no-cache
+Connection: keep-alive
+
+<span class="c-hl">retry:</span> 3000                          <span class="c-com"># tell client to reconnect after 3s</span>
+<span class="c-hl">id:</span> 42                                <span class="c-com"># event id → resent as Last-Event-ID on reconnect</span>
+<span class="c-hl">event:</span> price                           <span class="c-com"># named event type (optional)</span>
+<span class="c-hl">data:</span> {"sym":"AAPL","px":227.14}
+                                        <span class="c-com"># ← BLANK LINE terminates the event</span>
+<span class="c-hl">data:</span> line one                         <span class="c-com"># multi-line data is concatenated</span>
+<span class="c-hl">data:</span> line two
+
+<span class="c-hl">:</span> this is a comment / heartbeat        <span class="c-com"># keeps proxies from timing out</span></code></pre>
+
+  <div class="cards">
+    <div class="card sse">
+      <h4>What you get for free</h4>
+      <ul>
+        <li><b>Auto-reconnect</b> — the browser retries on drop.</li>
+        <li><b>Resumption</b> — on reconnect it sends <code>Last-Event-ID</code>; server replays missed events.</li>
+        <li>Works through any HTTP proxy, CDN, auth, cookie stack.</li>
+      </ul>
+    </div>
+    <div class="card sse">
+      <h4>What it can't do</h4>
+      <ul>
+        <li><b>Text only</b> (UTF-8). Binary must be base64'd (~33% overhead).</li>
+        <li>Server → client <b>only</b>. Client talks back via ordinary fetch/XHR.</li>
+        <li>HTTP/1.1: capped at <b>~6 connections per domain</b> per browser (fixed by HTTP/2 multiplexing).</li>
+      </ul>
+    </div>
+  </div>
+
+<pre><code><span class="c-com">// Browser client — the entire API</span>
+<span class="c-key">const</span> es = <span class="c-key">new</span> <span class="c-fn">EventSource</span>(<span class="c-str">'/stream/prices'</span>);
+es.<span class="c-fn">addEventListener</span>(<span class="c-str">'price'</span>, (e) => <span class="c-fn">update</span>(JSON.parse(e.data)));
+es.onerror = () => {}; <span class="c-com">// reconnection is automatic — you usually do nothing</span></code></pre>
+
+  <div class="callout tip">
+    <b>The modern twist:</b> LLM APIs (OpenAI, Anthropic) stream tokens over SSE — but from a <em>server</em>, not the browser <code>EventSource</code> (which can't set auth headers or use POST). Servers/SDKs open a POST with <code>Accept: text/event-stream</code> and parse the <code>data:</code> frames manually. So the SSE <em>wire format</em> is used far more widely than the <code>EventSource</code> browser API.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="http">
+  <h2><span class="num">05</span>Streaming HTTP internals</h2>
+  <p>"Streaming HTTP" is the raw ability to send a response body incrementally, before it's fully generated. Two mechanisms:</p>
+
+  <h3>HTTP/1.1 — chunked transfer encoding</h3>
+  <p>Omit <code>Content-Length</code>, set <code>Transfer-Encoding: chunked</code>, and emit length-prefixed chunks. The server <code>flush()</code>es each chunk as data becomes available.</p>
+<pre><code><span class="c-key">HTTP/1.1 200</span> OK
+Content-Type: application/x-ndjson
+<span class="c-hl">Transfer-Encoding: chunked</span>
+
+1a\r\n                          <span class="c-com"># chunk size in hex (26 bytes)</span>
+{"row":1,"name":"alice"}\n\r\n
+18\r\n
+{"row":2,"name":"bob"}\n\r\n
+0\r\n\r\n                        <span class="c-com"># zero-length chunk = end of stream</span></code></pre>
+
+  <h3>HTTP/2 &amp; HTTP/3 — native DATA frames</h3>
+  <p>There is no chunked encoding in HTTP/2; the protocol is <em>inherently</em> framed. A response is a sequence of <code>DATA</code> frames on a stream, and can be bidirectional — the client body can also stream. This is exactly how <b>gRPC</b> streaming works.</p>
+
+<pre><code><span class="c-com">// Client reads a raw byte stream — no event framing, you parse it yourself</span>
+<span class="c-key">const</span> res = <span class="c-key">await</span> <span class="c-fn">fetch</span>(<span class="c-str">'/api/export'</span>, { method: <span class="c-str">'POST'</span>, body });
+<span class="c-key">const</span> reader = res.body.<span class="c-fn">getReader</span>();          <span class="c-com">// ReadableStream</span>
+<span class="c-key">const</span> dec = <span class="c-key">new</span> <span class="c-fn">TextDecoder</span>();
+<span class="c-key">while</span> (<span class="c-key">true</span>) {
+  <span class="c-key">const</span> { value, done } = <span class="c-key">await</span> reader.<span class="c-fn">read</span>();  <span class="c-com">// backpressure: pull model</span>
+  <span class="c-key">if</span> (done) <span class="c-key">break</span>;
+  <span class="c-fn">processChunk</span>(dec.<span class="c-fn">decode</span>(value, { stream: <span class="c-key">true</span> }));
+}</code></pre>
+
+  <div class="callout">
+    <b>Streaming HTTP vs SSE, precisely:</b> both are a long HTTP response body. SSE <em>constrains</em> that body to the <code>text/event-stream</code> grammar and hands you a browser API with reconnect + event IDs. Raw streaming HTTP gives you <b>none of that structure</b> but lets you send <b>anything</b> — binary (Protobuf/gRPC), NDJSON, MP4 segments — and stream the <b>request</b> too. You trade convention for flexibility.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="matrix">
+  <h2><span class="num">06</span>Full comparison matrix</h2>
+  <table>
+    <thead>
+      <tr><th>Property</th><th class="col-ws">WebSocket</th><th class="col-sse">SSE</th><th class="col-http">Streaming HTTP</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>Direction</th><td>Full-duplex (both ways)</td><td>Server → client only</td><td>Server → client (bi-dir on HTTP/2)</td></tr>
+      <tr><th>Protocol at L7</th><td>Own protocol (ws/wss)</td><td>HTTP (text/event-stream)</td><td>HTTP (chunked / DATA frames)</td></tr>
+      <tr><th>Data type</th><td>Text <b>or</b> binary</td><td>Text only (UTF-8)</td><td>Anything (binary/text)</td></tr>
+      <tr><th>Browser API</th><td><code>WebSocket</code></td><td><code>EventSource</code></td><td><code>fetch</code> + ReadableStream</td></tr>
+      <tr><th>Auto-reconnect</th><td><span class="no">✗ build it yourself</span></td><td><span class="yes">✓ built-in</span></td><td><span class="no">✗ build it yourself</span></td></tr>
+      <tr><th>Event IDs / resume</th><td><span class="no">✗ manual</span></td><td><span class="yes">✓ Last-Event-ID</span></td><td><span class="no">✗ manual</span></td></tr>
+      <tr><th>Message framing</th><td><span class="yes">✓ protocol frames</span></td><td><span class="yes">✓ event grammar</span></td><td><span class="no">✗ raw bytes, you parse</span></td></tr>
+      <tr><th>Works w/ HTTP caching/proxies/auth</th><td><span class="partial">△ handshake only</span></td><td><span class="yes">✓ fully</span></td><td><span class="yes">✓ fully</span></td></tr>
+      <tr><th>Per-message overhead</th><td>2–14 bytes/frame</td><td>~few bytes text</td><td>Chunk header (HTTP/1.1) / minimal (HTTP/2)</td></tr>
+      <tr><th>Head-of-line blocking</th><td>TCP-level only</td><td>TCP; per-stream on HTTP/2</td><td>TCP; solved by HTTP/3 (QUIC)</td></tr>
+      <tr><th>Backpressure</th><td>Manual (bufferedAmount)</td><td>Weak (browser buffers)</td><td>Native (ReadableStream pull)</td></tr>
+      <tr><th>Server resource cost</th><td>1 long-lived socket/conn</td><td>1 long-lived socket/conn</td><td>1 long-lived socket/conn</td></tr>
+      <tr><th>Load-balancer friendliness</th><td>Needs sticky / upgrade support</td><td>Easy (plain HTTP)</td><td>Easy (plain HTTP)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="http2">
+  <h2><span class="num">07</span>Interaction with HTTP/2 &amp; HTTP/3</h2>
+  <ul>
+    <li><b>SSE + HTTP/2</b> is the sweet spot: multiplexing removes the ~6-connection-per-domain limit that crippled SSE on HTTP/1.1, so hundreds of event streams share one TCP connection.</li>
+    <li><b>WebSocket over HTTP/2</b> requires <b>RFC 8441</b> (Extended CONNECT with a <code>:protocol</code> pseudo-header) to tunnel a WebSocket inside an HTTP/2 stream — otherwise WebSocket forces its own dedicated HTTP/1.1 connection.</li>
+    <li><b>HTTP/3 (QUIC/UDP)</b> eliminates TCP head-of-line blocking, so one lost packet no longer stalls every multiplexed stream — a real win for many concurrent SSE/streaming responses.</li>
+    <li><b>gRPC</b> is streaming HTTP/2 with Protobuf framing; gRPC-Web exists precisely because browsers can't speak raw HTTP/2 trailers, so it degrades to a streaming-HTTP-compatible encoding.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="decision">
+  <h2><span class="num">08</span>How to choose</h2>
+  <table>
+    <thead><tr><th>If you need…</th><th>Reach for</th></tr></thead>
+    <tbody>
+      <tr><th>Low-latency <b>bidirectional</b> exchange (client sends as often as server)</th><td class="col-ws">WebSocket</td></tr>
+      <tr><th>Server pushes updates, client mostly listens, want dead-simple + reconnect</th><td class="col-sse">SSE</td></tr>
+      <tr><th>Stream binary / Protobuf / video / large exports, or stream the request body</th><td class="col-http">Streaming HTTP (incl. gRPC)</td></tr>
+      <tr><th>LLM token output to a browser with minimal infra</th><td class="col-sse">SSE</td></tr>
+      <tr><th>Runs behind restrictive corporate proxies that only allow plain HTTP</th><td class="col-sse">SSE / Streaming HTTP</td></tr>
+      <tr><th>Multiplayer game state, collaborative cursors, live trading order entry</th><td class="col-ws">WebSocket</td></tr>
+    </tbody>
+  </table>
+  <div class="callout tip"><b>Senior-interview soundbite:</b> "Default to SSE for server→client push — it's HTTP, so it inherits your auth, proxies, and CDNs, and reconnection is free. Upgrade to WebSocket only when the client genuinely needs to push at the same cadence. Drop to raw streaming HTTP / gRPC when the payload is binary or the request itself must stream."</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="usecases">
+  <h2><span class="num">09</span>Real industry use cases</h2>
+
+  <div class="usecase">
+    <span class="badge ws">WebSocket</span>
+    <h4>Figma multiplayer editing &amp; live trading order books</h4>
+    <p class="why"><b>Figma</b> keeps every collaborator's cursor, selection, and shape edit in sync in real time — each client both <em>emits</em> its own mutations and <em>receives</em> everyone else's, many times per second. That's inherently symmetric, low-latency, and message-oriented → WebSocket. The same shape applies to a <b>trading platform</b>: the client streams order placements/cancels up while the exchange streams book updates and fills down, on one socket, where a few milliseconds matter. Neither side is "just listening," so half-duplex SSE would need a second channel and fall behind.</p>
+  </div>
+
+  <div class="usecase">
+    <span class="badge sse">SSE</span>
+    <h4>ChatGPT / LLM token streaming</h4>
+    <p class="why">When an LLM UI types out an answer word-by-word, the server pushes a stream of tokens and the client only listens — a textbook <b>one-way server push</b>. OpenAI's and Anthropic's streaming APIs literally emit <code>text/event-stream</code> <code>data:</code> frames. SSE wins here because it's plain HTTP (so it flows through the same auth, gateways, and CDNs as every other API call), it's text (tokens are UTF-8), and if the connection blips the browser reconnects automatically. Adding WebSocket would be pure overhead for a channel the client never writes to.</p>
+  </div>
+
+  <div class="usecase">
+    <span class="badge http">Streaming HTTP</span>
+    <h4>gRPC microservices &amp; <code>kubectl logs -f</code> / big-data exports</h4>
+    <p class="why">Inside a backend, services stream <b>binary Protobuf</b> messages to each other over gRPC — which is streaming HTTP/2 DATA frames, giving strong typing, backpressure, and bidirectional streams without a bespoke protocol. The same raw mechanism powers <code>kubectl logs -f</code> (an endless chunked log stream) and streaming a multi-GB CSV/NDJSON export so the client processes rows as they arrive instead of buffering the whole file in memory. You choose raw streaming HTTP precisely when you need <em>binary</em> or <em>request-side streaming</em> that SSE's text-only, server-only grammar can't express.</p>
+  </div>
+</section>
+
+<div class="footer">
+  <p><b>Specs:</b> WebSocket — <a href="https://datatracker.ietf.org/doc/html/rfc6455">RFC 6455</a>, over HTTP/2 — <a href="https://datatracker.ietf.org/doc/html/rfc8441">RFC 8441</a>. SSE — <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG HTML §Server-sent events</a>. Chunked transfer — <a href="https://datatracker.ietf.org/doc/html/rfc9112">RFC 9112</a>. HTTP/2 — <a href="https://datatracker.ietf.org/doc/html/rfc9113">RFC 9113</a>.</p>
+  <p>Interview-prep reference · rendered as a single self-contained HTML file.</p>
+</div>
+
+</div>
+
+<script>
+  /* Theme toggle button: flip data-theme, persist choice, update icon. */
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    function syncIcon() {
+      var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      btn.textContent = dark ? '☀' : '☾';
+      btn.setAttribute('title', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+    syncIcon();
+    btn.addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+      syncIcon();
+    });
+  })();
+</script>
+</body>
+</html>

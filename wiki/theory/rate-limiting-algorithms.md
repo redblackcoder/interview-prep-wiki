@@ -1,6 +1,6 @@
 # Rate-Limiting Algorithms
 
-Every limiter is one of five algorithms (or a hybrid). Know the counter each keeps, its memory cost, its burst behavior, and its failure edge — this is a common interview filter. See [[system-design-concepts/rate-limiting]] for where they're deployed.
+Every limiter is one of five algorithms (or a hybrid). Know the counter each keeps, its memory cost, its burst behavior, and its failure edge — this is a common interview filter. See [rate limiting](../system-design-concepts/rate-limiting.md) for where they're deployed.
 
 ## The five
 
@@ -23,14 +23,14 @@ Every limiter is one of five algorithms (or a hybrid). Know the counter each kee
 
 | Algorithm | State / key | Bursts? | Accuracy | Typical home |
 |---|---|---|---|---|
-| Fixed window | 1 int | 2× at boundary | Low | Global RLS ([[tech/envoy-ratelimit-service]]) |
+| Fixed window | 1 int | 2× at boundary | Low | Global RLS ([envoy ratelimit service](../tech/envoy-ratelimit-service.md)) |
 | Sliding log | O(N) timestamps | None | Exact | Low-volume, security |
 | Sliding counter | 2 ints | Smoothed | ~99% | Edge / CDN |
 | Token bucket | 2 values | Up to B (controlled) | Good | Envoy local L4/L7 |
 | Leaky bucket | queue + rate | None (shapes) | Good | Traffic shaping / QoS |
 
 ## Why a global service picks fixed window
-The [[tech/envoy-ratelimit-service|envoyproxy/ratelimit]] service uses **fixed window** deliberately: it collapses to a single atomic `INCRBY` + `EXPIRE`, O(1) memory, natively supported by Redis/Memcached, and correct under concurrency without locks. Sliding-log needs per-request O(N) storage + trimming; sliding-counter needs two keys + math. At the RLS's throughput, atomic-counter simplicity wins, and the boundary-burst weakness is mitigated by short units, TTL jitter, and a local over-limit cache. The window itself is **encoded in the cache key** via time flooring (`(now / unit) * unit`), so "which window am I in" needs no stored state and old windows self-expire.
+The [envoyproxy/ratelimit](../tech/envoy-ratelimit-service.md) service uses **fixed window** deliberately: it collapses to a single atomic `INCRBY` + `EXPIRE`, O(1) memory, natively supported by Redis/Memcached, and correct under concurrency without locks. Sliding-log needs per-request O(N) storage + trimming; sliding-counter needs two keys + math. At the RLS's throughput, atomic-counter simplicity wins, and the boundary-burst weakness is mitigated by short units, TTL jitter, and a local over-limit cache. The window itself is **encoded in the cache key** via time flooring (`(now / unit) * unit`), so "which window am I in" needs no stored state and old windows self-expire.
 
 ## Key points
 - Fixed window: O(1), atomic, but 2× boundary burst — the global-service default for exactly that simplicity.
@@ -43,10 +43,10 @@ The [[tech/envoy-ratelimit-service|envoyproxy/ratelimit]] service uses **fixed w
 > "Five shapes. Fixed window is one integer per bucket — O(1), reduces to an atomic INCR, but allows a 2× burst at the boundary. Sliding log stores every timestamp: exact but O(N) and itself a DoS vector. Sliding counter weights the previous window — O(1) and smooths the burst to a few percent. Token bucket allows controlled bursts up to the bucket size while capping the average; leaky bucket forbids bursts and smooths output — that's the distinction people miss. A global service picks fixed window because it's the only one that's a single atomic op the shared store supports natively; you mitigate the burst with short units and jitter."
 
 ## Connections
-- [[system-design-concepts/rate-limiting]] — where each algorithm lives (local token bucket vs global fixed window) and the distributed-correctness context
-- [[tech/envoy-ratelimit-service]] — the fixed-window-over-atomic-counter implementation, key construction, local over-limit cache
-- [[tech/aws-elasticache-redis]] — atomic `INCR`/`INCRBY` per shard is what makes fixed-window correct under concurrency
+- [rate limiting](../system-design-concepts/rate-limiting.md) — where each algorithm lives (local token bucket vs global fixed window) and the distributed-correctness context
+- [envoy ratelimit service](../tech/envoy-ratelimit-service.md) — the fixed-window-over-atomic-counter implementation, key construction, local over-limit cache
+- [aws elasticache redis](../tech/aws-elasticache-redis.md) — atomic `INCR`/`INCRBY` per shard is what makes fixed-window correct under concurrency
 
 ## Sources
-- [[sources/docs/rate-limiting-study-guide]] — §2 the five algorithms, §5.3–5.4 fixed-window + cache-key construction
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html) — algorithm diagrams and comparison table
+- [rate limiting study guide](../../sources/references/rate-limiting-study-guide.html) — §2 the five algorithms, §5.3–5.4 fixed-window + cache-key construction
+- [rate-limiting-study-guide.html](../../sources/references/rate-limiting-study-guide.html) — algorithm diagrams and comparison table

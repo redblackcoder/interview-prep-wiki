@@ -76,11 +76,11 @@ The greedy no longer holds. Build a DAG with an edge i → j when one bus can do
 | 218 | The Skyline Problem | a sweep plus a max-heap (stretch) |
 
 ## Connections
-- [[system-design-concepts/lease-and-fencing]]: treat buses as leases: capacity handed out at departure and returned at arrival. Peak outstanding leases is the answer.
-- [[system-design-concepts/serving-constrained-resources]]: the same "how many slots are in use at once" question at the scale of a system design
-- [[theory/littles-law]]: average in-flight equals arrival rate times duration. The sweep gives the exact peak; Little's law gives the average for capacity planning.
-- [[coding-patterns/exactly-k-window-counting]]: a sibling way to count by position, with endpoints that only move one way
+- [lease and fencing](../system-design-concepts/lease-and-fencing.md): treat buses as leases: capacity handed out at departure and returned at arrival. Peak outstanding leases is the answer.
+- [serving constrained resources](../system-design-concepts/serving-constrained-resources.md): the same "how many slots are in use at once" question at the scale of a system design
+- [littles law](../theory/littles-law.md): average in-flight equals arrival rate times duration. The sweep gives the exact peak; Little's law gives the average for capacity planning.
+- [exactly k window counting](exactly-k-window-counting.md): a sibling way to count by position, with endpoints that only move one way
 
 ## Sources
-- [[sources/problems/bus-scheduling-min-buses]]: the coding round: the problem, the overlap-count pitfall, and the multi-station follow-up
-- Runnable code (sweep, heap, per-station, repositioning greedy, and a matching-based exact checker): [bus-schedule-min-buses/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/bus-schedule-min-buses/)
+- [minimum fleet for a timetable](../problems/coding/minimum-fleet-for-a-timetable.md): the coding round: the problem, the overlap-count pitfall, and the multi-station follow-up
+- Runnable code (sweep, heap, per-station, repositioning greedy, and a matching-based exact checker): [bus-schedule-min-buses/](../../sources/code/bus-schedule-min-buses)

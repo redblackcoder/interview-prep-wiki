@@ -10,7 +10,7 @@ Everything in Raft is that **majority-overlap** argument applied twice: once to 
 
 ## What problem it solves
 
-Replicate a state machine (a KV store *is* a state machine: apply `put`/`delete` in order). If every replica applies the **same commands in the same order**, they stay identical. So consensus reduces to: **agree on an append-only, totally-ordered log of commands.** Do that and you have a linearizable replicated store (see [[theory/consistency-models]]).
+Replicate a state machine (a KV store *is* a state machine: apply `put`/`delete` in order). If every replica applies the **same commands in the same order**, they stay identical. So consensus reduces to: **agree on an append-only, totally-ordered log of commands.** Do that and you have a linearizable replicated store (see [consistency models](consistency-models.md)).
 
 Two classic algorithms: **Paxos** (Lamport — correct, famously hard to follow, underpins Chubby/Spanner) and **Raft** (Ongaro & Ousterhout, 2014 — same guarantees, decomposed for understandability). Raft is the one to know.
 
@@ -94,13 +94,13 @@ That is the crux move — **quorum intersection** — and it's worth being able 
 > "Consensus is agreeing on an ordered log of commands; apply them in the same order everywhere and the replicas are identical and linearizable. Raft makes that teachable in three parts. Election: terms with a randomized timeout, one vote per term, win a majority — so there's at most one leader per term. Replication: only the leader appends, and an entry commits once a majority has it. Safety: you can't win an election unless your log is at least as current as the voter's — and since any two majorities overlap, the new leader already holds every committed entry, so nothing committed is ever lost. The costs I'd name are a round-trip-to-majority per write and a short write-unavailability window during elections. It's the same quorum-intersection idea as W+R>N, except the leader's ordered log gives a real-time total order, which plain quorum can't."
 
 ## Connections
-- [[theory/consistency-models]] — consensus is *how* you implement linearizable / strict serializable; quorum intersection here yields a total order, which bare `W+R>N` does not
-- [[system-design-concepts/per-shard-raft]] — applying one Raft group per shard is how a partitioned store stays linearizable and scales writes
-- [[system-design-concepts/leaderless-vs-leader-based]] — the write-path fork: Raft leader (this page) vs Dynamo-style coordinator quorum
-- [[theory/durability-math]] — commit-to-majority is the *operational* durability (RPO≈0) whose statistical side that page quantifies
-- [[system-design-concepts/work-distribution]] — leader election is the general "single owner per shard" pattern for coordinating a fleet
+- [consistency models](consistency-models.md) — consensus is *how* you implement linearizable / strict serializable; quorum intersection here yields a total order, which bare `W+R>N` does not
+- [per shard raft](../system-design-concepts/per-shard-raft.md) — applying one Raft group per shard is how a partitioned store stays linearizable and scales writes
+- [leaderless vs leader based](../system-design-concepts/leaderless-vs-leader-based.md) — the write-path fork: Raft leader (this page) vs Dynamo-style coordinator quorum
+- [durability math](durability-math.md) — commit-to-majority is the *operational* durability (RPO≈0) whose statistical side that page quantifies
+- [work distribution](../system-design-concepts/work-distribution.md) — leader election is the general "single owner per shard" pattern for coordinating a fleet
 
 ## Sources
-- [[sources/docs/distributed-kv-store-mock-interview]] — §6 consensus (Raft), §8 leader-based path, §4 majority/quorum
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §6 consensus (Raft), §8 leader-based path, §4 majority/quorum
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes
 - *In Search of an Understandable Consensus Algorithm (Raft)* — Ongaro & Ousterhout, 2014

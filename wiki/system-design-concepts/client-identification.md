@@ -1,9 +1,9 @@
 # Client Identification (for rate limiting & abuse)
 
-A [[system-design-concepts/rate-limiting|rate limiter]] is only as good as the identity it keys on, and *which* attribute is trustworthy hinges on one question: **is the caller authenticated?** The answer flips the whole problem — and determines whether tricks like VPN-hopping matter at all.
+A [rate limiter](rate-limiting.md) is only as good as the identity it keys on, and *which* attribute is trustworthy hinges on one question: **is the caller authenticated?** The answer flips the whole problem — and determines whether tricks like VPN-hopping matter at all.
 
 ## Authenticated API — the credential *is* the identity
-When the caller presents an **API key / OAuth token / account ID** (Twitter's API, any SaaS backend), key the limit on it directly. A VPN changes the IP but not the token, so **IP-hopping does nothing** to evade an API-key limit — which is why the [[system-design-concepts/global-rate-limiting|multi-region]] VPN-hopping worry mostly evaporates for authenticated surfaces. IP is only a *secondary anomaly signal*:
+When the caller presents an **API key / OAuth token / account ID** (Twitter's API, any SaaS backend), key the limit on it directly. A VPN changes the IP but not the token, so **IP-hopping does nothing** to evade an API-key limit — which is why the [multi-region](global-rate-limiting.md) VPN-hopping worry mostly evaporates for authenticated surfaces. IP is only a *secondary anomaly signal*:
 - one key from 10,000 IPs → credential sharing / theft;
 - one IP minting 10,000 keys → an abuse ring.
 
@@ -41,13 +41,13 @@ You **cannot** perfectly identify the source of an unauthenticated request over 
 > "First question: is the caller authenticated? If they present an API key or token, that credential *is* the identity — I key on it and VPN-hopping does nothing, since a VPN changes the IP but not the token. IP is only a secondary signal for anomaly detection. For unauthenticated surfaces like login, IP is the coarse key but it lies: CGNAT hides thousands of users behind one address, and an IPv6 user gets a whole /64, so I aggregate to /24 or /64, never per exact address, and I weight datacenter and VPN ASNs harder than residential. Because IPs rotate, I add JA3/JA4 TLS fingerprints that identify the client stack regardless of IP. The honest part: you can't perfectly identify an anonymous client, so I score composite signals and degrade to a challenge rather than pretend a hard block is accurate."
 
 ## Connections
-- [[system-design-concepts/rate-limiting]] — identity is the key the limiter counts on; "identity is composed, not intrinsic"
-- [[tech/envoy-ratelimit-service]] — the descriptor/action model: at the edge you harden a spoofable IP/header, in-mesh you key on a verified SPIFFE principal
-- [[system-design-concepts/global-rate-limiting]] — why an authenticated API key makes VPN-hopping across regions a non-issue
-- [[theory/osi-model]] — where these signals live: IP/ASN at L3, TCP fingerprint at L4, TLS/JA4 at the TLS layer, headers at L7
-- [[tech/vpn]] — how VPNs relocate the source IP, which is exactly what defeats naive IP-based limiting
-- [[system-design-concepts/zero-trust-ztna]] — the same "verified identity over network location" principle
+- [rate limiting](rate-limiting.md) — identity is the key the limiter counts on; "identity is composed, not intrinsic"
+- [envoy ratelimit service](../tech/envoy-ratelimit-service.md) — the descriptor/action model: at the edge you harden a spoofable IP/header, in-mesh you key on a verified SPIFFE principal
+- [global rate limiting](global-rate-limiting.md) — why an authenticated API key makes VPN-hopping across regions a non-issue
+- [osi model](../theory/osi-model.md) — where these signals live: IP/ASN at L3, TCP fingerprint at L4, TLS/JA4 at the TLS layer, headers at L7
+- [vpn](../tech/vpn.md) — how VPNs relocate the source IP, which is exactly what defeats naive IP-based limiting
+- [zero trust ztna](zero-trust-ztna.md) — the same "verified identity over network location" principle
 
 ## Sources
-- [[sources/docs/rate-limiting-study-guide]] — §5.2b identifying the external client (authenticated vs anonymous, beyond-IP signals)
-- [rate-limiting-study-guide.html](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/rate-limiting-study-guide.html#rls-identity2) — CGNAT/ASN//64/XFF table, JA3/JA4 fingerprinting, composite identity, degrade-to-challenge
+- [rate limiting study guide](../../sources/references/rate-limiting-study-guide.html) — §5.2b identifying the external client (authenticated vs anonymous, beyond-IP signals)
+- [rate-limiting-study-guide.html](../../sources/references/rate-limiting-study-guide.html#rls-identity2) — CGNAT/ASN//64/XFF table, JA3/JA4 fingerprinting, composite identity, degrade-to-challenge

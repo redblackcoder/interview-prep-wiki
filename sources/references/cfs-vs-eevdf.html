@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CFS vs EEVDF: CPU share, turns, and deadlines</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f5f6fa; color: #1d2230;
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 40px 0 8px; }
+  h3 { font-size: 17px; margin: 0 0 6px; }
+  p { margin: 6px 0; }
+  code { background: #eef1f7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .lead { color: #4f586b; max-width: 860px; }
+  .muted { color: #7a8397; font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 880px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid #e2e5ee; border-radius: 12px; padding: 18px 20px; }
+  .card.cfs { border-top: 4px solid #9aa5b8; }
+  .card.eevdf { border-top: 4px solid #3b6fe0; }
+  .knobs { display: grid; grid-template-columns: 86px 26px 1fr; gap: 8px 4px; align-items: center; margin: 14px 0 12px; }
+  .knob { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+          text-align: center; font-weight: 700; font-size: 13px;
+          background: radial-gradient(circle at 35% 30%, #ffffff, #dfe4ef); border: 2px solid #b9c1d3; }
+  .knob.none { background: #f3f4f7; border-style: dashed; color: #9aa3b5; font-weight: 500; }
+  .knob.slice { border-color: #3b6fe0; color: #2451b8; }
+  .arrow { color: #9aa3b5; font-size: 20px; text-align: center; }
+  .outcome { background: #f3f5fa; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+  .outcome.bad { background: #fdeeee; color: #9b2c2c; }
+  .outcome.good { background: #eaf2ff; color: #1f4fb3; }
+  ul.points { padding-left: 18px; margin: 8px 0 0; }
+  ul.points li { margin: 4px 0; }
+  .rhythm { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; align-items: center; margin-top: 14px; font-size: 13px; }
+  .strip { position: relative; height: 18px; border-radius: 4px; overflow: hidden;
+           background: repeating-linear-gradient(45deg, #f1f3f8 0 4px, #e0e4ec 4px 6px); }
+  .strip span { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+  .caption { font-size: 13px; color: #5b6475; margin-top: 8px; }
+  .panel { background: #fff; border: 1px solid #e2e5ee; border-radius: 12px; padding: 16px 20px; margin-top: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 6px 0; }
+  button { font: inherit; font-size: 14px; border: 1px solid #cfd5e2; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover { background: #f3f5fa; }
+  button.active { background: #1d2230; color: #fff; border-color: #1d2230; }
+  select, input[type=text] { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid #cfd5e2; border-radius: 6px; background: #fff; }
+  .preset-note { background: #fff8e6; border: 1px solid #f3e2b3; border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: #4f586b; font-size: 13px; padding: 6px 8px; border-bottom: 1px solid #e2e5ee; }
+  td { padding: 6px 8px; border-bottom: 1px solid #f0f2f6; vertical-align: middle; }
+  td input.name { width: 90px; }
+  .chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: middle; }
+  .eevdf-only { background: #f4f8ff; }
+  .cfs-only { background: #f7f7f9; }
+  .tl-title { display: flex; align-items: baseline; gap: 12px; margin: 14px 0 2px; flex-wrap: wrap; }
+  .badge { font-weight: 700; font-size: 13px; padding: 2px 10px; border-radius: 999px; color: #fff; }
+  .badge.cfs { background: #7d879b; } .badge.eevdf { background: #3b6fe0; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: inherit; }
+  .rowlbl { font-size: 13px; font-weight: 600; fill: #1d2230; }
+  .tick { font-size: 11px; fill: #8a93a6; }
+  .note { font-size: 12px; fill: #5b6475; }
+  .snaplbl { font-size: 12.5px; fill: #4f586b; }
+  .snaplbl.strong { font-weight: 700; fill: #1d2230; }
+  .scrubwrap { padding: 2px 2% 2px 11%; }
+  .scrubwrap input[type=range] { width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #4f586b; margin: 4px 0 6px; }
+  .legend i { display: inline-block; width: 16px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+  .res { display: grid; grid-template-columns: 120px repeat(3, 1fr); gap: 0 20px; align-items: center; }
+  .res .hdr { font-size: 13px; font-weight: 600; color: #4f586b; padding: 6px 0; border-bottom: 1px solid #e2e5ee; }
+  .res .cell { padding: 8px 0; border-bottom: 1px solid #f0f2f6; }
+  .br { display: grid; grid-template-columns: 48px 1fr 70px; align-items: center; gap: 6px; font-size: 12px; margin: 2px 0; }
+  .br .track { height: 10px; background: #f0f2f6; border-radius: 5px; overflow: hidden; }
+  .br .fill { height: 100%; border-radius: 5px; }
+  .fill.cfs { background: #9aa5b8; } .fill.eevdf { background: #3b6fe0; }
+  .br .val { text-align: right; font-variant-numeric: tabular-nums; }
+  .obs li { margin: 6px 0; }
+  .foot { font-size: 13px; color: #6b7487; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CFS vs EEVDF: CPU share, turn length, and deadlines</h1>
+  <p class="lead">Both Linux schedulers split the CPU fairly according to nice values. The difference is what else a task can ask for.
+    CFS ties <b>how much</b> CPU a task gets to <b>how long</b> each of its turns lasts, and it has no idea <b>when</b> a task needs to run.
+    EEVDF separates these and gives every turn a deadline.</p>
+
+  <h2>The core difference</h2>
+  <div class="grid2">
+    <div class="card cfs">
+      <h3>CFS: one knob</h3>
+      <div class="knobs">
+        <div class="knob" style="grid-row: span 2">nice</div>
+        <div class="arrow">→</div><div class="outcome">CPU share</div>
+        <div class="arrow">→</div><div class="outcome bad">Length of each turn (tied to the share)</div>
+        <div class="knob none">no knob</div>
+        <div class="arrow">→</div><div class="outcome bad">Time until your next turn: the rest of the period. No way to ask for sooner.</div>
+      </div>
+      <ul class="points">
+        <li>Every ready task gets exactly one turn per <b>period</b>.</li>
+        <li>A smaller share just means a <b>shorter</b> turn, not a <b>sooner</b> one.</li>
+        <li>The next pick is whoever is furthest behind. Nothing in the queue says "I need to run soon".</li>
+      </ul>
+      <div class="rhythm" id="cfsRhythm"></div>
+      <p class="caption">Two 24 ms periods. B has a small share, so its turn is short, but it still waits out all of A's turn every time.</p>
+    </div>
+
+    <div class="card eevdf">
+      <h3>EEVDF: two knobs</h3>
+      <div class="knobs">
+        <div class="knob">nice</div><div class="arrow">→</div><div class="outcome">CPU share</div>
+        <div class="knob slice">slice</div><div class="arrow">→</div><div class="outcome good">Length of each turn, and so how soon the next one comes</div>
+      </div>
+      <ul class="points">
+        <li>Nice still sets the share. The <b>slice</b> is the turn length a task asks for (set per task with <code>sched_setattr</code> from Linux 6.12, otherwise a default).</li>
+        <li>Each request gets a <b>deadline</b>: the moment a perfectly fair CPU would have finished it. A short slice or a big share means an earlier deadline.</li>
+        <li>Among tasks that are <b>owed</b> CPU, the one with the earliest deadline runs next. A task already ahead of its share has to wait, so short slices can't be used to grab extra CPU.</li>
+      </ul>
+      <div class="rhythm" id="eevdfRhythm"></div>
+      <p class="caption">The same task in two separate runs, not two tasks running together. In both runs it gets a quarter of the CPU, and the gaps go to other tasks (not shown). Only the rhythm changes.</p>
+    </div>
+  </div>
+
+  <h2>Playground</h2>
+  <p class="lead">Pick a scenario or edit the tasks. All tasks are always busy and share one CPU. The same tasks run under both schedulers, so the two timelines compare directly.</p>
+  <div class="panel">
+    <div class="row" id="presets"></div>
+    <div class="preset-note" id="presetNote"></div>
+    <div class="row" style="margin-top:12px">
+      <label>Machine size
+        <select id="machine">
+          <option value="1">1 CPU (CFS period 6 ms, EEVDF default slice 0.75 ms)</option>
+          <option value="4">4 CPUs (CFS period 18 ms, EEVDF default slice 2.25 ms)</option>
+          <option value="8" selected>8+ CPUs (CFS period 24 ms, EEVDF default slice 3 ms)</option>
+        </select>
+      </label>
+      <label>Time shown
+        <select id="duration">
+          <option value="48">48 ms</option>
+          <option value="72" selected>72 ms</option>
+          <option value="120">120 ms</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="showDl" checked /> Show EEVDF deadlines</label>
+    </div>
+    <table id="taskTable">
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Nice (sets CPU share)</th>
+          <th class="eevdf-only">Slice (EEVDF only)</th>
+          <th class="cfs-only">CFS turn length (can't be set)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <button id="addTask">+ Add task</button>
+      <span class="muted">Up to 8 tasks. CFS has no slice setting: its turn length always follows from the share.</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="legend">
+      <span><i style="background:#4e79a7"></i>running</span>
+      <span><i style="background:repeating-linear-gradient(45deg,#f1f3f8 0 3px,#d5dae5 3px 5px)"></i>ready, but waiting</span>
+      <span>▼ deadline of a requested turn (EEVDF)</span>
+      <span><i style="background:#e0245e;width:3px"></i>cursor</span>
+    </div>
+    <div class="tl-title"><span class="badge cfs">CFS</span><span class="muted">picks whoever is furthest behind and runs it for its share of the period</span></div>
+    <svg id="tlCfs"></svg>
+    <div class="scrubwrap"><input type="range" id="scrub" min="0" max="72" step="0.05" value="0" /></div>
+    <div class="tl-title"><span class="badge eevdf">EEVDF</span><span class="muted">picks the earliest deadline among tasks owed CPU and runs it for its slice</span></div>
+    <svg id="tlEevdf"></svg>
+    <div class="row">
+      <button id="play">▶ Play</button>
+      <span id="tRead" class="muted"></span>
+      <span class="muted">Click a timeline or drag the slider to move the cursor.</span>
+    </div>
+  </div>
+
+  <h2>Freeze-frame at the cursor</h2>
+  <p class="lead">What each scheduler "sees" when it chooses. Positions show how far each task is behind or ahead of its fair share.</p>
+  <div class="panel">
+    <div class="tl-title"><span class="badge cfs">CFS</span><span class="muted">one position per task, and nothing else</span></div>
+    <svg id="snapCfs"></svg>
+    <p class="caption">There are no deadlines here. The leftmost task goes next. A task has no way to tell CFS it needs to run soon.</p>
+  </div>
+  <div class="panel">
+    <div class="tl-title"><span class="badge eevdf">EEVDF</span><span class="muted">a position and a deadline for each task's current request</span></div>
+    <svg id="snapEevdf"></svg>
+    <p class="caption">The circle is where the task stands now and the flag is its deadline. Tasks in the green area are behind the fair point, so they're owed CPU and may run.
+      Tasks in the grey area are ahead and must wait. Among tasks in the green area, the earliest flag goes next.
+      A shorter slice or a bigger share gives a shorter bar, which means an earlier deadline. The fair point drifts right while any task runs.</p>
+  </div>
+
+  <h2>Results</h2>
+  <div class="panel"><div class="res" id="results"></div></div>
+  <div class="panel"><ul class="obs" id="obs"></ul></div>
+
+  <h2>What this model leaves out</h2>
+  <ul class="foot">
+    <li>There is one CPU and every task is always busy. Real tasks sleep and wake up. CFS helped waking tasks with special-case bonus rules; EEVDF handles them with the same deadline logic and, from 6.12, lets short-slice tasks preempt when they wake.</li>
+    <li>Turns end exactly on time. Real kernels usually check at timer ticks unless high-resolution ticks are on.</li>
+    <li>Defaults grow with CPU count, up to 8 CPUs. The CFS period is 6, 18, or 24 ms, and the EEVDF default slice is 0.75, 2.25, or 3 ms.</li>
+    <li>Control groups and task migration between CPUs are not modelled.</li>
+  </ul>
+</main>
+
+<script>
+const NICE_WEIGHT = [
+  88761, 71755, 56483, 46273, 36291,
+  29154, 23254, 18705, 14949, 11916,
+   9548,  7620,  6100,  4904,  3906,
+   3121,  2501,  1991,  1586,  1277,
+   1024,   820,   655,   526,   423,
+    335,   272,   215,   172,   137,
+    110,    87,    70,    56,    45,
+     36,    29,    23,    18,    15,
+];
+const weightOf = nice => NICE_WEIGHT[nice + 20];
+const PALETTE = ['#4e79a7', '#f28e2b', '#59a14f', '#e15759', '#b07aa1', '#76b7b2', '#edc948', '#9c755f'];
+const color = i => PALETTE[i % PALETTE.length];
+const MACHINES = {
+  '1': { period: 6, minTurn: 0.75, slice: 0.75 },
+  '4': { period: 18, minTurn: 2.25, slice: 2.25 },
+  '8': { period: 24, minTurn: 3, slice: 3 },
+};
+const SLICE_CHOICES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 12];
+const EPS = 1e-7;
+const VW = 1000, PAD_L = 110, PAD_R = 20;
+
+const PRESETS = [
+  { id: 'ui', label: 'Snappy UI among hogs',
+    note: 'The UI thread asks EEVDF for short 0.75 ms turns, and the hogs use the default. Every task gets a quarter of the CPU under both schedulers. Under CFS the UI waits for three full hog turns every time. Under EEVDF its short turns get early deadlines, so it runs again after at most one hog turn.',
+    tasks: [{ name: 'UI', nice: 0, slice: 0.75 }, { name: 'Hog 1', nice: 0, slice: null }, { name: 'Hog 2', nice: 0, slice: null }, { name: 'Hog 3', nice: 0, slice: null }] },
+  { id: 'boost', label: 'CFS workaround: nice −5',
+    note: 'In CFS the only lever is nice. Lowering the UI to nice −5 roughly doubles its CPU share and makes its turns longer, but it still waits for every hog to take a turn. Compare with "Snappy UI among hogs" under EEVDF, where waits are shorter and the UI takes no extra CPU.',
+    tasks: [{ name: 'UI', nice: -5, slice: null }, { name: 'Hog 1', nice: 0, slice: null }, { name: 'Hog 2', nice: 0, slice: null }, { name: 'Hog 3', nice: 0, slice: null }] },
+  { id: 'ab', label: 'Nice 0 vs nice +5',
+    note: 'Your A/B example. Both schedulers give A about three quarters of the CPU. CFS does it with one long turn for A and one short turn for B in each period. EEVDF gives both tasks the same turn length and lets A run about three times as often, so B waits much less between turns.',
+    tasks: [{ name: 'A', nice: 0, slice: null }, { name: 'B', nice: 5, slice: null }] },
+  { id: 'monitor', label: 'Low share, still responsive',
+    note: 'A low-priority monitor (nice +5) that should still respond quickly, alongside two batch jobs that ask for long 6 ms turns. EEVDF keeps the monitor\'s small share but cuts it into tiny, frequent turns, so its longest wait is about one batch turn. Under CFS it waits through both batch jobs\' long turns.',
+    tasks: [{ name: 'Batch 1', nice: 0, slice: 6 }, { name: 'Batch 2', nice: 0, slice: 6 }, { name: 'Monitor', nice: 5, slice: 0.5 }] },
+  { id: 'equal', label: 'Equal busy tasks',
+    note: 'Baseline: four identical busy tasks. Both schedulers give each a quarter of the CPU. The only difference is turn length: CFS divides its period evenly, and EEVDF uses its default slice.',
+    tasks: [{ name: 'T1', nice: 0, slice: null }, { name: 'T2', nice: 0, slice: null }, { name: 'T3', nice: 0, slice: null }, { name: 'T4', nice: 0, slice: null }] },
+];
+
+let tasks = [];
+let T = 72;
+let cfsSim = null, eeSim = null;
+const $ = id => document.getElementById(id);
+const ms = x => `${Math.round(x * 100) / 100} ms`;
+const pct = x => `${Math.round(x * 1000) / 10}%`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function simulateCFS(tasks, T, m) {
+  const n = tasks.length;
+  const w = tasks.map(t => weightOf(t.nice));
+  const W = w.reduce((a, b) => a + b, 0);
+  const period = n > 8 ? n * m.minTurn : m.period;
+  const slice = w.map(x => period * x / W);
+  const vr = new Array(n).fill(0);
+  const lastRan = tasks.map((_, i) => -1e9 + i);
+  const segs = [];
+  let t = 0, guard = 0;
+  while (t < T - EPS && guard++ < 100000) {
+    let pick = 0;
+    for (let i = 1; i < n; i++) {
+      if (vr[i] < vr[pick] - EPS || (Math.abs(vr[i] - vr[pick]) <= EPS && lastRan[i] < lastRan[pick])) pick = i;
+    }
+    const dur = Math.min(slice[pick], T - t);
+    segs.push({ task: pick, start: t, end: t + dur, vrStart: vr.slice() });
+    vr[pick] += dur * 1024 / w[pick];
+    t += dur;
+    lastRan[pick] = t;
+  }
+  return { segs, period, slice, w, W };
+}
+
+function simulateEEVDF(tasks, T, m) {
+  const n = tasks.length;
+  const w = tasks.map(t => weightOf(t.nice));
+  const W = w.reduce((a, b) => a + b, 0);
+  const sl = tasks.map(t => (t.slice == null ? m.slice : t.slice));
+  const vsl = sl.map((s, i) => s * 1024 / w[i]);
+  const vr = new Array(n).fill(0);
+  const dl = vsl.slice();
+  const requests = tasks.map((_, i) => [{ issuedAt: 0, dlV: dl[i] }]);
+  const segs = [];
+  let t = 0, guard = 0;
+  while (t < T - EPS && guard++ < 100000) {
+    const V = vr.reduce((s, v, i) => s + v * w[i], 0) / W;
+    let pick = -1;
+    for (let i = 0; i < n; i++) {
+      if (vr[i] > V + EPS) continue;
+      if (pick < 0 || dl[i] < dl[pick] - EPS || (Math.abs(dl[i] - dl[pick]) <= EPS && vr[i] < vr[pick] - EPS)) pick = i;
+    }
+    if (pick < 0) { pick = 0; for (let i = 1; i < n; i++) if (vr[i] < vr[pick]) pick = i; }
+    const need = (dl[pick] - vr[pick]) * w[pick] / 1024;
+    const dur = Math.min(need, T - t);
+    segs.push({ task: pick, start: t, end: t + dur, vrStart: vr.slice(), dlStart: dl.slice() });
+    vr[pick] += dur * 1024 / w[pick];
+    t += dur;
+    if (vr[pick] >= dl[pick] - EPS) {
+      vr[pick] = dl[pick];
+      dl[pick] = vr[pick] + vsl[pick];
+      requests[pick].push({ issuedAt: t, dlV: dl[pick] });
+    }
+  }
+  return { segs, sl, w, W, requests };
+}
+
+function computeTurns(segs, n) {
+  const turns = Array.from({ length: n }, () => []);
+  segs.forEach(sg => {
+    const arr = turns[sg.task];
+    const last = arr[arr.length - 1];
+    if (last && Math.abs(last.end - sg.start) < EPS) last.end = sg.end;
+    else arr.push({ start: sg.start, end: sg.end });
+  });
+  return turns;
+}
+
+function taskMetrics(turns, T) {
+  const busy = turns.reduce((s, x) => s + x.end - x.start, 0);
+  const complete = turns.filter(x => x.end < T - EPS);
+  const lens = (complete.length ? complete : turns).map(x => x.end - x.start);
+  const avgTurn = lens.length ? lens.reduce((a, b) => a + b, 0) / lens.length : 0;
+  let maxWait = 0, prev = 0;
+  turns.forEach(x => { maxWait = Math.max(maxWait, x.start - prev); prev = x.end; });
+  maxWait = Math.max(maxWait, T - prev);
+  return { share: busy / T, avgTurn, maxWait };
+}
+
+function stateAt(sim, t) {
+  let k = sim.segs.findIndex(sg => t < sg.end - EPS);
+  if (k < 0) k = sim.segs.length - 1;
+  const sg = sim.segs[k];
+  const vr = sg.vrStart.slice();
+  const ran = Math.min(Math.max(t - sg.start, 0), sg.end - sg.start);
+  vr[sg.task] += ran * 1024 / sim.w[sg.task];
+  let next = -1;
+  for (let j = k + 1; j < sim.segs.length; j++) {
+    if (sim.segs[j].task !== sg.task) { next = sim.segs[j].task; break; }
+  }
+  return { vr, dl: sg.dlStart ? sg.dlStart.slice() : null, running: sg.task, next };
+}
+
+const xScale = t => PAD_L + (t / T) * (VW - PAD_L - PAD_R);
+
+function renderTimeline(svg, kind, sim) {
+  const n = tasks.length, rowH = 26, gap = 10;
+  const top = kind === 'cfs' ? 42 : 16;
+  const bottom = top + n * (rowH + gap) - gap;
+  const h = bottom + 26;
+  const x0 = xScale(0), x1 = xScale(T);
+  let s = `<defs><pattern id="wait-${kind}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="6" height="6" fill="#f1f3f8"/><rect width="2" height="6" fill="#d9dee8"/></pattern></defs>`;
+  const step = T <= 50 ? 5 : T <= 100 ? 10 : 20;
+  for (let t = 0; t <= T + EPS; t += step) {
+    const x = xScale(t);
+    s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${bottom + 4}" stroke="#eceff5"/>`;
+    s += `<text x="${x}" y="${bottom + 18}" text-anchor="middle" class="tick">${t} ms</text>`;
+  }
+  if (kind === 'cfs') {
+    let first = true;
+    for (let p = 0; p < T - EPS; p += sim.period) {
+      const a = xScale(p), b = xScale(Math.min(p + sim.period, T));
+      s += `<path d="M${a + 1} ${top - 8} V${top - 16} H${b - 1} V${top - 8}" fill="none" stroke="#9aa5b8" stroke-width="1.5"/>`;
+      if (first) s += `<text x="${a + 4}" y="${top - 22}" class="note">target period (${ms(sim.period)}): every task gets exactly one turn in each</text>`;
+      first = false;
+    }
+  }
+  tasks.forEach((tk, i) => {
+    const y = top + i * (rowH + gap);
+    s += `<text x="${PAD_L - 10}" y="${y + rowH / 2 + 4}" text-anchor="end" class="rowlbl">${esc(tk.name)}</text>`;
+    s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="${rowH}" rx="3" fill="url(#wait-${kind})"/>`;
+    sim.turns[i].forEach(tr => {
+      const a = xScale(tr.start), b = xScale(tr.end);
+      s += `<rect x="${a}" y="${y}" width="${Math.max(1, b - a)}" height="${rowH}" rx="2" fill="${color(i)}">
+        <title>${esc(tk.name)} runs from ${ms(tr.start)} to ${ms(tr.end)} (${ms(tr.end - tr.start)})</title></rect>`;
+    });
+    if (kind === 'eevdf' && $('showDl').checked) {
+      sim.requests[i].forEach(r => {
+        const td = r.dlV * sim.W / 1024;
+        if (td > T + EPS) return;
+        const x = xScale(td);
+        s += `<path d="M${x - 5} ${y - 9} H${x + 5} L${x} ${y - 1} Z" fill="#1d2230">
+          <title>Deadline for the turn ${esc(tk.name)} requested at ${ms(r.issuedAt)}</title></path>`;
+      });
+    }
+  });
+  s += `<line id="cursor-${kind}" x1="${x0}" x2="${x0}" y1="${top - 6}" y2="${bottom + 4}" stroke="#e0245e" stroke-width="2"/>`;
+  svg.setAttribute('viewBox', `0 0 ${VW} ${h}`);
+  svg.innerHTML = s;
+}
+
+function renderCfsSnap(t) {
+  const svg = $('snapCfs'), n = tasks.length, st = stateAt(cfsSim, t);
+  let lo = Math.min(...st.vr), hi = Math.max(...st.vr);
+  const span = Math.max(hi - lo, 1);
+  lo -= span * 0.08; hi += span * 0.08;
+  const X0 = PAD_L, X1 = 700, sx = v => X0 + (v - lo) / (hi - lo) * (X1 - X0);
+  const top = 12, rowH = 30, bottom = top + n * rowH;
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const y = top + i * rowH + rowH / 2;
+    const run = i === st.running, nxt = i === st.next;
+    s += `<text x="${PAD_L - 12}" y="${y + 4}" text-anchor="end" class="rowlbl">${esc(tasks[i].name)}</text>`;
+    s += `<line x1="${X0}" x2="${X1}" y1="${y}" y2="${y}" stroke="#e6e9f0" stroke-width="2"/>`;
+    s += `<circle cx="${sx(st.vr[i])}" cy="${y}" r="${run ? 9 : 7}" fill="${color(i)}" ${run ? 'stroke="#1d2230" stroke-width="3"' : ''}/>`;
+    const lbl = run ? '▶ running now' : nxt ? 'next up: furthest behind' : 'waiting';
+    s += `<text x="${X1 + 16}" y="${y + 4}" class="snaplbl${run || nxt ? ' strong' : ''}">${lbl}</text>`;
+  }
+  s += `<line x1="${X0}" x2="${X1}" y1="${bottom + 8}" y2="${bottom + 8}" stroke="#9aa5b8"/>`;
+  s += `<text x="${X0}" y="${bottom + 24}" class="note">← further behind its share (picked first)</text>`;
+  s += `<text x="${X1}" y="${bottom + 24}" text-anchor="end" class="note">further ahead →</text>`;
+  svg.setAttribute('viewBox', `0 0 ${VW} ${bottom + 32}`);
+  svg.innerHTML = s;
+}
+
+function renderEevdfSnap(t) {
+  const svg = $('snapEevdf'), n = tasks.length, st = stateAt(eeSim, t), w = eeSim.w;
+  const V = st.vr.reduce((s, v, i) => s + v * w[i], 0) / eeSim.W;
+  let lo = Math.min(V, ...st.vr), hi = Math.max(...st.dl);
+  const span = Math.max(hi - lo, 1e-6);
+  lo -= span * 0.06; hi += span * 0.08;
+  const X0 = PAD_L, X1 = 700, sx = v => X0 + (v - lo) / (hi - lo) * (X1 - X0);
+  const top = 36, rowH = 32, bottom = top + n * rowH;
+  const xf = sx(V);
+  let s = '';
+  s += `<rect x="${X0}" y="${top - 8}" width="${Math.max(0, xf - X0)}" height="${n * rowH + 8}" fill="#eaf6ee"/>`;
+  s += `<rect x="${xf}" y="${top - 8}" width="${Math.max(0, X1 - xf)}" height="${n * rowH + 8}" fill="#f3f4f7"/>`;
+  s += `<text x="${xf - 8}" y="${top - 16}" text-anchor="end" class="snaplbl">← owed CPU: may run</text>`;
+  s += `<text x="${xf + 8}" y="${top - 16}" class="snaplbl">ahead of its share: waits →</text>`;
+  s += `<line x1="${xf}" x2="${xf}" y1="${top - 28}" y2="${bottom}" stroke="#2e7d4f" stroke-width="2" stroke-dasharray="5 4"/>`;
+  s += `<text x="${xf}" y="${bottom + 16}" text-anchor="middle" class="snaplbl strong">fair point</text>`;
+  for (let i = 0; i < n; i++) {
+    const y = top + i * rowH + rowH / 2;
+    const run = i === st.running, nxt = i === st.next;
+    const elig = st.vr[i] <= V + EPS;
+    const xa = sx(st.vr[i]), xb = sx(st.dl[i]);
+    s += `<text x="${PAD_L - 12}" y="${y + 4}" text-anchor="end" class="rowlbl">${esc(tasks[i].name)}</text>`;
+    s += `<rect x="${xa}" y="${y - 6}" width="${Math.max(1, xb - xa)}" height="12" rx="6" fill="${color(i)}"
+      fill-opacity="${elig || run ? 0.9 : 0.3}" ${run ? 'stroke="#1d2230" stroke-width="2"' : ''}>
+      <title>${esc(tasks[i].name)}: from where it is now to the deadline of its current turn</title></rect>`;
+    s += `<circle cx="${xa}" cy="${y}" r="7" fill="#fff" stroke="${color(i)}" stroke-width="3"/>`;
+    s += `<path d="M${xb} ${y - 13} V${y + 10}" stroke="#1d2230" stroke-width="2"/>`;
+    s += `<path d="M${xb} ${y - 13} L${xb + 10} ${y - 9} L${xb} ${y - 5} Z" fill="#1d2230"><title>deadline</title></path>`;
+    const lbl = run ? '▶ running (finishing its turn)'
+      : nxt ? 'next up: earliest deadline'
+      : elig ? 'owed CPU, later deadline'
+      : 'ahead of its share: waits';
+    s += `<text x="${X1 + 16}" y="${y + 4}" class="snaplbl${run || nxt ? ' strong' : ''}">${lbl}</text>`;
+  }
+  svg.setAttribute('viewBox', `0 0 ${VW} ${bottom + 26}`);
+  svg.innerHTML = s;
+}
+
+function bars(a, b, max, f) {
+  return [['CFS', a, 'cfs'], ['EEVDF', b, 'eevdf']].map(([lbl, v, cls]) =>
+    `<div class="br"><span>${lbl}</span><div class="track"><div class="fill ${cls}" style="width:${Math.min(100, v / max * 100)}%"></div></div><span class="val">${f(v)}</span></div>`
+  ).join('');
+}
+
+function renderResults() {
+  const mc = cfsSim.turns.map(tr => taskMetrics(tr, T));
+  const me = eeSim.turns.map(tr => taskMetrics(tr, T));
+  const maxTurn = Math.max(0.001, ...mc.map(x => x.avgTurn), ...me.map(x => x.avgTurn));
+  const maxWait = Math.max(0.001, ...mc.map(x => x.maxWait), ...me.map(x => x.maxWait));
+  let h = `<div class="hdr">Task</div><div class="hdr">CPU share</div><div class="hdr">Typical turn length</div><div class="hdr">Longest wait for a turn</div>`;
+  const obs = [];
+  tasks.forEach((tk, i) => {
+    h += `<div class="cell"><span class="chip" style="background:${color(i)}"></span><b>${esc(tk.name)}</b></div>`;
+    h += `<div class="cell">${bars(mc[i].share, me[i].share, 1, pct)}</div>`;
+    h += `<div class="cell">${bars(mc[i].avgTurn, me[i].avgTurn, maxTurn, ms)}</div>`;
+    h += `<div class="cell">${bars(mc[i].maxWait, me[i].maxWait, maxWait, ms)}</div>`;
+    const sliceTxt = tk.slice == null ? 'default slice' : `slice ${ms(tk.slice)}`;
+    obs.push(`<li><b>${esc(tk.name)}</b> (nice ${tk.nice > 0 ? '+' + tk.nice : tk.nice}, ${sliceTxt}): gets ${pct(mc[i].share)} of the CPU with CFS and ${pct(me[i].share)} with EEVDF.
+      Its turns last about ${ms(mc[i].avgTurn)} with CFS vs ${ms(me[i].avgTurn)} with EEVDF, and the longest it sat waiting was ${ms(mc[i].maxWait)} vs ${ms(me[i].maxWait)}.</li>`);
+  });
+  $('results').innerHTML = h;
+  $('obs').innerHTML = obs.join('');
+}
+
+function niceOptions(sel) {
+  let o = '';
+  for (let n = -20; n <= 19; n++) o += `<option value="${n}"${n === sel ? ' selected' : ''}>${n > 0 ? '+' + n : n}</option>`;
+  return o;
+}
+
+function sliceOptions(sel, base) {
+  let o = `<option value="d"${sel == null ? ' selected' : ''}>default (${ms(base)})</option>`;
+  SLICE_CHOICES.forEach(v => { o += `<option value="${v}"${sel === v ? ' selected' : ''}>${ms(v)}</option>`; });
+  return o;
+}
+
+function renderTable(m) {
+  document.querySelector('#taskTable tbody').innerHTML = tasks.map((tk, i) => `
+    <tr>
+      <td><span class="chip" style="background:${color(i)}"></span><input type="text" class="name" data-i="${i}" value="${esc(tk.name)}" maxlength="10"></td>
+      <td><select class="nice" data-i="${i}">${niceOptions(tk.nice)}</select> <span class="muted" id="share-${i}"></span></td>
+      <td class="eevdf-only"><select class="slice" data-i="${i}">${sliceOptions(tk.slice, m.slice)}</select></td>
+      <td class="cfs-only muted" id="cfsturn-${i}"></td>
+      <td>${tasks.length > 1 ? `<button class="rm" data-i="${i}" title="Remove task">✕</button>` : ''}</td>
+    </tr>`).join('');
+}
+
+function updateDerivedCells() {
+  tasks.forEach((_, i) => {
+    $(`share-${i}`).textContent = `≈ ${pct(cfsSim.w[i] / cfsSim.W)} of the CPU`;
+    $(`cfsturn-${i}`).textContent = `${ms(cfsSim.slice[i])} per turn, follows from share`;
+  });
+}
+
+function update(rebuildTable) {
+  const m = MACHINES[$('machine').value];
+  T = +$('duration').value;
+  if (rebuildTable) renderTable(m);
+  cfsSim = simulateCFS(tasks, T, m);
+  eeSim = simulateEEVDF(tasks, T, m);
+  cfsSim.turns = computeTurns(cfsSim.segs, tasks.length);
+  eeSim.turns = computeTurns(eeSim.segs, tasks.length);
+  updateDerivedCells();
+  renderTimeline($('tlCfs'), 'cfs', cfsSim);
+  renderTimeline($('tlEevdf'), 'eevdf', eeSim);
+  const s = $('scrub');
+  s.max = T;
+  if (+s.value > T) s.value = T;
+  onScrub();
+  renderResults();
+}
+
+function onScrub() {
+  const t = +$('scrub').value;
+  $('tRead').textContent = `cursor at ${ms(t)}`;
+  ['cfs', 'eevdf'].forEach(k => {
+    const c = $(`cursor-${k}`);
+    if (c) { const x = xScale(t); c.setAttribute('x1', x); c.setAttribute('x2', x); }
+  });
+  renderCfsSnap(t);
+  renderEevdfSnap(t);
+}
+
+function strip(blocks, total, col) {
+  return `<div class="strip">${blocks.map(([a, b]) =>
+    `<span style="left:${a / total * 100}%;width:${(b - a) / total * 100}%;background:${col}"></span>`).join('')}</div>`;
+}
+
+function buildRhythms() {
+  $('cfsRhythm').innerHTML =
+    `<div>A (nice 0)</div>${strip([[0, 18], [24, 42]], 48, PALETTE[0])}` +
+    `<div>B (nice +5)</div>${strip([[18, 24], [42, 48]], 48, PALETTE[1])}`;
+  const frequent = [];
+  for (let k = 0; k < 16; k++) frequent.push([k * 3, k * 3 + 0.75]);
+  $('eevdfRhythm').innerHTML =
+    `<div>Run 1: slice 6 ms</div>${strip([[0, 6], [24, 30]], 48, PALETTE[2])}` +
+    `<div>Run 2: slice 0.75 ms</div>${strip(frequent, 48, PALETTE[2])}`;
+}
+
+function buildPresets() {
+  $('presets').innerHTML = '<span class="muted">Scenarios:</span>' +
+    PRESETS.map(p => `<button data-p="${p.id}">${p.label}</button>`).join('');
+  $('presets').addEventListener('click', e => {
+    const b = e.target.closest('button[data-p]');
+    if (b) loadPreset(b.dataset.p);
+  });
+}
+
+function loadPreset(id) {
+  const p = PRESETS.find(x => x.id === id);
+  tasks = p.tasks.map(t => ({ ...t }));
+  $('presetNote').textContent = p.note;
+  document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === id));
+  $('scrub').value = 0;
+  update(true);
+}
+
+function markCustom() {
+  document.querySelectorAll('#presets button').forEach(b => b.classList.remove('active'));
+  $('presetNote').textContent = 'Custom setup. Pick a scenario above to reset.';
+}
+
+const tbody = document.querySelector('#taskTable tbody');
+tbody.addEventListener('change', e => {
+  const i = +e.target.dataset.i;
+  if (e.target.classList.contains('nice')) tasks[i].nice = +e.target.value;
+  else if (e.target.classList.contains('slice')) tasks[i].slice = e.target.value === 'd' ? null : +e.target.value;
+  else return;
+  markCustom();
+  update(false);
+});
+tbody.addEventListener('input', e => {
+  if (!e.target.classList.contains('name')) return;
+  tasks[+e.target.dataset.i].name = e.target.value || '?';
+  update(false);
+});
+tbody.addEventListener('click', e => {
+  const b = e.target.closest('button.rm');
+  if (!b) return;
+  tasks.splice(+b.dataset.i, 1);
+  markCustom();
+  update(true);
+});
+$('addTask').onclick = () => {
+  if (tasks.length >= 8) return;
+  tasks.push({ name: `T${tasks.length + 1}`, nice: 0, slice: null });
+  markCustom();
+  update(true);
+};
+$('machine').onchange = () => update(true);
+$('duration').onchange = () => update(false);
+$('showDl').onchange = () => update(false);
+$('scrub').oninput = onScrub;
+['tlCfs', 'tlEevdf'].forEach(id => $(id).addEventListener('click', e => {
+  const r = $(id).getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * VW;
+  $('scrub').value = Math.min(T, Math.max(0, (x - PAD_L) / (VW - PAD_L - PAD_R) * T));
+  onScrub();
+}));
+
+let playing = false, lastTs = 0;
+$('play').onclick = () => {
+  playing = !playing;
+  $('play').textContent = playing ? '❚❚ Pause' : '▶ Play';
+  if (playing) { lastTs = performance.now(); requestAnimationFrame(stepAnim); }
+};
+function stepAnim(ts) {
+  if (!playing) return;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  let t = +$('scrub').value + dt * 8;
+  if (t >= T) t = 0;
+  $('scrub').value = t;
+  onScrub();
+  requestAnimationFrame(stepAnim);
+}
+
+buildRhythms();
+buildPresets();
+loadPreset('ui');
+</script>
+</body>
+</html>

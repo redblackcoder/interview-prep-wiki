@@ -71,16 +71,16 @@ A partitioned owner can't know it lost the lease — its job keeps running. So t
 > "Ownership is a conditional update: `UPDATE … SET state='CLAIMED', owner=me, fence=fence+1, lease_until=now()+30s WHERE id=:x AND state='QUEUED'` — one row affected means I won. I claim before I submit anything. Every later write carries the fence, so a zombie's writes bounce. Heartbeats renew one lease per driver, not per job — 200 writes a second instead of 200k — and a standby driver re-adopts the pool so a driver crash isn't a thousand retries. If a driver can't renew, it stops its worker keepalives early enough that workers are dead before the lease runs out, and nobody reclaims until expiry plus a skew margin. That gives me at-most-one live owner; execution is still at-least-once, so I hand the job a stable execution id as its idempotency key."
 
 ## Connections
-- [[system-design-concepts/exactly-once-semantics]] — leases give at-most-one owner; the idempotency key closes the effect
-- [[system-design-concepts/distributed-job-scheduler]] — the canonical application: dispatch claim, driver heartbeats, retry-after-expiry
-- [[system-design-concepts/dispatch-and-matching]] — the same CAS claim on `{ride_id, driver_id}`
-- [[system-design-concepts/distributed-id-generation]] — worker-ID leasing with self-fencing and `TTL + skew + margin` reclaim
-- [[theory/consensus-raft]] — leader leases and terms are the same idea (term = fence)
-- [[system-design-concepts/work-distribution]] — partition ownership in a fleet uses leases
-- [[system-design-concepts/postgres-as-a-work-queue]] — two-step claim with a dispatcher lease and fenced assign
-- [[system-design-concepts/distributed-file-system]] — expiring write handles and capacity reservations are leases; repair swaps a replica with a fenced `WHERE replica_set_version=:v`
-- [[system-design-concepts/immutable-object-commit]] — idempotent commit keyed by `upload_id`; abandoned reservations expire
+- [exactly once semantics](exactly-once-semantics.md) — leases give at-most-one owner; the idempotency key closes the effect
+- [distributed job scheduler](distributed-job-scheduler.md) — the canonical application: dispatch claim, driver heartbeats, retry-after-expiry
+- [dispatch and matching](dispatch-and-matching.md) — the same CAS claim on `{ride_id, driver_id}`
+- [distributed id generation](distributed-id-generation.md) — worker-ID leasing with self-fencing and `TTL + skew + margin` reclaim
+- [consensus raft](../theory/consensus-raft.md) — leader leases and terms are the same idea (term = fence)
+- [work distribution](work-distribution.md) — partition ownership in a fleet uses leases
+- [postgres as a work queue](postgres-as-a-work-queue.md) — two-step claim with a dispatcher lease and fenced assign
+- [distributed file system](distributed-file-system.md) — expiring write handles and capacity reservations are leases; repair swaps a replica with a fenced `WHERE replica_set_version=:v`
+- [immutable object commit](immutable-object-commit.md) — idempotent commit keyed by `upload_id`; abandoned reservations expire
 
 ## Sources
-- [[sources/docs/design-job-scheduler-mock-interview]] — the claim operation; lease granularity, nested-lease timeline, re-adoption
-- [[sources/docs/design-distributed-file-system-interview]] — offset reservation that "dies" if not followed up = a lease; fenced replica swap in repair
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — the claim operation; lease granularity, nested-lease timeline, re-adoption
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md) — offset reservation that "dies" if not followed up = a lease; fenced replica swap in repair

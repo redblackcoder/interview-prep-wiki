@@ -19,7 +19,7 @@ The reflex to interrogate is your *own* requirement. Faced with "bids must be co
 
 ## Why idempotence is the quiet hero
 
-Commutativity/associativity buy order-independence; **idempotence** buys **duplicate-tolerance**. `max(x, x) == x`, so applying the same bid twice is harmless. That means an at-least-once pipeline (Kafka redelivery, client retry, cross-region replay) needs **no dedup** on this path — you sidestep [[system-design-concepts/exactly-once-semantics]] entirely for the aggregate. (You may still need exactly-once for the *close* — declaring the winner once.)
+Commutativity/associativity buy order-independence; **idempotence** buys **duplicate-tolerance**. `max(x, x) == x`, so applying the same bid twice is harmless. That means an at-least-once pipeline (Kafka redelivery, client retry, cross-region replay) needs **no dedup** on this path — you sidestep [exactly once semantics](exactly-once-semantics.md) entirely for the aggregate. (You may still need exactly-once for the *close* — declaring the winner once.)
 
 ## Where it applies — and where it doesn't
 
@@ -28,9 +28,9 @@ Commutativity/associativity buy order-independence; **idempotence** buys **dupli
 **Does NOT apply (needs coordination):** anything with an **order-sensitive invariant** — uniqueness ("this username is taken"), non-negativity ("don't oversell inventory": `dec` is *not* safe to reorder past zero), strict monotonic sequence assignment, balance transfers. For these, reordering *can* violate the invariant, so you genuinely need a single ordering authority (per-shard leader / consensus). Knowing which side a problem falls on is the whole skill.
 
 ## Key points
-- **Order-free ⇒ coordination-free ⇒ available + low-latency under contention.** This is the direct escape from a [[system-design-concepts/hot-key-write-contention|hot-key]] problem: append + deferred fold instead of serialized read-modify-write.
+- **Order-free ⇒ coordination-free ⇒ available + low-latency under contention.** This is the direct escape from a [hot-key](hot-key-write-contention.md) problem: append + deferred fold instead of serialized read-modify-write.
 - **Split freely.** Because the aggregate recombines, you can compute partial results on many partitions/nodes and merge — horizontal scale on a single logical key.
-- **Membership is the real consistency requirement**, and it's usually a *time cutoff* → becomes a watermark/grace-window problem ([[system-design-concepts/event-time-vs-processing-time]]), not an ordering problem.
+- **Membership is the real consistency requirement**, and it's usually a *time cutoff* → becomes a watermark/grace-window problem ([event time vs processing time](event-time-vs-processing-time.md)), not an ordering problem.
 - **CALM theorem:** a program has a consistent, coordination-free implementation **iff** it is monotonic. Commutative/associative aggregates are the canonical monotonic computations.
 
 ## Interview angle
@@ -38,16 +38,16 @@ Commutativity/associativity buy order-independence; **idempotence** buys **dupli
 > "Before I demand strong consistency I ask what the operation actually needs. If it's an aggregate like `max` or a counter, the result doesn't depend on order — it's commutative, associative, and idempotent — so linearizability is overkill. All I truly need is that every input is durable and that everyone agrees on the cutoff for which inputs count. That lets the writes go to an append-only log with no coordination, be computed in any order, be split across nodes and merged, and even be delivered twice harmlessly. The flip side: the moment there's an order-sensitive invariant — uniqueness, don't-oversell, balance — reordering can break it, and then I do need a single ordering authority. That fork, monotonic-vs-not, is CALM."
 
 ## Connections
-- [[system-design-concepts/hot-key-write-contention]] — this is the preferred way out of single-key contention: dissolve the coordination
-- [[theory/consistency-models]] — concretely "linearizable was unnecessary; eventual + agreed cutoff suffices"; the missing rung below the ladder
-- [[system-design-concepts/exactly-once-semantics]] — idempotent aggregates make at-least-once *safe*, dodging dedup on the hot path
-- [[system-design-concepts/global-rate-limiting]] — CRDT counters ("accurate but eventually-consistent") are commutative aggregation applied to rate counters
-- [[system-design-concepts/the-log-abstraction]] — the durable input log whose deterministic fold is the aggregate
-- [[system-design-concepts/event-time-vs-processing-time]] — "membership/cutoff" is a watermark + grace-window decision
-- [[system-design-concepts/lambda-vs-kappa]] — recomputing an aggregate by replaying the log is the same monotonic fold
-- [[system-design-concepts/queue-placement]] — the idempotent per-cell write at the DB drain is why the ingestion queue needs only at-least-once, not exactly-once
-- [[system-design-concepts/edge-shed-vs-core-durability]] — idempotent counters make the durable core hop safe with cheap delivery
+- [hot key write contention](hot-key-write-contention.md) — this is the preferred way out of single-key contention: dissolve the coordination
+- [consistency models](../theory/consistency-models.md) — concretely "linearizable was unnecessary; eventual + agreed cutoff suffices"; the missing rung below the ladder
+- [exactly once semantics](exactly-once-semantics.md) — idempotent aggregates make at-least-once *safe*, dodging dedup on the hot path
+- [global rate limiting](global-rate-limiting.md) — CRDT counters ("accurate but eventually-consistent") are commutative aggregation applied to rate counters
+- [the log abstraction](the-log-abstraction.md) — the durable input log whose deterministic fold is the aggregate
+- [event time vs processing time](event-time-vs-processing-time.md) — "membership/cutoff" is a watermark + grace-window decision
+- [lambda vs kappa](lambda-vs-kappa.md) — recomputing an aggregate by replaying the log is the same monotonic fold
+- [queue placement](queue-placement.md) — the idempotent per-cell write at the DB drain is why the ingestion queue needs only at-least-once, not exactly-once
+- [edge shed vs core durability](edge-shed-vs-core-durability.md) — idempotent counters make the durable core hop safe with cheap delivery
 
 ## Sources
-- [[sources/docs/design-instagram-auction-mock-interview]] — dropping the linearizability requirement once `max` is seen to be order-free; durability + cutoff as the real needs
-- [[sources/docs/how-to-beat-the-cap-theorem]] — the CALM / monotonicity-beats-coordination argument this generalizes
+- [live auctions](../problems/system-design/live-auctions.md) — dropping the linearizability requirement once `max` is seen to be order-free; durability + cutoff as the real needs
+- [how to beat the cap theorem](../reading-notes/how-to-beat-the-cap-theorem.md) — the CALM / monotonicity-beats-coordination argument this generalizes

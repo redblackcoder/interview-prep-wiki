@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kNN Search — from Brute Force to Space-Filling Curves</title>
+<style>
+  :root{
+    /* ---- dark (default) ---- */
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232d; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2d333b; --accent:#58a6ff; --accent2:#3fb950; --warn:#d29922; --pink:#f778ba;
+    --purple:#bc8cff; --red:#ff7b72; --cyan:#39c5cf; --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --canvas-bg:#0a0e14; --code-bg:#010409; --chip-bg:#1f2630; --overlay:rgba(13,17,23,.88);
+    --grid-rgb:120,140,160; --shadow:rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f8fa; --panel:#ffffff; --panel2:#eef1f4; --ink:#1f2328; --muted:#59636e;
+    --line:#d0d7de; --accent:#0969da; --accent2:#1a7f37; --warn:#9a6700; --pink:#bf3989;
+    --purple:#8250df; --red:#cf222e; --cyan:#1b7c83;
+    --canvas-bg:#ffffff; --code-bg:#f6f8fa; --chip-bg:#eef1f4; --overlay:rgba(255,255,255,.92);
+    --grid-rgb:80,92,108; --shadow:rgba(140,150,165,.28);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:16px;transition:background .25s ease,color .25s ease;}
+  #themeBtn{position:fixed;top:14px;right:16px;z-index:50;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:20px;padding:8px 14px;font-size:.82rem;font-weight:600;
+    cursor:pointer;box-shadow:0 2px 10px var(--shadow)}
+  #themeBtn:hover{border-color:var(--accent)}
+  header{padding:48px 24px 32px;text-align:center;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 400px at 50% -120px,rgba(88,166,255,.18),transparent);}
+  header h1{margin:0 0 8px;font-size:2.2rem;letter-spacing:-.5px}
+  header p{margin:0 auto;max-width:760px;color:var(--muted)}
+  .layout{display:flex;max-width:1280px;margin:0 auto;gap:0}
+  nav{position:sticky;top:0;align-self:flex-start;width:250px;flex:none;
+    padding:24px 12px;height:100vh;overflow-y:auto;border-right:1px solid var(--line);font-size:.9rem}
+  nav a{display:block;color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:6px;margin:2px 0}
+  nav a:hover{background:var(--panel);color:var(--ink)}
+  nav a.sub{padding-left:26px;font-size:.85rem}
+  nav .grp{color:var(--accent);font-weight:600;margin:14px 0 4px;padding-left:12px;font-size:.72rem;
+    text-transform:uppercase;letter-spacing:.08em}
+  main{flex:1;min-width:0;padding:32px 32px 120px;max-width:900px}
+  section{margin-bottom:56px;scroll-margin-top:20px}
+  h2{font-size:1.6rem;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-top:0;display:inline-block}
+  h3{font-size:1.2rem;color:var(--cyan);margin-top:32px}
+  h4{color:var(--purple);margin-bottom:6px}
+  p,li{color:#cdd6e0}
+  code{font-family:var(--mono);background:var(--chip-bg);padding:2px 6px;border-radius:4px;font-size:.86em;color:var(--pink)}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;
+    font-family:var(--mono);font-size:.82rem;line-height:1.5;color:var(--ink)}
+  .demo{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:20px 0;
+    box-shadow:0 4px 24px var(--shadow)}
+  .demo h4{margin-top:0;color:var(--accent2);font-size:1rem;display:flex;align-items:center;gap:8px}
+  .demo .cap{color:var(--muted);font-size:.85rem;margin:4px 0 12px}
+  canvas{background:var(--canvas-bg);border-radius:8px;display:block;width:100%;max-width:100%;touch-action:none;border:1px solid var(--line)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+  button{background:var(--accent);color:#04121f;border:none;border-radius:6px;padding:8px 14px;
+    font-weight:600;cursor:pointer;font-size:.85rem}
+  button:hover{filter:brightness(1.12)}
+  button.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  label.sl{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted)}
+  input[type=range]{accent-color:var(--accent)}
+  .stat{font-family:var(--mono);font-size:.82rem;color:var(--cyan);background:var(--canvas-bg);
+    border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+  .tag{display:inline-block;font-size:.7rem;font-family:var(--mono);padding:2px 8px;border-radius:20px;
+    background:var(--chip-bg);color:var(--accent);border:1px solid var(--line);margin-right:4px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--accent)}
+  .callout{border-left:3px solid var(--warn);background:rgba(210,153,34,.08);padding:10px 16px;border-radius:0 8px 8px 0;margin:16px 0}
+  .callout.blue{border-color:var(--accent);background:rgba(88,166,255,.08)}
+  .callout.green{border-color:var(--accent2);background:rgba(63,185,80,.08)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  @media(max-width:920px){nav{display:none}main{padding:20px}.two{grid-template-columns:1fr}}
+  .kbd{font-family:var(--mono);background:var(--code-bg);border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:4px;padding:1px 6px;font-size:.78rem}
+  .pipe{color:var(--muted)}
+</style>
+<script>
+  /* set theme before first paint to avoid a flash of the wrong theme */
+  (function(){
+    var t;try{t=localStorage.getItem('knn-theme');}catch(e){}
+    if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';
+    document.documentElement.setAttribute('data-theme',t);
+  })();
+</script>
+</head>
+<body>
+<button id="themeBtn" aria-label="Toggle color theme">☀️ Light</button>
+<header>
+  <h1>k-Nearest-Neighbor Search</h1>
+  <p>From brute force on one box, to distributed scan over S3/Iceberg, to the spatial indexes and
+  space-filling curves that make geospatial kNN fast. Every idea below has a live, animated demo — click, drag, and play.</p>
+</header>
+
+<div class="layout">
+<nav>
+  <div class="grp">Foundations</div>
+  <a href="#intro">What is kNN?</a>
+  <a href="#bruteforce" class="sub">Brute force demo</a>
+  <a href="#ann" class="sub">Approximate NN (HNSW)</a>
+  <div class="grp">Scale</div>
+  <a href="#singlenode">Single node</a>
+  <a href="#distributed">Distributed / Lakehouse</a>
+  <a href="#iceberg" class="sub">S3 + Iceberg scatter-gather</a>
+  <div class="grp">Geospatial: Trees</div>
+  <a href="#geo-intro">2D on Earth</a>
+  <a href="#kdtree">kD-tree</a>
+  <a href="#quadtree">Quadtree</a>
+  <a href="#rtree">R-tree</a>
+  <div class="grp">Geospatial: Grids</div>
+  <a href="#geohash">Geohash</a>
+  <a href="#s2">S2</a>
+  <a href="#h3">H3</a>
+  <a href="#s2-vs-h3" class="sub">S2 vs H3: nesting</a>
+  <div class="grp">The Trick</div>
+  <a href="#zorder">Z-order curve</a>
+  <a href="#hilbert">Hilbert curve</a>
+  <a href="#curves-why">Why curves help</a>
+  <div class="grp">Wrap-up</div>
+  <a href="#caching">Caching queries</a>
+  <a href="#compare">Comparison table</a>
+</nav>
+
+<main>
+
+<!-- ============================ INTRO ============================ -->
+<section id="intro">
+  <h2>What is kNN search?</h2>
+  <p>Given a set of points <code>P</code> and a query point <code>q</code>, return the <b>k</b> points in <code>P</code>
+  that are closest to <code>q</code> under some distance metric (Euclidean, cosine, Haversine for the globe…).</p>
+  <p>Two families of problems share this shape:</p>
+  <ul>
+    <li><b>High-dimensional kNN</b> — vector search / embeddings (recommendations, RAG, image similarity). Dimensions in the hundreds–thousands.</li>
+    <li><b>Low-dimensional / geospatial kNN</b> — "5 nearest drivers", "restaurants within 2 km". Usually 2D (lat, lng) on a sphere.</li>
+  </ul>
+  <p>The core tension is always the same: a naïve scan is <code>O(N·d)</code> per query. Everything that follows is a way to
+  <b>avoid looking at most of the points</b> by exploiting structure — either a tree that prunes branches, or a grid/curve
+  that maps space to a sortable key so you can use a plain B-tree index.</p>
+</section>
+
+<!-- ============================ BRUTE FORCE ============================ -->
+<section id="bruteforce">
+  <h3>Brute force — the baseline every system falls back to</h3>
+  <p>Compute the distance to <em>every</em> point, keep a max-heap of size k. Simple, exact, embarrassingly
+  parallel — and the thing you must beat.</p>
+  <div class="demo">
+    <h4>▶ Live: brute-force scan with a k-max-heap</h4>
+    <div class="cap">Click anywhere to drop a query point. Watch the scan sweep every point; the running top-k heap is shown on the right.</div>
+    <canvas id="bfCanvas" height="380"></canvas>
+    <div class="controls">
+      <button id="bfScan">Scan for nearest k</button>
+      <button class="ghost" id="bfReset">New points</button>
+      <label class="sl">k = <input type="range" id="bfK" min="1" max="12" value="5"><span id="bfKVal">5</span></label>
+      <label class="sl">speed <input type="range" id="bfSpeed" min="1" max="60" value="24"></label>
+      <span class="stat" id="bfStat">distance checks: 0</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#58a6ff"></span>query q</span>
+      <span><span class="dot" style="background:#9aa7b4"></span>candidate</span>
+      <span><span class="dot" style="background:#d29922"></span>currently checking</span>
+      <span><span class="dot" style="background:#3fb950"></span>current top-k</span>
+    </div>
+  </div>
+  <div class="callout">
+    <b>Cost:</b> <code>O(N·d)</code> per query, <code>O(N)</code> memory. For 1k points it's instant; for 1B vectors it's
+    a full table scan. That's why we index — but note that <b>GPU brute force</b> (FAISS flat) is still the exact-answer
+    gold standard and is often "fast enough" up to a few million vectors.
+  </div>
+</section>
+
+<!-- ============================ ANN ============================ -->
+<section id="ann">
+  <h3>Approximate NN (ANN) — when exact is too expensive</h3>
+  <p>In high dimensions, tree pruning collapses (the "curse of dimensionality": everything is roughly equidistant, so no
+  branch can be safely skipped). The industry answer is to give up exactness for a <b>~95–99% recall</b> and enormous
+  speedups. The dominant structure is <b>HNSW</b> (Hierarchical Navigable Small World) — a multi-layer proximity graph
+  you greedily walk toward the query.</p>
+  <div class="demo">
+    <h4>▶ Live: greedy graph walk (HNSW intuition)</h4>
+    <div class="cap">Click to set a query. The search enters at a random node and greedily hops to whichever neighbor is
+    closer to q, until no neighbor improves — visiting a handful of nodes instead of all N.</div>
+    <canvas id="hnswCanvas" height="360"></canvas>
+    <div class="controls">
+      <button id="hnswWalk">Greedy walk to q</button>
+      <button class="ghost" id="hnswReset">New graph</button>
+      <span class="stat" id="hnswStat">nodes visited: 0 / 0</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#58a6ff"></span>query</span>
+      <span><span class="dot" style="background:#bc8cff"></span>entry point</span>
+      <span><span class="dot" style="background:#d29922"></span>visited hop</span>
+      <span><span class="dot" style="background:#3fb950"></span>found nearest</span>
+    </div>
+  </div>
+  <div class="callout blue">
+    <b>Other ANN families:</b> IVF (inverted-file: cluster with k-means, probe nearest cells), PQ/OPQ (product
+    quantization — compress vectors to bytes), LSH (locality-sensitive hashing). Real systems combine them: <code>IVF+PQ</code>,
+    <code>HNSW+PQ</code>. Products: FAISS, ScaNN, pgvector, Milvus, Weaviate, Qdrant, Pinecone.
+  </div>
+</section>
+
+<!-- ============================ SINGLE NODE ============================ -->
+<section id="singlenode">
+  <h2>kNN at scale — single node first</h2>
+  <p>On one machine the whole game is <b>"which index fits in RAM, and what recall/latency do I need?"</b></p>
+  <table>
+    <tr><th>Dataset size</th><th>Approach</th><th>Why</th></tr>
+    <tr><td>&lt; ~1M vectors</td><td>Flat brute force (CPU/GPU)</td><td>Exact, no index build, trivially correct. GPU makes it fast.</td></tr>
+    <tr><td>1M–100M</td><td>HNSW / IVF-PQ in RAM</td><td>Sub-ms latency, high recall. HNSW = best recall/latency; IVF-PQ = smallest memory.</td></tr>
+    <tr><td>&gt; RAM</td><td>Disk-based ANN (DiskANN)</td><td>Graph on SSD, only hot nodes in RAM; a few SSD reads per query.</td></tr>
+    <tr><td>2D geo, any size</td><td>Tree / grid index (below)</td><td>Low-dim structure prunes hard; exact answers are cheap.</td></tr>
+  </table>
+  <p>The build vs. query trade-off matters: HNSW has slow inserts and high memory; IVF needs a training step; flat needs
+  nothing but scans. Pick based on write rate, memory budget, and recall SLA.</p>
+</section>
+
+<!-- ============================ DISTRIBUTED ============================ -->
+<section id="distributed">
+  <h2>Distributed kNN on a lakehouse (S3 / Iceberg)</h2>
+  <p>Now the data is billions of rows sitting as Parquet files in object storage, catalogued by <b>Apache Iceberg</b>.
+  There is no always-on index server — queries run on ephemeral compute (Spark, Trino, DuckDB). Two things make this work:</p>
+  <ol>
+    <li><b>Partition + prune:</b> never read files that can't contain an answer. Iceberg's manifest metadata stores
+      per-file <b>min/max</b> of each column (a "zone map"). If you store a spatial key column (a geohash/S2/H3 cell, or a
+      space-filling-curve value), the planner skips every file whose key range is outside your query region.</li>
+    <li><b>Scatter–gather:</b> the remaining files are scanned in parallel, each producing a <b>local top-k</b>; a final
+      merge step keeps the global top-k. Because top-k is <em>mergeable</em> (a monoid), this parallelizes perfectly.</li>
+  </ol>
+</section>
+
+<section id="iceberg">
+  <h3>▶ Live: scatter–gather with data skipping</h3>
+  <div class="demo">
+    <h4>Query fans out to only the relevant Parquet files</h4>
+    <div class="cap">The dataset is laid out into files, each covering a range of a spatial sort key. Run a query and watch
+    the planner <b>prune</b> files by min/max, scan the survivors in parallel for local top-k, then merge.</div>
+    <canvas id="icebergCanvas" height="420"></canvas>
+    <div class="controls">
+      <button id="icebergRun">Run distributed query</button>
+      <button class="ghost" id="icebergReset">Reset</button>
+      <label class="sl"><input type="checkbox" id="icebergSkip" checked> data skipping (zone maps)</label>
+      <span class="stat" id="icebergStat">files read: 0</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#2d333b"></span>pruned file (skipped)</span>
+      <span><span class="dot" style="background:#d29922"></span>scanning</span>
+      <span><span class="dot" style="background:#3fb950"></span>local top-k</span>
+      <span><span class="dot" style="background:#58a6ff"></span>merged global top-k</span>
+    </div>
+  </div>
+  <div class="callout green">
+    <b>The critical layout decision:</b> to make min/max pruning effective, physically <b>sort/cluster rows by a spatial key</b>
+    so that nearby points land in the same file. A raw <code>(lat, lng)</code> sort clusters well along latitude but scatters
+    along longitude. This is <em>exactly</em> the problem <b>space-filling curves</b> solve — sort by a single Z-order or
+    Hilbert value and 2D locality is preserved in the 1D file layout. Iceberg's <code>Z-ORDER</code> compaction and
+    Databricks' liquid clustering do this for you.
+  </div>
+  <pre>-- Iceberg: cluster files along a space-filling curve so zone maps prune well
+ALTER TABLE rides WRITE ORDERED BY zorder(lat, lng);
+
+-- Query: bounding-box prefilter (prunes files) + exact distance rank
+SELECT id, lat, lng
+FROM rides
+WHERE lat BETWEEN :latMin AND :latMax      -- min/max prune manifests → skip files
+  AND lng BETWEEN :lngMin AND :lngMax
+ORDER BY haversine(lat, lng, :qLat, :qLng)  -- exact rank on survivors
+LIMIT :k;</pre>
+</section>
+
+<!-- ============================ GEO INTRO ============================ -->
+<section id="geo-intro">
+  <h2>kNN on 2D data — locations on Earth</h2>
+  <p>Geospatial kNN is <b>low-dimensional</b> (2D), so pruning works beautifully and answers are exact and cheap. There are
+  two broad philosophies:</p>
+  <div class="two">
+    <div class="callout blue">
+      <h4 style="margin-top:0">1 · Tree-based (recursive space partitioning)</h4>
+      Build a tree that carves the plane into regions. Search descends only into regions that could contain a neighbor,
+      pruning the rest.<br><br>
+      <span class="tag">kD-tree</span><span class="tag">Quadtree</span><span class="tag">R-tree</span>
+    </div>
+    <div class="callout green">
+      <h4 style="margin-top:0">2 · Grid / geohash-based (discretize + encode)</h4>
+      Chop the surface into cells, give each cell a <b>string/integer key</b>, and store points by key. kNN becomes
+      "look at my cell + neighbors" using an ordinary B-tree/hash index.<br><br>
+      <span class="tag">Geohash</span><span class="tag">S2</span><span class="tag">H3</span>
+    </div>
+  </div>
+  <p>The distinction blurs at the top: the best grid systems (<b>S2</b>) internally use a <b>tree of cells ordered by a
+  Hilbert curve</b>, and lakehouses combine grid keys with tree-like manifest pruning. We'll build up to why.</p>
+</section>
+
+<!-- ============================ KD TREE ============================ -->
+<section id="kdtree">
+  <h2>kD-tree</h2>
+  <p>A binary tree that splits the point set on <b>alternating axes</b> (x, then y, then x…), each node using the
+  <b>median</b> point as the pivot. Search for the nearest neighbor descends to the leaf containing q, then <b>backtracks</b>,
+  only visiting the other side of a split if the splitting line is closer than the best distance found so far.</p>
+  <div class="demo">
+    <h4>▶ Live: build a kD-tree by recursive median splits</h4>
+    <div class="cap">Watch vertical/horizontal split lines subdivide the plane. Then click to place a query and run the
+    pruned nearest-neighbor search — pruned branches never draw a search circle.</div>
+    <canvas id="kdCanvas" height="400"></canvas>
+    <div class="controls">
+      <button id="kdBuild">Build tree (step)</button>
+      <button id="kdBuildAll" class="ghost">Build all</button>
+      <button id="kdQuery">Nearest-neighbor search</button>
+      <button class="ghost" id="kdReset">New points</button>
+      <span class="stat" id="kdStat">depth: 0</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#58a6ff"></span>x-split</span>
+      <span><span class="dot" style="background:#f778ba"></span>y-split</span>
+      <span><span class="dot" style="background:#d29922"></span>query</span>
+      <span><span class="dot" style="background:#3fb950"></span>nearest</span>
+    </div>
+  </div>
+  <table>
+    <tr><th></th><th>Value</th></tr>
+    <tr><td>Build</td><td><code>O(N log N)</code></td></tr>
+    <tr><td>Query (low dim)</td><td><code>O(log N)</code> avg, <code>O(N)</code> worst</td></tr>
+    <tr><td>Strengths</td><td>Exact kNN, low memory, great for static point clouds in ≤ ~10 dims</td></tr>
+    <tr><td>Weaknesses</td><td>Rebalancing on inserts is awkward; degrades badly in high dimensions; splits on points, not regions</td></tr>
+  </table>
+</section>
+
+<!-- ============================ QUADTREE ============================ -->
+<section id="quadtree">
+  <h2>Quadtree</h2>
+  <p>Recursively subdivide a square region into <b>four equal quadrants</b> (NW, NE, SW, SE). A cell splits once it holds
+  more than a capacity threshold. Unlike the kD-tree, splits are on <b>space</b> (fixed geometry), not on the data — which
+  makes it simpler to update and naturally adaptive to density: crowded areas get deep subdivision, empty areas stay coarse.</p>
+  <div class="demo">
+    <h4>▶ Live: point-region quadtree, insert points one by one</h4>
+    <div class="cap">Click to add points (or auto-add). A cell splits into 4 when it exceeds capacity — dense clusters
+    produce deep subdivisions, sparse areas stay large.</div>
+    <canvas id="qtCanvas" height="400"></canvas>
+    <div class="controls">
+      <button id="qtAdd">Add 10 points</button>
+      <button class="ghost" id="qtReset">Clear</button>
+      <label class="sl">capacity <input type="range" id="qtCap" min="1" max="6" value="2"><span id="qtCapVal">2</span></label>
+      <span class="stat" id="qtStat">points: 0 · cells: 1</span>
+    </div>
+  </div>
+  <div class="callout">Quadtrees are the workhorse of 2D games, GIS, image compression, and collision detection.
+  The 3D analogue is the <b>octree</b> (eight children).</div>
+</section>
+
+<!-- ============================ RTREE ============================ -->
+<section id="rtree">
+  <h2>R-tree</h2>
+  <p>The database index for spatial data (PostGIS, SQLite R*Tree, Oracle Spatial). Instead of splitting space, it groups
+  nearby objects into <b>Minimum Bounding Rectangles (MBRs)</b>, then groups those MBRs into bigger MBRs — a balanced,
+  B-tree-like structure where every node is a rectangle enclosing its children. Search descends only into MBRs that
+  intersect the query region. Crucially it handles <b>extended objects</b> (polygons, roads), not just points, and MBRs
+  are allowed to overlap.</p>
+  <div class="demo">
+    <h4>▶ Live: R-tree bounding-box hierarchy + range query</h4>
+    <div class="cap">Points are grouped into leaf MBRs, then into parent MBRs. Drag a query rectangle: only MBRs that
+    intersect it get opened (highlighted); the rest are pruned as whole subtrees.</div>
+    <canvas id="rtCanvas" height="400"></canvas>
+    <div class="controls">
+      <button id="rtBuild">Rebuild grouping</button>
+      <button class="ghost" id="rtReset">New points</button>
+      <span class="stat" id="rtStat">MBRs opened: 0 · pruned: 0</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#3fb950"></span>leaf MBR</span>
+      <span><span class="dot" style="background:#bc8cff"></span>parent MBR</span>
+      <span><span class="dot" style="background:#58a6ff"></span>query box</span>
+      <span><span class="dot" style="background:#d29922"></span>opened (intersects)</span>
+    </div>
+  </div>
+  <table>
+    <tr><th></th><th>kD-tree</th><th>Quadtree</th><th>R-tree</th></tr>
+    <tr><td>Splits on</td><td>data (median point)</td><td>space (fixed quadrants)</td><td>data (object grouping)</td></tr>
+    <tr><td>Balanced?</td><td>at build only</td><td>no (depth ∝ density)</td><td>yes (B-tree-like)</td></tr>
+    <tr><td>Objects</td><td>points</td><td>points</td><td>points + polygons/boxes</td></tr>
+    <tr><td>Updates</td><td>painful</td><td>easy</td><td>easy (splits/merges)</td></tr>
+    <tr><td>Overlap</td><td>none</td><td>none</td><td>MBRs may overlap</td></tr>
+  </table>
+</section>
+
+<!-- ============================ GEOHASH ============================ -->
+<section id="geohash">
+  <h2>Geohash</h2>
+  <p>A geohash turns <code>(lat, lng)</code> into a short <b>base-32 string</b> by <b>recursively bisecting</b> the world.
+  Interleave the bits: odd bits halve longitude (E/W), even bits halve latitude (N/S). Group every 5 bits into one base-32
+  character. The magic property: <b>shared prefix ⇒ spatial proximity</b>. <code>gcpuv</code> and <code>gcpuu</code> are
+  adjacent-ish; the longer the shared prefix, the closer the cells.</p>
+  <div class="demo">
+    <h4>▶ Live: build a geohash bit-by-bit</h4>
+    <div class="cap">Click a location. Watch the world get bisected — each step halves the box along one axis and appends
+    a bit; every 5 bits emits a base-32 character. Longer hash = smaller, more precise cell.</div>
+    <canvas id="ghCanvas" height="360"></canvas>
+    <div class="controls">
+      <button id="ghStep">Add 1 bit</button>
+      <button id="ghChar" class="ghost">Add 1 char (5 bits)</button>
+      <button class="ghost" id="ghReset">Reset</button>
+      <span class="stat" id="ghStat">hash: <span id="ghHash">—</span></span>
+    </div>
+    <div id="ghBits" style="font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-top:10px;word-break:break-all"></div>
+  </div>
+  <div class="callout">
+    <b>The kNN recipe:</b> compute q's geohash, then query the <b>prefix + its 8 neighbor cells</b> (the "ring") from a plain
+    B-tree index (<code>WHERE geohash LIKE 'gcpuv%'</code>), and rank the candidates by exact distance.
+    <br><br><b>The gotcha — edge effects:</b> two points can be metres apart but sit either side of a cell boundary, giving
+    <em>totally different</em> prefixes (e.g. crossing the equator or prime meridian flips a high bit). That's why you must
+    always search the <b>8 neighbors too</b>, and why cell size is uneven near the poles (it's a lat/lng grid, not equal-area).
+  </div>
+  <pre>Precision:  1 char ≈ 5000 km   |   5 chars ≈ 4.9 km   |   7 chars ≈ 153 m   |   9 chars ≈ 4.8 m</pre>
+</section>
+
+<!-- ============================ S2 ============================ -->
+<section id="s2">
+  <h2>S2 (Google)</h2>
+  <p>S2 fixes geohash's two big flaws — <b>distortion near the poles</b> and <b>the wrap-around/edge problem</b> — by working
+  on the <b>sphere</b>, not a flat lat/lng grid. It projects the sphere onto the <b>6 faces of a cube</b>, subdivides each
+  face into a quadtree of cells (up to 30 levels, down to ~1 cm²), and — this is the key part — <b>numbers all cells along a
+  Hilbert curve</b>. A cell is a single 64-bit integer (<code>S2CellId</code>) whose ordering keeps neighbors numerically close.</p>
+  <div class="demo">
+    <h4>▶ Live: cube-face quadtree ordered by a Hilbert curve</h4>
+    <div class="cap">One cube face, subdivided into a quadtree. The Hilbert curve threads through the cells so that
+    consecutive cell IDs are spatial neighbors — letting a range query on a 64-bit integer act as a spatial region query.</div>
+    <canvas id="s2Canvas" height="380"></canvas>
+    <div class="controls">
+      <label class="sl">level <input type="range" id="s2Level" min="1" max="5" value="3"><span id="s2LevelVal">3</span></label>
+      <button id="s2Anim">Trace Hilbert order</button>
+      <span class="stat" id="s2Stat">cells: 64</span>
+    </div>
+  </div>
+  <div class="callout blue">
+    <b>Why the Hilbert curve matters here:</b> because cells are numbered along it, a contiguous <b>range of S2 cell IDs</b>
+    corresponds to a compact, roughly-convex patch of the sphere. A region query becomes a handful of <b>integer range scans</b> —
+    perfect for a B-tree, a key-value store, or Iceberg min/max pruning. This is the direct bridge to the space-filling-curve
+    section below.
+  </div>
+</section>
+
+<!-- ============================ H3 ============================ -->
+<section id="h3">
+  <h2>H3 (Uber)</h2>
+  <p>H3 tiles the world with <b>hexagons</b> (plus 12 pentagons to close the sphere, projected from an icosahedron). Uber
+  built it because hexagons have a property squares don't: <b>all 6 neighbors are equidistant</b> and share a full edge.
+  With squares, diagonal neighbors are farther than edge neighbors and only touch at a corner — which distorts "expand to
+  the next ring" operations used constantly in demand/supply modelling and smoothing.</p>
+  <div class="demo">
+    <h4>▶ Live: hex grid and k-rings</h4>
+    <div class="cap">Click a hex to select it. Use the slider to grow the <b>k-ring</b> — all hexes within k steps. Notice
+    every ring is a clean, uniform-distance halo (impossible with squares).</div>
+    <canvas id="h3Canvas" height="380"></canvas>
+    <div class="controls">
+      <label class="sl">k-ring <input type="range" id="h3K" min="0" max="4" value="1"><span id="h3KVal">1</span></label>
+      <button class="ghost" id="h3Reset">Recenter</button>
+      <span class="stat" id="h3Stat">hexes selected: 7</span>
+    </div>
+  </div>
+  <div class="callout">
+    <b>kNN with H3:</b> index each point by its H3 cell (a 64-bit id). To find neighbors, take q's cell and its
+    <code>kRing(k)</code>, fetch points in those cells, rank by exact distance, grow k until you have enough. Hierarchical:
+    every cell has a parent at a coarser resolution for cheap roll-ups.
+    <br><br><b>H3 vs S2:</b> H3 = uniform hex neighbors, great for analytics/ML aggregation; S2 = clean hierarchy + Hilbert
+    range scans, great for indexing and covering regions with cell ranges.
+  </div>
+</section>
+
+<!-- ============================ S2 vs H3 nesting ============================ -->
+<section id="s2-vs-h3">
+  <h2>S2 vs H3 — exact vs approximate hierarchy</h2>
+  <p>Both S2 and H3 do the same two-step move: <b>project the sphere onto a polyhedron</b>, then <b>tile each flat face
+  and refine into finer resolutions</b>. The deep difference is <em>how the resolutions nest</em> — and it explains why
+  each system is good at what it's good at.</p>
+
+  <h3>What "project, then subdivide with a quadtree" really means (S2)</h3>
+  <p>Two distinct steps:</p>
+  <ul>
+    <li><b>Project (sphere → 6 flat squares).</b> You can't lay a regular recursive grid on a curved sphere. So S2 wraps
+      the globe in a <b>cube</b> and pushes each surface point out to one of the 6 faces, turning a point into
+      <code>(face 0–5, u, v)</code> — plain flat coordinates on a unit square. (A nonlinear transform then squeezes the
+      corner-vs-center area distortion from ~5× down to ~2×.) One hard curved problem becomes six easy flat-square problems.</li>
+    <li><b>Quadtree each square.</b> Recursively split each face into 4 quadrants, up to 30 levels, down to ~1 cm².</li>
+  </ul>
+  <div class="callout blue">
+    <b>Why a quadtree and not "just chop the face into a flat grid of cells"?</b> Because a quadtree <em>is</em> chopping
+    into cells — it just keeps <b>every resolution at once, nested</b>. At any single level L, the quadtree's cells already
+    <em>are</em> a uniform 2ᴸ×2ᴸ grid; a flat grid is one horizontal slice of it. Keeping the whole nested hierarchy buys
+    three things a single-resolution grid throws away:
+    <ol style="margin:8px 0 0">
+      <li><b>Containment = prefix.</b> Exact 4-way splits make a cell's ID a literal prefix of all its descendants'. The
+        64-bit <code>S2CellId</code> = <code>3 bits face + 2 bits/level (quadrant path) + sentinel</code>. Parent/child is a bit-shift.</li>
+      <li><b>A region = a few contiguous integer ranges.</b> Number leaves along a <b>Hilbert curve</b> and any parent cell
+        covers a <em>contiguous run</em> of leaf IDs → region queries become <code>WHERE cellid BETWEEN lo AND hi</code> on a B-tree.</li>
+      <li><b>Adaptive covering.</b> Cover a polygon with big cells inside and small cells on the boundary — only possible
+        because levels nest.</li>
+    </ol>
+  </div>
+
+  <h3>Does H3 build a tree too?</h3>
+  <p>First, a clarification: after projection <b>H3's face is a <em>triangle</em>, not a hexagon</b>. H3 projects onto an
+  <b>icosahedron (20 triangular faces)</b>; the <b>hexagons are the cells tiled on top</b>, not the faces. (Exactly
+  <b>12 cells must be pentagons</b> — at the icosahedron's vertices — because Euler's formula forbids tiling a sphere with
+  hexagons alone.)</p>
+  <p>H3 <em>does</em> have a parent/child hierarchy and a path-of-digits ID — but it refines <b>aperture 7</b> (each level
+  has ~7× the cells), and <b>7 hexagons cannot exactly tile 1 hexagon</b>. To make ~7 children fit, the child grid is
+  <b>rotated ≈19.1°</b>, so <b>children straddle parent boundaries</b>. The hierarchy is therefore <b>approximate</b>: a
+  digit-prefix is <em>not</em> an exact region, so H3 gets no clean range-scan trick and roll-ups between resolutions are
+  inexact.</p>
+
+  <div class="demo">
+    <h4>▶ Live: aperture-4 (exact) vs aperture-7 (approximate) refinement</h4>
+    <div class="cap">Left — S2's square parent splits into 4 children that snap <b>exactly</b> inside it. Right — H3's
+    hexagon parent refines into 7 children, rotated ~19°, that <b>spill across the boundary</b> (spill shaded red).
+    Illustrative geometry, but the exact-vs-approximate distinction is real.</div>
+    <canvas id="nestCanvas" height="360"></canvas>
+    <div class="controls">
+      <button id="nestAnim">Animate refinement</button>
+      <label class="sl"><input type="checkbox" id="nestSpill" checked> highlight H3 spill</label>
+      <span class="stat" id="nestStat">S2: 4 children, 0 spill · H3: 7 children, spill &gt; 0</span>
+    </div>
+  </div>
+
+  <table>
+    <tr><th></th><th>S2 (squares, aperture-4 quadtree)</th><th>H3 (hexagons, aperture-7)</th></tr>
+    <tr><td>Projection</td><td>cube → square faces</td><td>icosahedron → triangle faces</td></tr>
+    <tr><td>Cell shape</td><td>squares (4 edge + 4 corner neighbors, unequal)</td><td>hexagons (6 equidistant, edge-sharing) + 12 pentagons</td></tr>
+    <tr><td>Refinement</td><td>÷4, children <b>exactly partition</b> parent</td><td>×7, children <b>rotated ~19°, straddle</b> parent</td></tr>
+    <tr><td>Hierarchy</td><td><b>exact</b> nesting → prefix containment</td><td><b>approximate</b> nesting</td></tr>
+    <tr><td>Superpower</td><td>contiguous <b>range-scan region queries</b>, clean roll-ups</td><td><b>uniform adjacency</b> for flow / demand-supply / ML</td></tr>
+    <tr><td>Weak spot</td><td>uneven neighbor geometry</td><td>no exact range indexing; pentagon anomalies</td></tr>
+  </table>
+  <div class="callout green">
+    They optimized for opposite things. S2 chose squares <em>because</em> exact 4-way nesting yields prefix IDs and
+    range-scan region queries (an <b>indexing</b> tool). H3 chose hexagons <em>because</em> uniform neighbors matter for
+    movement and spatial aggregation (an <b>analytics</b> tool) — accepting an inexact hierarchy as the price.
+  </div>
+</section>
+
+<!-- ============================ Z ORDER ============================ -->
+<section id="zorder">
+  <h2>Z-order (Morton) curve</h2>
+  <p>Now the punchline. Geohash, S2, and lakehouse clustering all rely on turning 2D coordinates into a <b>single sortable
+  number</b> that preserves locality. A <b>space-filling curve</b> visits every cell of a grid in an order that keeps
+  spatially-near cells near in the 1D sequence.</p>
+  <p>The <b>Z-order curve</b> does this by <b>bit-interleaving</b>: take the binary of x and y and alternate their bits.
+  <code>x=0b<span style="color:var(--accent)">a₂a₁a₀</span></code>, <code>y=0b<span style="color:var(--pink)">b₂b₁b₀</span></code>
+  → key <code>0b<span style="color:var(--pink)">b₂</span><span style="color:var(--accent)">a₂</span><span style="color:var(--pink)">b₁</span><span style="color:var(--accent)">a₁</span><span style="color:var(--pink)">b₀</span><span style="color:var(--accent)">a₀</span></code>.
+  Sorting by this key traces a recursive "Z" / "N" shape. <b>This is literally what a geohash is</b> — interleaved
+  lat/lng bits, then base-32 encoded.</p>
+  <div class="demo">
+    <h4>▶ Live: Z-order curve + bit interleaving</h4>
+    <div class="cap">The curve threads through the grid in Z-order. Hover/click a cell to see its (x, y) binary bits
+    interleaved into the Morton code that defines its position on the curve. Increase the order to see the self-similar Zs.</div>
+    <canvas id="zCanvas" height="360"></canvas>
+    <div class="controls">
+      <label class="sl">order <input type="range" id="zOrder" min="1" max="5" value="3"><span id="zOrderVal">3</span></label>
+      <button id="zAnim">Animate curve</button>
+      <span class="stat" id="zStat">click a cell</span>
+    </div>
+  </div>
+  <div class="callout">
+    <b>Z-order's weakness:</b> it has <b>big jumps</b>. At the end of one "Z" the curve leaps across the whole quadrant to
+    start the next — so two cells that are far apart in 2D can be adjacent on the curve, and vice-versa. These discontinuities
+    hurt range-query efficiency (a query box maps to many disjoint key ranges). Its saving grace is that it's <b>dirt cheap</b>
+    to compute (just bit ops), which is why it's everywhere.
+  </div>
+</section>
+
+<!-- ============================ HILBERT ============================ -->
+<section id="hilbert">
+  <h2>Hilbert curve</h2>
+  <p>The Hilbert curve is the <b>gold standard</b> for locality. It fills the same grid but has <b>no long jumps</b>: every
+  step moves to an edge-adjacent cell. It achieves this by <b>rotating and reflecting</b> the sub-curve in each quadrant so
+  the ends line up. The result: cells close on the curve are <b>almost always</b> close in 2D, which is why <b>S2 uses it</b>
+  and why <b>Iceberg/Databricks Z-ordering</b> is increasingly replaced by Hilbert clustering.</p>
+  <div class="demo">
+    <h4>▶ Live: Hilbert curve — no jumps, superior locality</h4>
+    <div class="cap">Animate the curve and compare it to Z-order above. Every move is to a neighbor cell. Toggle "show
+    jumps" to see how few long-distance leaps there are versus Z-order.</div>
+    <canvas id="hCanvas" height="360"></canvas>
+    <div class="controls">
+      <label class="sl">order <input type="range" id="hOrder" min="1" max="6" value="3"><span id="hOrderVal">3</span></label>
+      <button id="hAnim">Animate curve</button>
+      <label class="sl"><input type="checkbox" id="hJumps"> highlight long jumps</label>
+    </div>
+  </div>
+  <div class="demo">
+    <h4>▶ Live: locality comparison — Z-order vs Hilbert</h4>
+    <div class="cap">Same query box on both curves. We highlight which cells fall inside the box and show how many
+    <b>contiguous 1D key ranges</b> that box splits into. Fewer ranges = fewer index seeks = faster range/kNN queries.
+    Hilbert almost always wins.</div>
+    <canvas id="cmpCanvas" height="320"></canvas>
+    <div class="controls">
+      <button id="cmpRandom">New random query box</button>
+      <span class="stat" id="cmpStat">Z-order ranges: — · Hilbert ranges: —</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ WHY CURVES HELP ============================ -->
+<section id="curves-why">
+  <h2>How space-filling curves supercharge grid/geohash approaches</h2>
+  <p>Tie it together — this is the "why it all works" section interviewers probe:</p>
+  <ol>
+    <li><b>They collapse 2D into 1D without a specialized index.</b> A curve value is a single number/string, so you can use
+      the most battle-tested index on Earth — a <b>B-tree</b> — for spatial data. Geohash strings, S2 cell IDs, and H3 indexes
+      are all "coordinate → 1D key" encodings.</li>
+    <li><b>Locality preservation makes range scans mean something.</b> Because near-in-space ⇒ near-in-key, a bounding-box
+      query becomes a small set of <b>contiguous key ranges</b> (<code>WHERE key BETWEEN lo AND hi</code>), and a kNN query
+      becomes "scan my cell + neighbor cells". No curve locality ⇒ a box would scatter across the whole key space.</li>
+    <li><b>They make data-skipping work in a lakehouse.</b> Sort/cluster Parquet files by a Hilbert/Z value and each file's
+      <b>min/max covers a compact spatial patch</b>. Iceberg/Delta then prune 90%+ of files by metadata alone — the
+      distributed scatter-gather from earlier only touches the files that can contain answers.</li>
+    <li><b>Z-order = cheap but jumpy; Hilbert = pricier but best locality.</b> Z-order is pure bit-interleaving (what a
+      geohash is under the hood); Hilbert needs per-quadrant rotation but eliminates the long jumps, giving fewer, longer
+      contiguous ranges — hence S2's choice and modern clustering's move toward it.</li>
+  </ol>
+  <div class="callout green">
+    <b>One-line mental model:</b> <em>Trees prune by descending only into regions that matter. Grids + space-filling curves
+    turn "regions that matter" into "a few contiguous ranges of one sortable key" — so any B-tree, KV store, or
+    min/max-pruned Parquet layout becomes a spatial index.</em>
+  </div>
+</section>
+
+<!-- ============================ CACHING ============================ -->
+<section id="caching">
+  <h2>Caching kNN query results</h2>
+  <p>kNN queries have one nasty property for caching: the query point is a <b>continuous coordinate</b>. Two users standing
+  1 metre apart produce different <code>(lat, lng)</code> — so a cache keyed on the raw point has a <b>~0% hit rate</b>. The
+  whole trick is to <b>quantize the query to a cell</b> so that many nearby queries collapse to the <em>same</em> cache key.</p>
+
+  <h3>The general pattern (works for every scheme)</h3>
+  <pre>cache_key = cell_id( quantize(query_point, granularity) )        // + maybe k, filters
+value     = candidate set for that cell (+ its neighbor ring)    // the expensive part
+
+on query:
+  1. key   = cell_id(q)                    // derive key purely from q — no index lookup
+  2. cands = cache.get(key)  ?? (fetch candidates from index; cache.put(key, cands, TTL))
+  3. return exact top-k by ranking `cands` against the *precise* q   // cheap, in-memory</pre>
+  <div class="callout blue">
+    <b>Cache candidates, not the final answer.</b> The exact k-nearest depends on the precise query location, so you cache
+    the <b>cell's point set</b> (stable across everyone in the cell) and do the final exact ranking per-request in memory.
+    This gives high hit rates <em>and</em> exact results. Granularity is the classic dial: coarser cell → more cache hits but
+    a bigger candidate set to re-rank; finer cell → precise but low hit rate.
+  </div>
+
+  <h3>Geohash — the easy case</h3>
+  <p>The cache key <em>is</em> the geohash truncated to a chosen precision, e.g. <code>"gcpuv"</code> (5 chars ≈ 5 km cell).
+  It's derivable from <code>q</code> with pure math, it's a natural string key for Redis/Memcached, and the "granularity"
+  knob is just the prefix length. Cache the candidate set for <code>gcpuv</code> <b>plus its 8 neighbors</b> (the edge-effect
+  ring). <b>Invalidation:</b> when a point in cell <code>gcpuv</code> moves/changes, evict <code>gcpuv</code> and the 8
+  neighbor keys.</p>
+
+  <h3>Quadtree — the tricky case, and the key insight</h3>
+  <p>A quadtree has <b>no fixed global grid</b>: leaf cells are variable-sized (deep where dense, shallow where sparse) and
+  the tree <em>reshapes</em> as points are inserted/deleted. So "cache keyed on the leaf a query lands in" is fragile — the
+  same coordinate can land in a different leaf tomorrow, and cell boundaries aren't stable.</p>
+  <p>The insight: <b>a quadtree cell has a canonical address — the sequence of quadrant choices from the root</b>
+  (NW=0, NE=1, SW=2, SE=3). That path string <code>"0-1-3-2"</code> is literally a <b>base-4 Morton / Z-order code</b>. So
+  the quadtree already gives you a hashable spatial key — the same space-filling-curve idea from earlier. You get two viable
+  strategies:</p>
+  <div class="demo">
+    <h4>▶ Live: quadrant path = Morton prefix = cache key</h4>
+    <div class="cap">Click a cell. Its cache key is the root-to-cell quadrant path (0=NW,1=NE,2=SW,3=SE). Use the slider to
+    pick a <b>fixed granularity level</b> — the key is truncated to that depth, giving a geohash-style stable grid on top of
+    the (mutable) tree.</div>
+    <canvas id="qcCanvas" height="360"></canvas>
+    <div class="controls">
+      <label class="sl">granularity level <input type="range" id="qcLevel" min="1" max="5" value="3"><span id="qcLevelVal">3</span></label>
+      <span class="stat">cache key: <span id="qcKey" style="color:#3fb950">—</span></span>
+    </div>
+  </div>
+  <ol>
+    <li><b>Fixed-level key (recommended for caching).</b> Don't key on the actual leaf. Pick a fixed depth <code>L</code>
+      and truncate the quadrant path to <code>L</code> digits: <code>quad_prefix(q, L) = "013"</code>. This <b>decouples the
+      cache key from the mutable deep structure</b> — you've effectively imposed a stable geohash-like grid on top of the
+      quadtree, purely for caching. Same knob, same neighbor-ring rule, same eviction as geohash. In practice: <em>use the
+      tree for the index, use a fixed-level Morton/quadkey for the cache.</em></li>
+    <li><b>Node-level cache with versioned invalidation.</b> If you truly want to cache at real node granularity, store a
+      cached candidate list <em>on each node</em>, tagged with a <b>version counter for that subtree</b>. Any insert/delete
+      bumps the version of every ancestor node up to the root (<code>O(depth)</code>). A cache entry is valid only if its
+      stored version matches the node's current version — so a mutation anywhere in a subtree invalidates exactly the cached
+      results that covered it, without touching unrelated cells. This is the general "path-to-root invalidation" trick for
+      any hierarchical index.</li>
+  </ol>
+  <div class="callout green">
+    <b>The unifying takeaway:</b> caching a spatial query <em>requires</em> a stable, query-point-derivable key at a fixed
+    granularity. Geohash/S2/H3 hand you one for free (that's the whole point of the grid). A quadtree's variable leaves
+    don't — so for caching you either <b>truncate its quadrant path to a fixed level</b> (turning it into a fixed grid =
+    Morton prefix, exactly like a geohash) or <b>version-invalidate per node</b>. This is another face of why space-filling
+    curves matter: <em>a stable 1D key is what makes both indexing and caching tractable.</em>
+  </div>
+  <h4>Cross-cutting concerns for any scheme</h4>
+  <ul>
+    <li><b>Moving objects</b> (drivers, players): use short TTLs or event-driven eviction on location updates; often only
+      the <em>candidate cell membership</em> is cached, with live positions fetched fresh.</li>
+    <li><b>Negative caching:</b> cache "cell is empty / fewer than k" to avoid re-scanning sparse regions.</li>
+    <li><b>Two-tier:</b> per-cell candidate cache (shared) + optional per-exact-query result cache with tiny TTL for
+      hot identical requests.</li>
+    <li><b>Key should include</b> anything that changes the answer: granularity/prefix, <code>k</code>, and any filters
+      (open-now, category), or you'll serve wrong results across filter variants.</li>
+  </ul>
+</section>
+
+<!-- ============================ COMPARE ============================ -->
+<section id="compare">
+  <h2>Everything at a glance</h2>
+  <table>
+    <tr><th>Technique</th><th>Family</th><th>Key idea</th><th>Best for</th><th>Watch out</th></tr>
+    <tr><td>Brute force</td><td>—</td><td>scan all, keep top-k heap</td><td>&lt;1M pts, exact, GPU</td><td>O(N) per query</td></tr>
+    <tr><td>HNSW / IVF-PQ</td><td>ANN graph/cluster</td><td>greedy graph walk / probe clusters</td><td>high-dim vectors, ~99% recall</td><td>approximate, memory/build cost</td></tr>
+    <tr><td>kD-tree</td><td>Tree</td><td>alternating median splits</td><td>static ≤10-dim, exact</td><td>bad updates, curse of dim</td></tr>
+    <tr><td>Quadtree</td><td>Tree</td><td>recursive 4-way space split</td><td>2D games, GIS, density-adaptive</td><td>depth ∝ density, unbalanced</td></tr>
+    <tr><td>R-tree</td><td>Tree</td><td>nested MBRs, balanced</td><td>DB spatial index, polygons</td><td>overlap degrades pruning</td></tr>
+    <tr><td>Geohash</td><td>Grid+curve</td><td>Z-order bits → base32 string</td><td>simple prefix index, sharding</td><td>edge effects, pole distortion</td></tr>
+    <tr><td>S2</td><td>Grid+curve</td><td>cube quadtree + Hilbert IDs</td><td>region cover, range scans, hierarchy</td><td>conceptually heavier</td></tr>
+    <tr><td>H3</td><td>Grid</td><td>hexagon tiling, uniform rings</td><td>analytics, ML aggregation</td><td>hex hierarchy isn't perfectly nested</td></tr>
+    <tr><td>Z-order</td><td>Curve</td><td>bit interleave</td><td>cheap clustering, geohash core</td><td>long jumps → fragmented ranges</td></tr>
+    <tr><td>Hilbert</td><td>Curve</td><td>rotated/reflected recursion</td><td>best locality: S2, clustering</td><td>costlier to compute</td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:.85rem;margin-top:32px">Built as a self-contained interactive explainer · all demos run client-side with vanilla JS + Canvas.</p>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ============================================================
+   Shared helpers
+   ============================================================ */
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+function fit(canvas){
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = canvas.height;
+  canvas.width = w * DPR; canvas.height = h * DPR;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  canvas._w = w; canvas._h = h;
+  return ctx;
+}
+const rnd = (a,b)=>a+Math.random()*(b-a);
+function dist2(ax,ay,bx,by){const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy;}
+
+/* ---- theme-aware colors for canvas drawing (read from CSS variables) ---- */
+const THEME={gridRGB:'120,140,160'};
+function refreshTheme(){
+  const cs=getComputedStyle(document.documentElement);
+  const v=(n,d)=>{const x=cs.getPropertyValue(n).trim();return x||d;};
+  THEME.ink=v('--ink','#e6edf3'); THEME.muted=v('--muted','#9aa7b4');
+  THEME.line=v('--line','#2d333b'); THEME.panel=v('--panel','#161b22');
+  THEME.panel2=v('--panel2','#1c232d'); THEME.cbg=v('--canvas-bg','#0a0e14');
+  THEME.overlay=v('--overlay','rgba(13,17,23,.88)'); THEME.gridRGB=v('--grid-rgb','120,140,160');
+}
+THEME.g=(a)=>'rgba('+THEME.gridRGB+','+a+')';   // grid line at alpha a
+refreshTheme();
+const REDRAW=[];   // each demo registers a repaint fn; called on theme change
+
+/* ============================================================
+   1. BRUTE FORCE
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('bfCanvas'); let ctx=fit(cv);
+  let pts=[], q=null, checking=-1, best=[], checks=0, running=false, raf=0;
+  const kEl=document.getElementById('bfK'), kVal=document.getElementById('bfKVal');
+  const speedEl=document.getElementById('bfSpeed'), stat=document.getElementById('bfStat');
+  function gen(){pts=[];for(let i=0;i<160;i++)pts.push({x:rnd(20,cv._w-20),y:rnd(20,cv._h-20)});q={x:cv._w/2,y:cv._h/2};best=[];checking=-1;checks=0;draw();}
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    // top-k lines
+    best.forEach(b=>{ctx.strokeStyle='rgba(63,185,80,.5)';ctx.beginPath();ctx.moveTo(q.x,q.y);ctx.lineTo(pts[b.i].x,pts[b.i].y);ctx.stroke();});
+    pts.forEach((p,i)=>{
+      let c=THEME.muted, r=3;
+      if(best.some(b=>b.i===i)){c='#3fb950';r=5;}
+      if(i===checking){c='#d29922';r=6;}
+      ctx.fillStyle=c;ctx.beginPath();ctx.arc(p.x,p.y,r,0,7);ctx.fill();
+    });
+    if(q){ctx.fillStyle='#58a6ff';ctx.beginPath();ctx.arc(q.x,q.y,7,0,7);ctx.fill();
+      ctx.strokeStyle='rgba(88,166,255,.4)';ctx.beginPath();ctx.arc(q.x,q.y,3,0,7);ctx.stroke();}
+    // heap panel
+    ctx.fillStyle=THEME.overlay;ctx.fillRect(cv._w-140,10,130,20+best.length*16);
+    ctx.strokeStyle=THEME.line;ctx.strokeRect(cv._w-140,10,130,20+best.length*16);
+    ctx.fillStyle='#3fb950';ctx.font='11px monospace';ctx.fillText('top-k heap',cv._w-132,26);
+    best.slice().sort((a,b)=>a.d-b.d).forEach((b,j)=>{ctx.fillStyle=THEME.ink;ctx.fillText('#'+(j+1)+'  d='+Math.sqrt(b.d).toFixed(0),cv._w-132,42+j*16);});
+    stat.textContent='distance checks: '+checks;
+  }
+  function scan(){
+    if(running)return;running=true;best=[];checks=0;checking=-1;
+    const k=+kEl.value; let i=0;
+    function step(){
+      const perFrame=Math.max(1,Math.round(+speedEl.value/8));
+      for(let s=0;s<perFrame && i<pts.length;s++,i++){
+        checking=i;checks++;
+        const d=dist2(q.x,q.y,pts[i].x,pts[i].y);
+        if(best.length<k){best.push({i,d});}
+        else{let mx=0;for(let j=1;j<best.length;j++)if(best[j].d>best[mx].d)mx=j;if(d<best[mx].d)best[mx]={i,d};}
+      }
+      draw();
+      if(i<pts.length)raf=requestAnimationFrame(step);
+      else{checking=-1;running=false;draw();}
+    }
+    step();
+  }
+  cv.addEventListener('pointerdown',e=>{if(running)return;const r=cv.getBoundingClientRect();q={x:e.clientX-r.left,y:e.clientY-r.top};best=[];checks=0;draw();});
+  document.getElementById('bfScan').onclick=scan;
+  document.getElementById('bfReset').onclick=()=>{cancelAnimationFrame(raf);running=false;gen();};
+  kEl.oninput=()=>{kVal.textContent=kEl.value;};
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  gen();
+})();
+
+/* ============================================================
+   2. HNSW greedy walk
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('hnswCanvas'); let ctx=fit(cv);
+  let nodes=[], edges=[], q=null, path=[], target=-1, entry=-1;
+  const stat=document.getElementById('hnswStat');
+  function gen(){
+    nodes=[];for(let i=0;i<45;i++)nodes.push({x:rnd(30,cv._w-30),y:rnd(30,cv._h-30)});
+    edges=nodes.map(()=>[]);
+    // connect each node to ~3 nearest -> small world graph
+    nodes.forEach((n,i)=>{
+      const near=nodes.map((m,j)=>({j,d:dist2(n.x,n.y,m.x,m.y)})).filter(o=>o.j!==i).sort((a,b)=>a.d-b.d).slice(0,3);
+      near.forEach(o=>{if(!edges[i].includes(o.j)){edges[i].push(o.j);edges[o.j].push(i);}});
+    });
+    q={x:cv._w/2,y:cv._h/2};path=[];target=-1;draw();
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    ctx.strokeStyle=THEME.g(.18);ctx.lineWidth=1;
+    edges.forEach((es,i)=>es.forEach(j=>{if(j>i){ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke();}}));
+    // path
+    ctx.strokeStyle='#d29922';ctx.lineWidth=2.5;ctx.beginPath();
+    path.forEach((p,i)=>{i?ctx.lineTo(nodes[p].x,nodes[p].y):ctx.moveTo(nodes[p].x,nodes[p].y);});ctx.stroke();
+    nodes.forEach((n,i)=>{
+      let c=THEME.muted,r=4;
+      if(path.includes(i)){c='#d29922';r=5;}
+      if(i===entry){c='#bc8cff';r=6;}
+      if(i===target){c='#3fb950';r=7;}
+      ctx.fillStyle=c;ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);ctx.fill();
+    });
+    if(q){ctx.fillStyle='#58a6ff';ctx.beginPath();ctx.arc(q.x,q.y,7,0,7);ctx.fill();}
+    stat.textContent='nodes visited: '+path.length+' / '+nodes.length;
+  }
+  function walk(){
+    entry=Math.floor(Math.random()*nodes.length);
+    let cur=entry;path=[cur];
+    const iv=setInterval(()=>{
+      let bestN=cur, bestD=dist2(nodes[cur].x,nodes[cur].y,q.x,q.y);
+      edges[cur].forEach(j=>{const d=dist2(nodes[j].x,nodes[j].y,q.x,q.y);if(d<bestD){bestD=d;bestN=j;}});
+      if(bestN===cur){target=cur;clearInterval(iv);draw();return;}
+      cur=bestN;path.push(cur);draw();
+    },420);
+  }
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();q={x:e.clientX-r.left,y:e.clientY-r.top};path=[];target=-1;entry=-1;draw();});
+  document.getElementById('hnswWalk').onclick=walk;
+  document.getElementById('hnswReset').onclick=gen;
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  gen();
+})();
+
+/* ============================================================
+   3. Iceberg scatter-gather
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('icebergCanvas'); let ctx=fit(cv);
+  const stat=document.getElementById('icebergStat'), skipEl=document.getElementById('icebergSkip');
+  let files=[], q=null, state='idle', anim=0, filesRead=0;
+  const NF=12;
+  function gen(){
+    // each file covers a key range [lo,hi] of a 1D space-filling key 0..1, plus points
+    files=[];
+    for(let i=0;i<NF;i++){
+      const lo=i/NF, hi=(i+1)/NF;
+      files.push({lo,hi,status:'idle',topk:null});
+    }
+    q={key: rnd(.15,.85), width:.14}; state='idle';filesRead=0;draw();
+  }
+  function layout(){
+    const topY=30, fileW=(cv._w-40)/NF, fh=90;
+    return {topY,fileW,fh};
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    const {topY,fileW,fh}=layout();
+    ctx.fillStyle=THEME.muted;ctx.font='12px monospace';
+    ctx.fillText('Parquet files on S3 (sorted by space-filling key →)',20,20);
+    files.forEach((f,i)=>{
+      const x=20+i*fileW;
+      let fill=THEME.panel,stroke=THEME.line;
+      if(f.status==='pruned'){fill=THEME.cbg;stroke=THEME.line;}
+      if(f.status==='scan'){fill='rgba(210,153,34,.25)';stroke='#d29922';}
+      if(f.status==='topk'){fill='rgba(63,185,80,.22)';stroke='#3fb950';}
+      ctx.fillStyle=fill;ctx.strokeStyle=stroke;
+      ctx.fillRect(x+3,topY,fileW-6,fh);ctx.strokeRect(x+3,topY,fileW-6,fh);
+      ctx.fillStyle=f.status==='pruned'?THEME.muted:THEME.ink;ctx.font='10px monospace';
+      ctx.fillText('file '+i,x+8,topY+16);
+      ctx.fillText('['+f.lo.toFixed(2)+',',x+8,topY+34);
+      ctx.fillText(' '+f.hi.toFixed(2)+']',x+8,topY+48);
+      if(f.status==='pruned'){ctx.fillStyle='#ff7b72';ctx.fillText('skip',x+8,topY+70);}
+      if(f.status==='topk'){ctx.fillStyle='#3fb950';ctx.fillText('local',x+8,topY+66);ctx.fillText('top-k',x+8,topY+78);}
+    });
+    // query key range bar
+    const barY=topY+fh+40;
+    ctx.fillStyle=THEME.muted;ctx.fillText('query bounding-box → key range',20,barY-10);
+    ctx.strokeStyle=THEME.line;ctx.strokeRect(20,barY,cv._w-40,24);
+    const qx=20+(q.key-q.width/2)*(cv._w-40), qw=q.width*(cv._w-40);
+    ctx.fillStyle='rgba(88,166,255,.4)';ctx.fillRect(qx,barY,qw,24);
+    ctx.strokeStyle='#58a6ff';ctx.strokeRect(qx,barY,qw,24);
+    // gather box
+    const gy=barY+70;
+    ctx.fillStyle=THEME.muted;ctx.fillText('merge → global top-k',20,gy-10);
+    ctx.strokeStyle=state==='done'?'#58a6ff':THEME.line;
+    ctx.fillStyle=state==='done'?'rgba(88,166,255,.12)':THEME.cbg;
+    ctx.fillRect(20,gy,cv._w-40,60);ctx.strokeRect(20,gy,cv._w-40,60);
+    if(state==='done'){
+      ctx.fillStyle='#58a6ff';ctx.font='13px monospace';
+      ctx.fillText('✓ global top-k assembled from '+filesRead+' scanned files (of '+NF+')',40,gy+35);
+    }
+    stat.textContent='files read: '+filesRead+' / '+NF;
+  }
+  function run(){
+    gen();const skip=skipEl.checked;const qlo=q.key-q.width/2, qhi=q.key+q.width/2;
+    let i=0;
+    const iv=setInterval(()=>{
+      if(i>0){ // finalize previous
+        const f=files[i-1];
+        if(f.status==='scan')f.status='topk';
+      }
+      if(i>=NF){clearInterval(iv);state='done';draw();return;}
+      const f=files[i];
+      const overlaps=!(f.hi<qlo||f.lo>qhi);
+      if(skip && !overlaps){f.status='pruned';}
+      else{f.status='scan';filesRead++;}
+      draw();i++;
+    },260);
+  }
+  document.getElementById('icebergRun').onclick=run;
+  document.getElementById('icebergReset').onclick=gen;
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  gen();
+})();
+
+/* ============================================================
+   4. kD-tree
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('kdCanvas'); let ctx=fit(cv);
+  const stat=document.getElementById('kdStat');
+  let pts=[], root=null, buildQueue=[], maxDepth=0, q=null, best=null, searchCircles=[];
+  function gen(){
+    pts=[];for(let i=0;i<40;i++)pts.push({x:rnd(20,cv._w-20),y:rnd(20,cv._h-20)});
+    root=null;maxDepth=0;q=null;best=null;searchCircles=[];
+    buildQueue=[{pts:pts.slice(),depth:0,box:{x0:0,y0:0,x1:cv._w,y1:cv._h},parent:null,side:null}];
+    draw();
+  }
+  function buildStep(){
+    if(!buildQueue.length)return false;
+    const job=buildQueue.shift();
+    if(!job.pts.length)return true;
+    const axis=job.depth%2; // 0=x
+    job.pts.sort((a,b)=>axis? a.y-b.y : a.x-b.x);
+    const mid=Math.floor(job.pts.length/2);
+    const node={pt:job.pts[mid],axis,depth:job.depth,box:job.box,left:null,right:null};
+    maxDepth=Math.max(maxDepth,job.depth);
+    if(job.parent)job.parent[job.side]=node; else root=node;
+    const b=job.box;
+    const lbox=axis? {x0:b.x0,y0:b.y0,x1:b.x1,y1:node.pt.y} : {x0:b.x0,y0:b.y0,x1:node.pt.x,y1:b.y1};
+    const rbox=axis? {x0:b.x0,y0:node.pt.y,x1:b.x1,y1:b.y1} : {x0:node.pt.x,y0:b.y0,x1:b.x1,y1:b.y1};
+    buildQueue.push({pts:job.pts.slice(0,mid),depth:job.depth+1,box:lbox,parent:node,side:'left'});
+    buildQueue.push({pts:job.pts.slice(mid+1),depth:job.depth+1,box:rbox,parent:node,side:'right'});
+    draw();return true;
+  }
+  function drawNode(n){
+    if(!n)return;
+    ctx.strokeStyle=n.axis? 'rgba(247,120,186,.55)':'rgba(88,166,255,.55)';
+    ctx.lineWidth=Math.max(.6,2-n.depth*0.25);
+    ctx.beginPath();
+    if(n.axis){ctx.moveTo(n.box.x0,n.pt.y);ctx.lineTo(n.box.x1,n.pt.y);}
+    else{ctx.moveTo(n.pt.x,n.box.y0);ctx.lineTo(n.pt.x,n.box.y1);}
+    ctx.stroke();
+    drawNode(n.left);drawNode(n.right);
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    drawNode(root);
+    searchCircles.forEach(c=>{ctx.strokeStyle='rgba(88,166,255,.15)';ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,7);ctx.stroke();});
+    pts.forEach(p=>{ctx.fillStyle=THEME.ink;ctx.beginPath();ctx.arc(p.x,p.y,3.2,0,7);ctx.fill();});
+    if(best){ctx.strokeStyle='rgba(88,166,255,.6)';ctx.beginPath();ctx.arc(q.x,q.y,Math.sqrt(best.d),0,7);ctx.stroke();
+      ctx.fillStyle='#3fb950';ctx.beginPath();ctx.arc(best.pt.x,best.pt.y,6,0,7);ctx.fill();}
+    if(q){ctx.fillStyle='#d29922';ctx.beginPath();ctx.arc(q.x,q.y,6,0,7);ctx.fill();}
+    stat.textContent='depth: '+maxDepth+(buildQueue.length? ' · building…':' · built');
+  }
+  function nn(){
+    if(!root){while(buildStep());}
+    best=null;searchCircles=[];
+    (function rec(n){
+      if(!n)return;
+      const d=dist2(q.x,q.y,n.pt.x,n.pt.y);
+      if(!best||d<best.d)best={pt:n.pt,d};
+      searchCircles.push({x:q.x,y:q.y,r:Math.sqrt(best.d)});
+      const axis=n.axis;
+      const diff=axis? q.y-n.pt.y : q.x-n.pt.x;
+      const near=diff<0?n.left:n.right, far=diff<0?n.right:n.left;
+      rec(near);
+      if(diff*diff<best.d)rec(far); // only cross split if it could contain closer pt (pruning!)
+    })(root);
+    draw();
+  }
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();q={x:e.clientX-r.left,y:e.clientY-r.top};best=null;searchCircles=[];draw();});
+  document.getElementById('kdBuild').onclick=()=>buildStep();
+  document.getElementById('kdBuildAll').onclick=()=>{while(buildStep());};
+  document.getElementById('kdQuery').onclick=()=>{if(!q)q={x:cv._w/2,y:cv._h/2};nn();};
+  document.getElementById('kdReset').onclick=gen;
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  gen();
+})();
+
+/* ============================================================
+   5. Quadtree
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('qtCanvas'); let ctx=fit(cv);
+  const stat=document.getElementById('qtStat'), capEl=document.getElementById('qtCap'), capVal=document.getElementById('qtCapVal');
+  let root, count=0, cells=1;
+  function mk(x,y,w,h){return {x,y,w,h,pts:[],children:null};}
+  function reset(){root=mk(2,2,cv._w-4,cv._h-4);count=0;cells=1;draw();}
+  function insert(node,p){
+    if(node.children){insert(child(node,p),p);return;}
+    node.pts.push(p);
+    if(node.pts.length>+capEl.value && node.w>18){
+      const hw=node.w/2,hh=node.h/2;
+      node.children=[mk(node.x,node.y,hw,hh),mk(node.x+hw,node.y,hw,hh),mk(node.x,node.y+hh,hw,hh),mk(node.x+hw,node.y+hh,hw,hh)];
+      cells+=4;const old=node.pts;node.pts=[];old.forEach(o=>insert(child(node,o),o));
+    }
+  }
+  function child(node,p){const hw=node.w/2,hh=node.h/2;const e=p.x>=node.x+hw?1:0,s=p.y>=node.y+hh?1:0;return node.children[s*2+e];}
+  function drawNode(n){
+    ctx.strokeStyle='rgba(88,166,255,.28)';ctx.strokeRect(n.x,n.y,n.w,n.h);
+    if(n.children)n.children.forEach(drawNode);
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);drawNode(root);
+    (function pd(n){if(n.children)n.children.forEach(pd);else n.pts.forEach(p=>{ctx.fillStyle='#3fb950';ctx.beginPath();ctx.arc(p.x,p.y,3.2,0,7);ctx.fill();});})(root);
+    stat.textContent='points: '+count+' · cells: '+cells;
+  }
+  function add(n){for(let i=0;i<n;i++){const p={x:rnd(6,cv._w-6),y:rnd(6,cv._h-6)};
+    // bias toward a cluster for nice deep subdivision
+    if(Math.random()<.6){p.x=rnd(cv._w*.55,cv._w*.8);p.y=rnd(cv._h*.25,cv._h*.55);}
+    insert(root,p);count++;}draw();}
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();insert(root,{x:e.clientX-r.left,y:e.clientY-r.top});count++;draw();});
+  document.getElementById('qtAdd').onclick=()=>add(10);
+  document.getElementById('qtReset').onclick=reset;
+  capEl.oninput=()=>{capVal.textContent=capEl.value;};
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);reset();});
+  reset();
+})();
+
+/* ============================================================
+   6. R-tree
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('rtCanvas'); let ctx=fit(cv);
+  const stat=document.getElementById('rtStat');
+  let pts=[], leaves=[], parents=[], qbox=null;
+  function mbr(items){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;items.forEach(p=>{x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);});return {x0:x0-8,y0:y0-8,x1:x1+8,y1:y1+8};}
+  function gen(){
+    pts=[];for(let i=0;i<48;i++)pts.push({x:rnd(20,cv._w-20),y:rnd(20,cv._h-20)});
+    build();
+  }
+  function build(){
+    // sort by x then chunk into leaves of 4, group leaves into parents of 3
+    const s=pts.slice().sort((a,b)=>a.x-b.x);
+    leaves=[];for(let i=0;i<s.length;i+=4){const g=s.slice(i,i+4);leaves.push({items:g,box:mbr(g)});}
+    parents=[];for(let i=0;i<leaves.length;i+=3){const g=leaves.slice(i,i+3);parents.push({leaves:g,box:mbr(g.flatMap(l=>l.items))});}
+    qbox={x0:cv._w*.3,y0:cv._h*.3,x1:cv._w*.6,y1:cv._h*.6};draw();
+  }
+  function intersects(a,b){return !(a.x1<b.x0||a.x0>b.x1||a.y1<b.y0||a.y0>b.y1);}
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    let opened=0,pruned=0;
+    parents.forEach(par=>{
+      const hitP=intersects(par.box,qbox);
+      ctx.strokeStyle=hitP?'rgba(188,140,255,.9)':'rgba(188,140,255,.3)';ctx.lineWidth=2;
+      ctx.strokeRect(par.box.x0,par.box.y0,par.box.x1-par.box.x0,par.box.y1-par.box.y0);
+      par.leaves.forEach(lf=>{
+        let hitL=hitP&&intersects(lf.box,qbox);
+        if(!hitP){pruned+=lf.items.length;}
+        ctx.strokeStyle=hitL?'#d29922':(hitP?'rgba(63,185,80,.6)':'rgba(63,185,80,.2)');ctx.lineWidth=1.4;
+        ctx.strokeRect(lf.box.x0,lf.box.y0,lf.box.x1-lf.box.x0,lf.box.y1-lf.box.y0);
+        if(hitL)opened+=lf.items.length;
+      });
+    });
+    pts.forEach(p=>{ctx.fillStyle=THEME.ink;ctx.beginPath();ctx.arc(p.x,p.y,3,0,7);ctx.fill();});
+    ctx.strokeStyle='#58a6ff';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.strokeRect(qbox.x0,qbox.y0,qbox.x1-qbox.x0,qbox.y1-qbox.y0);ctx.setLineDash([]);
+    ctx.fillStyle='rgba(88,166,255,.08)';ctx.fillRect(qbox.x0,qbox.y0,qbox.x1-qbox.x0,qbox.y1-qbox.y0);
+    stat.textContent='MBRs opened: '+opened+' · pruned: '+pruned;
+  }
+  let drag=false;
+  cv.addEventListener('pointerdown',e=>{drag=true;const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;qbox={x0:x,y0:y,x1:x,y1:y};});
+  cv.addEventListener('pointermove',e=>{if(!drag)return;const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;qbox.x1=x;qbox.y1=y;
+    const b={x0:Math.min(qbox.x0,qbox.x1),y0:Math.min(qbox.y0,qbox.y1),x1:Math.max(qbox.x0,qbox.x1),y1:Math.max(qbox.y0,qbox.y1)};const tmp=qbox;qbox=b;draw();qbox=tmp;});
+  cv.addEventListener('pointerup',()=>{drag=false;qbox={x0:Math.min(qbox.x0,qbox.x1),y0:Math.min(qbox.y0,qbox.y1),x1:Math.max(qbox.x0,qbox.x1),y1:Math.max(qbox.y0,qbox.y1)};draw();});
+  document.getElementById('rtBuild').onclick=build;
+  document.getElementById('rtReset').onclick=gen;
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);build();});
+  gen();
+})();
+
+/* ============================================================
+   7. Geohash bit-by-bit
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('ghCanvas'); let ctx=fit(cv);
+  const B32='0123456789bcdefghjkmnpqrstuvwxyz';
+  const hashEl=document.getElementById('ghHash'), bitsEl=document.getElementById('ghBits'), stat=document.getElementById('ghStat');
+  let latR,lngR,bits,even,click=null;
+  function reset(){latR=[-90,90];lngR=[-180,180];bits=[];even=true;click=null;update();}
+  function toXY(lng,lat){return {x:(lng+180)/360*cv._w, y:(90-lat)/180*cv._h};}
+  function addBit(){
+    if(!click)click={lat:rnd(-60,60),lng:rnd(-160,160)};
+    if(even){const mid=(lngR[0]+lngR[1])/2;if(click.lng>=mid){bits.push(1);lngR[0]=mid;}else{bits.push(0);lngR[1]=mid;}}
+    else{const mid=(latR[0]+latR[1])/2;if(click.lat>=mid){bits.push(1);latR[0]=mid;}else{bits.push(0);latR[1]=mid;}}
+    even=!even;update();
+  }
+  function update(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    // faint world grid
+    ctx.strokeStyle=THEME.g(.12);
+    for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(i/8*cv._w,0);ctx.lineTo(i/8*cv._w,cv._h);ctx.stroke();}
+    for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(0,i/4*cv._h);ctx.lineTo(cv._w,i/4*cv._h);ctx.stroke();}
+    // current cell
+    const a=toXY(lngR[0],latR[1]),b=toXY(lngR[1],latR[0]);
+    ctx.fillStyle='rgba(63,185,80,.18)';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);
+    ctx.strokeStyle='#3fb950';ctx.lineWidth=2;ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
+    if(click){const p=toXY(click.lng,click.lat);ctx.fillStyle='#d29922';ctx.beginPath();ctx.arc(p.x,p.y,6,0,7);ctx.fill();}
+    // hash
+    let hash='';for(let i=0;i+5<=bits.length;i+=5){let v=0;for(let j=0;j<5;j++)v=v*2+bits[i+j];hash+=B32[v];}
+    hashEl.textContent=hash||'—';
+    stat.innerHTML='hash: <b style="color:#3fb950">'+(hash||'—')+'</b>';
+    bitsEl.innerHTML='bits ('+bits.length+'): '+bits.map((b,i)=>'<span style="color:'+((i%2===0)?'#58a6ff':'#f778ba')+'">'+b+'</span>').join('')+
+      '<br><span style="color:#58a6ff">■ lng bit</span> &nbsp; <span style="color:#f778ba">■ lat bit</span>';
+  }
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+    click={lng:x/cv._w*360-180, lat:90-y/cv._h*180};latR=[-90,90];lngR=[-180,180];bits=[];even=true;update();});
+  document.getElementById('ghStep').onclick=addBit;
+  document.getElementById('ghChar').onclick=()=>{for(let i=0;i<5;i++)addBit();};
+  document.getElementById('ghReset').onclick=reset;
+  REDRAW.push(()=>update());
+  window.addEventListener('resize',()=>{ctx=fit(cv);update();});
+  reset();
+})();
+
+/* ============================================================
+   8. S2 : quadtree face + Hilbert order
+   ============================================================ */
+/* Hilbert curve d2xy / xy generation */
+function hilbertPoints(order){
+  const n=1<<order;const pts=[];
+  function rot(n,x,y,rx,ry){if(ry===0){if(rx===1){x=n-1-x;y=n-1-y;}return [y,x];}return [x,y];}
+  for(let d=0;d<n*n;d++){
+    let rx,ry,t=d,x=0,y=0;
+    for(let s=1;s<n;s*=2){rx=1&(t/2);ry=1&(t^rx);[x,y]=rot(s,x,y,rx,ry);x+=s*rx;y+=s*ry;t=Math.floor(t/4);}
+    pts.push([x,y]);
+  }
+  return pts;
+}
+(function(){
+  const cv=document.getElementById('s2Canvas'); let ctx=fit(cv);
+  const lvlEl=document.getElementById('s2Level'), lvlVal=document.getElementById('s2LevelVal'), stat=document.getElementById('s2Stat');
+  let animT=0, animRAF=0;
+  function draw(progress){
+    const order=+lvlEl.value;const n=1<<order;const S=Math.min(cv._w,cv._h)-20;const ox=(cv._w-S)/2,oy=(cv._h-S)/2;const cell=S/n;
+    ctx.clearRect(0,0,cv._w,cv._h);
+    // grid
+    ctx.strokeStyle='rgba(88,166,255,.2)';
+    for(let i=0;i<=n;i++){ctx.beginPath();ctx.moveTo(ox+i*cell,oy);ctx.lineTo(ox+i*cell,oy+S);ctx.stroke();ctx.beginPath();ctx.moveTo(ox,oy+i*cell);ctx.lineTo(ox+S,oy+i*cell);ctx.stroke();}
+    const pts=hilbertPoints(order);
+    const upto=progress==null?pts.length:Math.max(1,Math.floor(pts.length*progress));
+    // curve
+    ctx.strokeStyle='#bc8cff';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<upto;i++){const[x,y]=pts[i];const cx=ox+x*cell+cell/2, cy=oy+(n-1-y)*cell+cell/2;i?ctx.lineTo(cx,cy):ctx.moveTo(cx,cy);}
+    ctx.stroke();
+    // head
+    if(upto<pts.length){const[x,y]=pts[upto-1];ctx.fillStyle='#f778ba';ctx.beginPath();ctx.arc(ox+x*cell+cell/2,oy+(n-1-y)*cell+cell/2,4,0,7);ctx.fill();}
+    ctx.fillStyle=THEME.muted;ctx.font='11px monospace';ctx.fillText('cube face · '+n+'×'+n+' cells · Hilbert-ordered cell IDs',ox,oy-6);
+    stat.textContent='cells: '+(n*n);
+  }
+  function anim(){cancelAnimationFrame(animRAF);animT=0;
+    (function step(){animT+=0.02;draw(Math.min(1,animT));if(animT<1)animRAF=requestAnimationFrame(step);else draw(null);})();}
+  lvlEl.oninput=()=>{lvlVal.textContent=lvlEl.value;draw(null);};
+  document.getElementById('s2Anim').onclick=anim;
+  REDRAW.push(()=>draw(null));
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw(null);});
+  draw(null);
+})();
+
+/* ============================================================
+   9. H3 hex grid + k-ring
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('h3Canvas'); let ctx=fit(cv);
+  const kEl=document.getElementById('h3K'), kVal=document.getElementById('h3KVal'), stat=document.getElementById('h3Stat');
+  let R=26, center={q:0,r:0}, hexes=[];
+  // axial coords
+  function axialToPixel(q,r){const x=R*Math.sqrt(3)*(q+r/2)+cv._w/2;const y=R*1.5*r+cv._h/2;return {x,y};}
+  function build(){
+    hexes=[];const range=6;
+    for(let q=-range;q<=range;q++)for(let r=Math.max(-range,-q-range);r<=Math.min(range,-q+range);r++){hexes.push({q,r});}
+  }
+  function hexDist(a,b){return (Math.abs(a.q-b.q)+Math.abs(a.q+a.r-b.q-b.r)+Math.abs(a.r-b.r))/2;}
+  function drawHex(cx,cy,fill,stroke){
+    ctx.beginPath();for(let i=0;i<6;i++){const ang=Math.PI/180*(60*i-90);const px=cx+R*Math.cos(ang),py=cy+R*Math.sin(ang);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}ctx.strokeStyle=stroke;ctx.lineWidth=1.2;ctx.stroke();
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);const k=+kEl.value;let sel=0;
+    hexes.forEach(h=>{
+      const {x,y}=axialToPixel(h.q,h.r);if(x<-R||x>cv._w+R||y<-R||y>cv._h+R)return;
+      const d=hexDist(h,center);let fill=null,stroke=THEME.g(.35);
+      if(d===0){fill='rgba(88,166,255,.55)';stroke='#58a6ff';sel++;}
+      else if(d<=k){const t=d/Math.max(1,k);fill='rgba(63,185,80,'+(0.42-t*0.28)+')';stroke='#3fb950';sel++;}
+      drawHex(x,y,fill,stroke);
+    });
+    stat.textContent='hexes selected: '+sel;
+  }
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;
+    // find nearest hex center
+    let best=null,bd=1e9;hexes.forEach(h=>{const p=axialToPixel(h.q,h.r);const d=dist2(mx,my,p.x,p.y);if(d<bd){bd=d;best=h;}});if(best){center=best;draw();}});
+  kEl.oninput=()=>{kVal.textContent=kEl.value;draw();};
+  document.getElementById('h3Reset').onclick=()=>{center={q:0,r:0};draw();};
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  build();draw();
+})();
+
+/* ============================================================
+   10. Z-order curve + bit interleave
+   ============================================================ */
+function mortonPoints(order){
+  const n=1<<order;const pts=new Array(n*n);
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    let m=0;for(let b=0;b<order;b++){m|=((x>>b)&1)<<(2*b);m|=((y>>b)&1)<<(2*b+1);}
+    pts[m]=[x,y];
+  }
+  return pts;
+}
+(function(){
+  const cv=document.getElementById('zCanvas'); let ctx=fit(cv);
+  const oEl=document.getElementById('zOrder'), oVal=document.getElementById('zOrderVal'), stat=document.getElementById('zStat');
+  let sel=null, animRAF=0;
+  function geo(){const order=+oEl.value;const n=1<<order;const S=Math.min(cv._w,cv._h)-20;const ox=(cv._w-S)/2,oy=(cv._h-S)/2;return {order,n,S,ox,oy,cell:S/n};}
+  function draw(progress){
+    const {order,n,S,ox,oy,cell}=geo();ctx.clearRect(0,0,cv._w,cv._h);
+    ctx.strokeStyle='rgba(57,197,207,.18)';
+    for(let i=0;i<=n;i++){ctx.beginPath();ctx.moveTo(ox+i*cell,oy);ctx.lineTo(ox+i*cell,oy+S);ctx.stroke();ctx.beginPath();ctx.moveTo(ox,oy+i*cell);ctx.lineTo(ox+S,oy+i*cell);ctx.stroke();}
+    const pts=mortonPoints(order);const upto=progress==null?pts.length:Math.max(1,Math.floor(pts.length*progress));
+    ctx.strokeStyle='#39c5cf';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<upto;i++){const[x,y]=pts[i];const cx=ox+x*cell+cell/2,cy=oy+y*cell+cell/2;i?ctx.lineTo(cx,cy):ctx.moveTo(cx,cy);}
+    ctx.stroke();
+    if(sel){const {x,y,m}=sel;ctx.fillStyle='rgba(210,153,34,.4)';ctx.fillRect(ox+x*cell,oy+y*cell,cell,cell);
+      ctx.strokeStyle='#d29922';ctx.strokeRect(ox+x*cell,oy+y*cell,cell,cell);}
+    stat.textContent = sel? 'x='+sel.x.toString(2).padStart(order,'0')+' y='+sel.y.toString(2).padStart(order,'0')+' → morton='+sel.m : 'click a cell';
+  }
+  function anim(){cancelAnimationFrame(animRAF);let t=0;(function s(){t+=0.02;draw(Math.min(1,t));if(t<1)animRAF=requestAnimationFrame(s);else draw(null);})();}
+  cv.addEventListener('pointerdown',e=>{const {order,n,ox,oy,cell}=geo();const r=cv.getBoundingClientRect();
+    const x=Math.floor((e.clientX-r.left-ox)/cell), y=Math.floor((e.clientY-r.top-oy)/cell);
+    if(x<0||y<0||x>=n||y>=n)return;let m=0;for(let b=0;b<order;b++){m|=((x>>b)&1)<<(2*b);m|=((y>>b)&1)<<(2*b+1);}sel={x,y,m};draw(null);});
+  oEl.oninput=()=>{oVal.textContent=oEl.value;sel=null;draw(null);};
+  document.getElementById('zAnim').onclick=anim;
+  REDRAW.push(()=>draw(null));
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw(null);});
+  draw(null);
+})();
+
+/* ============================================================
+   11. Hilbert curve
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('hCanvas'); let ctx=fit(cv);
+  const oEl=document.getElementById('hOrder'), oVal=document.getElementById('hOrderVal'), jumpEl=document.getElementById('hJumps');
+  let animRAF=0;
+  function geo(){const order=+oEl.value;const n=1<<order;const S=Math.min(cv._w,cv._h)-20;const ox=(cv._w-S)/2,oy=(cv._h-S)/2;return {order,n,S,ox,oy,cell:S/n};}
+  function draw(progress){
+    const {order,n,S,ox,oy,cell}=geo();ctx.clearRect(0,0,cv._w,cv._h);
+    ctx.strokeStyle='rgba(188,140,255,.14)';
+    for(let i=0;i<=n;i++){ctx.beginPath();ctx.moveTo(ox+i*cell,oy);ctx.lineTo(ox+i*cell,oy+S);ctx.stroke();ctx.beginPath();ctx.moveTo(ox,oy+i*cell);ctx.lineTo(ox+S,oy+i*cell);ctx.stroke();}
+    const pts=hilbertPoints(order);const upto=progress==null?pts.length:Math.max(1,Math.floor(pts.length*progress));
+    for(let i=1;i<upto;i++){const[x0,y0]=pts[i-1],[x1,y1]=pts[i];
+      const long=Math.abs(x0-x1)+Math.abs(y0-y1)>1;
+      ctx.strokeStyle=(jumpEl.checked&&long)?'#ff7b72':'#bc8cff';ctx.lineWidth=(jumpEl.checked&&long)?3:2;
+      ctx.beginPath();ctx.moveTo(ox+x0*cell+cell/2,oy+(n-1-y0)*cell+cell/2);ctx.lineTo(ox+x1*cell+cell/2,oy+(n-1-y1)*cell+cell/2);ctx.stroke();
+    }
+    if(upto<pts.length){const[x,y]=pts[upto-1];ctx.fillStyle='#f778ba';ctx.beginPath();ctx.arc(ox+x*cell+cell/2,oy+(n-1-y)*cell+cell/2,4,0,7);ctx.fill();}
+  }
+  function anim(){cancelAnimationFrame(animRAF);let t=0;(function s(){t+=0.015;draw(Math.min(1,t));if(t<1)animRAF=requestAnimationFrame(s);else draw(null);})();}
+  oEl.oninput=()=>{oVal.textContent=oEl.value;draw(null);};
+  jumpEl.onchange=()=>draw(null);
+  document.getElementById('hAnim').onclick=anim;
+  REDRAW.push(()=>draw(null));
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw(null);});
+  draw(null);
+})();
+
+/* ============================================================
+   12. Comparison Z vs Hilbert range fragmentation
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('cmpCanvas'); let ctx=fit(cv);
+  const stat=document.getElementById('cmpStat');
+  const order=4, n=1<<order;
+  let box=null;
+  function countRanges(pts, inBox){
+    // pts is array indexed by curve-order giving [x,y]; walk order, mark inside, count contiguous runs
+    let ranges=0, prev=false;
+    for(let i=0;i<pts.length;i++){const[x,y]=pts[i];const inside=inBox(x,y);if(inside&&!prev)ranges++;prev=inside;}
+    return ranges;
+  }
+  function drawGrid(ox,oy,S,pts,color,title){
+    const cell=S/n;
+    ctx.strokeStyle=THEME.g(.15);
+    for(let i=0;i<=n;i++){ctx.beginPath();ctx.moveTo(ox+i*cell,oy);ctx.lineTo(ox+i*cell,oy+S);ctx.stroke();ctx.beginPath();ctx.moveTo(ox,oy+i*cell);ctx.lineTo(ox+S,oy+i*cell);ctx.stroke();}
+    // box fill
+    const inBox=(x,y)=>x>=box.x0&&x<=box.x1&&y>=box.y0&&y<=box.y1;
+    for(let x=box.x0;x<=box.x1;x++)for(let y=box.y0;y<=box.y1;y++){ctx.fillStyle='rgba(88,166,255,.2)';ctx.fillRect(ox+x*cell,oy+y*cell,cell,cell);}
+    // curve
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+    pts.forEach((p,i)=>{const[x,y]=p;const cx=ox+x*cell+cell/2,cy=oy+y*cell+cell/2;i?ctx.lineTo(cx,cy):ctx.moveTo(cx,cy);});ctx.stroke();
+    ctx.strokeStyle='#58a6ff';ctx.lineWidth=2;ctx.setLineDash([5,3]);
+    ctx.strokeRect(ox+box.x0*cell,oy+box.y0*cell,(box.x1-box.x0+1)*cell,(box.y1-box.y0+1)*cell);ctx.setLineDash([]);
+    ctx.fillStyle=THEME.muted;ctx.font='12px monospace';ctx.fillText(title,ox,oy-6);
+    return countRanges(pts,inBox);
+  }
+  function draw(){
+    ctx.clearRect(0,0,cv._w,cv._h);
+    const S=Math.min((cv._w-60)/2,cv._h-40);const oy=30;const ox1=10, ox2=cv._w/2+10;
+    // morton pts need y flipped to match visual? keep consistent: both use same orientation
+    const mpts=mortonPoints(order);const hpts=hilbertPoints(order).map(([x,y])=>[x,n-1-y]);
+    const zr=drawGrid(ox1,oy,S,mpts,'#39c5cf','Z-order');
+    const hr=drawGrid(ox2,oy,S,hpts,'#bc8cff','Hilbert');
+    stat.innerHTML='Z-order ranges: <b style="color:#39c5cf">'+zr+'</b> · Hilbert ranges: <b style="color:#bc8cff">'+hr+'</b> (fewer = better)';
+  }
+  function randomBox(){
+    const w=2+Math.floor(Math.random()*3), h=2+Math.floor(Math.random()*3);
+    const x0=Math.floor(Math.random()*(n-w)), y0=Math.floor(Math.random()*(n-h));
+    box={x0,y0,x1:x0+w,y1:y0+h};draw();
+  }
+  document.getElementById('cmpRandom').onclick=randomBox;
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  randomBox();
+})();
+
+/* ============================================================
+   13. Quadtree cache key = quadrant path (Morton prefix)
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('qcCanvas'); let ctx=fit(cv);
+  const lvlEl=document.getElementById('qcLevel'), lvlVal=document.getElementById('qcLevelVal'), keyEl=document.getElementById('qcKey');
+  let sel=null; // {path:[..]}
+  const NAMES=['NW','NE','SW','SE']; const COL=['#58a6ff','#3fb950','#d29922','#f778ba'];
+  function draw(){
+    const L=+lvlEl.value; const S=Math.min(cv._w,cv._h)-20; const ox=(cv._w-S)/2, oy=(cv._h-S)/2;
+    ctx.clearRect(0,0,cv._w,cv._h);
+    // draw recursive subdivision down to level L, label quadrants at top level
+    (function rec(x,y,w,depth,path){
+      ctx.strokeStyle=THEME.g(0.5-depth*0.07);ctx.lineWidth=Math.max(.5,2-depth*0.3);
+      ctx.strokeRect(x,y,w,w);
+      if(depth<L){const h=w/2;
+        rec(x,y,h,depth+1,path.concat(0));rec(x+h,y,h,depth+1,path.concat(1));
+        rec(x,y+h,h,depth+1,path.concat(2));rec(x+h,y+h,h,depth+1,path.concat(3));}
+    })(ox,oy,S,0,[]);
+    // highlight selected path progressively
+    if(sel){
+      let x=ox,y=oy,w=S;
+      sel.path.slice(0,L).forEach((q,i)=>{
+        const h=w/2; const nx=x+(q%2)*h, ny=y+(q>=2?h:0);
+        ctx.fillStyle=COL[q]; ctx.globalAlpha=0.12; ctx.fillRect(nx,ny,h,h); ctx.globalAlpha=1;
+        ctx.strokeStyle=COL[q]; ctx.lineWidth=2.5; ctx.strokeRect(nx,ny,h,h);
+        x=nx;y=ny;w=h;
+      });
+    }
+    ctx.fillStyle=THEME.muted;ctx.font='11px monospace';
+    ctx.fillText('quadrant path to depth '+L+'  (0=NW 1=NE 2=SW 3=SE)',ox,oy-6);
+  }
+  cv.addEventListener('pointerdown',e=>{
+    const L=+lvlEl.value; const S=Math.min(cv._w,cv._h)-20; const ox=(cv._w-S)/2, oy=(cv._h-S)/2;
+    const r=cv.getBoundingClientRect(); let px=e.clientX-r.left, py=e.clientY-r.top;
+    if(px<ox||py<oy||px>ox+S||py>oy+S)return;
+    let x=ox,y=oy,w=S,path=[];
+    for(let i=0;i<L;i++){const h=w/2;const east=px>=x+h?1:0, south=py>=y+h?1:0;const q=south*2+east;path.push(q);x+=east*h;y+=south*h;w=h;}
+    sel={path}; keyEl.textContent='"'+path.join('')+'"  (base-4 Morton = '+path.reduce((a,d)=>a*4+d,0)+')';
+    draw();
+  });
+  lvlEl.oninput=()=>{lvlVal.textContent=lvlEl.value;if(sel)keyEl.textContent='"'+sel.path.slice(0,+lvlEl.value).join('')+'"';draw();};
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  draw();
+})();
+
+/* ============================================================
+   14. S2 aperture-4 (exact) vs H3 aperture-7 (approximate) nesting
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('nestCanvas'); let ctx=fit(cv);
+  const spillEl=document.getElementById('nestSpill'), stat=document.getElementById('nestStat');
+  let animRAF=0, prog=1;
+  function hexPath(cx,cy,r,rot){ctx.beginPath();for(let i=0;i<6;i++){const a=rot+Math.PI/180*60*i;const px=cx+r*Math.cos(a),py=cy+r*Math.sin(a);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();}
+  function draw(p){
+    if(p==null)p=prog; prog=p;
+    ctx.clearRect(0,0,cv._w,cv._h);
+    const halfW=cv._w/2;
+    // ---- LEFT: S2 quadtree, exact ----
+    (function(){
+      const cx=halfW*0.5, cy=cv._h/2+10, S=Math.min(halfW,cv._h)*0.6, x0=cx-S/2, y0=cy-S/2;
+      ctx.fillStyle=THEME.muted;ctx.font='13px monospace';ctx.textAlign='center';
+      ctx.fillText('S2 · aperture-4 · EXACT', cx, y0-24);
+      // parent
+      ctx.strokeStyle='#58a6ff';ctx.lineWidth=3;ctx.strokeRect(x0,y0,S,S);
+      // 4 children growing in
+      const h=S/2; const grow=p;
+      for(let i=0;i<4;i++){const gx=x0+(i%2)*h, gy=y0+(i>=2?h:0);
+        const inset=(h*(1-grow))/2;
+        ctx.fillStyle='rgba(63,185,80,.14)';ctx.strokeStyle='#3fb950';ctx.lineWidth=1.6;
+        ctx.fillRect(gx+inset,gy+inset,h-2*inset,h-2*inset);
+        ctx.strokeRect(gx+inset,gy+inset,h-2*inset,h-2*inset);
+      }
+      ctx.fillStyle=THEME.ink;ctx.font='11px monospace';
+      ctx.fillText('4 children fill parent · no gaps, no spill', cx, y0+S+22);
+      ctx.fillText('ID = parent prefix + 2 bits', cx, y0+S+38);
+    })();
+    // ---- RIGHT: H3 aperture-7, approximate ----
+    let spillFlag=false;
+    (function(){
+      const cx=halfW*1.5, cy=cv._h/2+10, R=Math.min(halfW,cv._h)*0.34;
+      ctx.fillStyle=THEME.muted;ctx.font='13px monospace';ctx.textAlign='center';
+      ctx.fillText('H3 · aperture-7 · APPROXIMATE', cx, cy-R-24);
+      // parent hexagon (flat-top)
+      hexPath(cx,cy,R,0);
+      const parentPath=new Path2D();for(let i=0;i<6;i++){const a=Math.PI/180*60*i;const px=cx+R*Math.cos(a),py=cy+R*Math.sin(a);i?parentPath.lineTo(px,py):parentPath.moveTo(px,py);}parentPath.closePath();
+      ctx.strokeStyle='#bc8cff';ctx.lineWidth=3;ctx.stroke();
+      // 7 children: size R/sqrt7, rotated ~19.1deg, centers = center + ring at dist ~R*2/sqrt7
+      const cr=R/Math.sqrt(7)*p + 0.0001;
+      const rot=Math.PI/180*19.106*p;
+      const ringD=R*0.76*p;
+      const centers=[[cx,cy]];
+      for(let i=0;i<6;i++){const a=rot+Math.PI/180*60*i - Math.PI/2;centers.push([cx+ringD*Math.cos(a),cy+ringD*Math.sin(a)]);}
+      // draw spill first (children clipped to OUTSIDE parent) if enabled
+      centers.forEach(([hx,hy])=>{
+        hexPath(hx,hy,cr,rot);
+        ctx.fillStyle='rgba(188,140,255,.13)';ctx.fill();
+        ctx.strokeStyle='#bc8cff';ctx.lineWidth=1.4;ctx.stroke();
+      });
+      // detect + shade spill: redraw each child, clip to outside parent
+      if(spillEl.checked && p>0.85){
+        ctx.save();
+        // clip to the right half MINUS the parent hexagon (even-odd) → only spill shows
+        const outside=new Path2D();outside.rect(halfW,0,halfW,cv._h);outside.addPath(parentPath);
+        ctx.clip(outside,'evenodd');
+        centers.forEach(([hx,hy])=>{hexPath(hx,hy,cr,rot);ctx.fillStyle='rgba(255,123,114,.55)';ctx.fill();spillFlag=true;});
+        ctx.restore();
+      }
+      ctx.fillStyle=THEME.ink;ctx.font='11px monospace';
+      ctx.fillText('7 children, rotated ~19° · spill across edges', cx, cy+R+22);
+      ctx.fillText('digit-prefix ≠ exact region', cx, cy+R+38);
+    })();
+    ctx.textAlign='left';
+    stat.textContent='S2: 4 children, 0 spill (exact) · H3: 7 children, spill '+(spillEl.checked&&prog>0.85?'shown':'hidden');
+  }
+  function anim(){cancelAnimationFrame(animRAF);let t=0;(function s(){t+=0.02;draw(Math.min(1,t));if(t<1)animRAF=requestAnimationFrame(s);})();}
+  document.getElementById('nestAnim').onclick=anim;
+  spillEl.onchange=()=>draw();
+  REDRAW.push(()=>draw());
+  window.addEventListener('resize',()=>{ctx=fit(cv);draw();});
+  draw(1);
+})();
+
+/* ============================================================
+   Theme toggle (light / dark) — repaints all canvases
+   ============================================================ */
+(function(){
+  const btn=document.getElementById('themeBtn');
+  function apply(t,persist){
+    document.documentElement.setAttribute('data-theme',t);
+    if(persist){try{localStorage.setItem('knn-theme',t);}catch(e){}}
+    btn.textContent = t==='light' ? '🌙 Dark' : '☀️ Light';
+    refreshTheme();
+    REDRAW.forEach(fn=>{try{fn();}catch(e){}});
+  }
+  // sync button + canvases with whatever theme the <head> script already applied (no persist)
+  apply(document.documentElement.getAttribute('data-theme')||'dark',false);
+  btn.onclick=()=>apply(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light',true);
+  // follow OS theme changes only while the user hasn't made an explicit choice
+  if(window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change',e=>{
+      let saved;try{saved=localStorage.getItem('knn-theme');}catch(_){}
+      if(!saved)apply(e.matches?'light':'dark');
+    });
+  }
+})();
+</script>
+</body>
+</html>

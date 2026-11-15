@@ -22,4 +22,4 @@ The sketch stopped before settling how to represent variable-length bookings or 
 
 A later review explored letting the database reject overlapping reservations using an exclusion constraint on table ID and time range. That approach preserves arbitrary start and end times. The original whiteboard explored the slot-bitmask approach.
 
-[Anonymized whiteboard and original SQL sketch](../../../sources/notes/restaurant-reservation-whiteboard.md) · [Later study notes on booking concurrency](../../../sources/docs/combination-sum-and-reservation-interview.md)
+[Anonymized whiteboard and original SQL sketch](../../../sources/notes/restaurant-reservation-whiteboard.md) · [Later study notes on booking concurrency](../../reading-notes/combination-sum-and-reservation-interview.md)

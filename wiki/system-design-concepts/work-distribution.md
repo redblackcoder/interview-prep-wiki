@@ -5,7 +5,7 @@ The problem of dividing a workload across a fleet of workers so that no worker s
 ## How it works
 
 ### Partition-based distribution
-Assign ownership of work partitions to workers using [[theory/consistent-hashing]]:
+Assign ownership of work partitions to workers using [consistent hashing](../theory/consistent-hashing.md):
 1. Hash the work item's key (e.g., hostname for crawlers, user ID for request routing).
 2. Map hash to a partition on the ring.
 3. The worker owning that partition processes the item.
@@ -31,10 +31,10 @@ Combine both: partition work into queues by key, then use pull-based consumption
 > "Work distribution is about three invariants: no starvation, no overload, no redundancy. Partition by a natural key using consistent hashing for locality, use queues within partitions for backpressure, and dedup at the boundary to prevent duplicate processing."
 
 ## Connections
-- [[system-design-concepts/web-crawler]] — primary example: distributing URL fetches across a crawler fleet
-- [[theory/consistent-hashing]] — the standard technique for partition assignment with minimal rebalancing
-- [[system-design-concepts/preemption-economics]] — the admission side: *when* queued work is allowed to start, and why it isn't preemptively interleaved
-- [[system-design-concepts/message-fanout]] — Manifold is fan-out's version of this: distribute the send across nodes/cores instead of funneling through one process
+- [web crawler](web-crawler.md) — primary example: distributing URL fetches across a crawler fleet
+- [consistent hashing](../theory/consistent-hashing.md) — the standard technique for partition assignment with minimal rebalancing
+- [preemption economics](preemption-economics.md) — the admission side: *when* queued work is allowed to start, and why it isn't preemptively interleaved
+- [message fanout](message-fanout.md) — Manifold is fan-out's version of this: distribute the send across nodes/cores instead of funneling through one process
 
 ## Sources
-- [[sources/docs/web-crawler-system-design]] — both crawler designs solve this as their central challenge
+- [image web crawler](../problems/system-design/image-web-crawler.md) — both crawler designs solve this as their central challenge

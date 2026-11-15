@@ -55,9 +55,9 @@ reverseListNaive xs =
 > "A fold reduces a list through an accumulator — it's the functional `for` loop. `foldl` combines on the way down, so it's tail-recursive and runs in constant stack; `foldr` defers combining until it unwinds, so it costs O(N) stack and can overflow. Tail-call optimization is the enabler: when the recursive call is the last step, the compiler reuses the stack frame and turns recursion into a loop. Reach for `foldl` by default, `foldr` only when you need right-to-left."
 
 ## Connections
-- [[coding-patterns/fold-accumulator]] — the practical pattern built on these mechanics (naive → accumulator → fold)
-- [[theory/pure-functional-programming]] — folds/recursion are how you iterate without a mutable loop variable
-- [[tech/elm]] — `|>`, lambdas, and `.field` accessors are what make fold expressions read cleanly
+- [fold accumulator](../coding-patterns/fold-accumulator.md) — the practical pattern built on these mechanics (naive → accumulator → fold)
+- [pure functional programming](pure-functional-programming.md) — folds/recursion are how you iterate without a mutable loop variable
+- [elm](../tech/elm.md) — `|>`, lambdas, and `.field` accessors are what make fold expressions read cleanly
 
 ## Sources
-- [[sources/docs/functional-programming-elm-study-guide]] — §4 Mechanics of Folds and Recursion; §5 Problem 1 (reversal) illustrates naive vs tail-recursive vs fold
+- [functional programming elm study guide](../reading-notes/functional-programming-elm-study-guide.md) — §4 Mechanics of Folds and Recursion; §5 Problem 1 (reversal) illustrates naive vs tail-recursive vs fold

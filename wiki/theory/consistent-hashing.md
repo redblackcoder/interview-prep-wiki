@@ -63,11 +63,11 @@ Hash each **physical** node onto the ring **V times** — `hash("B#1") … hash(
 
 Both problems dissolve:
 - **Balance:** load is now the sum of V independent arcs → variance ~`1/√V`.
-- **Smooth, parallel recovery:** a dead node's V slivers each fall to a *different* successor, so its load spreads over ~V nodes and **rebuild streams from ~V sources in parallel** → low MTTR. This is exactly the fast-re-replication that [[theory/durability-math]] depends on.
+- **Smooth, parallel recovery:** a dead node's V slivers each fall to a *different* successor, so its load spreads over ~V nodes and **rebuild streams from ~V sources in parallel** → low MTTR. This is exactly the fast-re-replication that [durability math](durability-math.md) depends on.
 
 ## Vnodes and durability: the copyset trade-off
 
-Vnodes are not free — they change durability, and in *both* directions. A **copyset** is a group of RF nodes that together hold a full copy of some partition; data is lost in an RF-node concurrent failure **iff those nodes form a copyset**, so `#copysets` is the fleet-wide loss multiplier (see [[theory/durability-math]] Step 6):
+Vnodes are not free — they change durability, and in *both* directions. A **copyset** is a group of RF nodes that together hold a full copy of some partition; data is lost in an RF-node concurrent failure **iff those nodes form a copyset**, so `#copysets` is the fleet-wide loss multiplier (see [durability math](durability-math.md) Step 6):
 
 ```
  no vnodes:  a node shares data only with fixed neighbors → #copysets ≈ N
@@ -101,14 +101,14 @@ Idealized, the squared-MTTR win would dominate (`V·(1/V)² = 1/V`), but **rebui
 > "Consistent hashing puts keys and nodes on a ring and walks clockwise, so a node change moves only ~1/N of keys instead of everything under `mod N`. But a plain ring has bad load variance and dumps a dead node's whole range on one neighbor, so in practice I place each node V times as virtual nodes — load becomes a sum of V slivers (variance ~1/√V) and rebuild streams from ~V sources in parallel, which is what keeps MTTR low. The subtlety is that vnodes aren't free for durability: a node now shares data with ~RF·V others, so the number of copysets grows ~N·V and *any-loss* events get more frequent even as each shrinks. That's why Cassandra dropped its token default from 256 to 16. Per-object durability doesn't change — vnodes just trade rare-catastrophic loss for frequent-trivial."
 
 ## Connections
-- [[theory/durability-math]] — vnodes set both terms of fleet loss: `#copysets ≈ N·V` and the MTTR that parallel rebuild lowers
-- [[system-design-concepts/hash-vs-range-partitioning]] — consistent hashing is the *hash* side; this is why range scans scatter across the ring
-- [[system-design-concepts/work-distribution]] — consistent hashing is the default partition-assignment strategy for a worker fleet
-- [[system-design-concepts/web-crawler]] — host-to-shard assignment with minimal content movement on rebalance
-- [[system-design-concepts/message-fanout]] — the routing ring FastGlobal serves copy-free; `phash2` spreads PIDs across cores
-- [[system-design-concepts/leaderless-vs-leader-based]] — the ring assigns the replica set that a leaderless coordinator writes its quorum to
+- [durability math](durability-math.md) — vnodes set both terms of fleet loss: `#copysets ≈ N·V` and the MTTR that parallel rebuild lowers
+- [hash vs range partitioning](../system-design-concepts/hash-vs-range-partitioning.md) — consistent hashing is the *hash* side; this is why range scans scatter across the ring
+- [work distribution](../system-design-concepts/work-distribution.md) — consistent hashing is the default partition-assignment strategy for a worker fleet
+- [web crawler](../system-design-concepts/web-crawler.md) — host-to-shard assignment with minimal content movement on rebalance
+- [message fanout](../system-design-concepts/message-fanout.md) — the routing ring FastGlobal serves copy-free; `phash2` spreads PIDs across cores
+- [leaderless vs leader based](../system-design-concepts/leaderless-vs-leader-based.md) — the ring assigns the replica set that a leaderless coordinator writes its quorum to
 
 ## Sources
-- [[sources/docs/web-crawler-system-design]] — consistent hashing for host-to-shard assignment with minimal content movement on rebalance
-- [[sources/docs/distributed-kv-store-mock-interview]] — §7 partitioning (ring, vnodes, control-plane-managed), §5 durability (copyset link)
-- [distributed-kv-store-mock-interview.md](https://github.com/redblackcoder/interview-prep-wiki/blob/master/sources/docs/distributed-kv-store-mock-interview.md) — full mock-interview design notes
+- [image web crawler](../problems/system-design/image-web-crawler.md) — consistent hashing for host-to-shard assignment with minimal content movement on rebalance
+- [distributed persistent key value store](../problems/system-design/distributed-persistent-key-value-store.md) — §7 partitioning (ring, vnodes, control-plane-managed), §5 durability (copyset link)
+- [distributed-kv-store-mock-interview.md](../problems/system-design/distributed-persistent-key-value-store.md) — full mock-interview design notes

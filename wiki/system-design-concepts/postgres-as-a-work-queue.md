@@ -67,12 +67,12 @@ Every claim moves a row out of the `QUEUED` partial index and leaves a dead entr
 > "I'd dispatch straight from Postgres: a `SKIP LOCKED` batch claim so dispatchers never wait on each other, and the scheduler's inserts are for rows minutes out, so they don't collide either. I won't hold that transaction open while I pick pools — that ties transaction length to app code and pins vacuum. So it's two steps: claim to myself, decide in memory, then a fenced per-row assign; a reaper returns claims from a dead dispatcher with a fence bump. The thing I actually monitor is dead tuples under long transactions, not locks."
 
 ## Connections
-- [[system-design-concepts/distributed-job-scheduler]] — the dispatch path this was worked out for
-- [[system-design-concepts/lease-and-fencing]] — claim = CAS, fence on every later write, reaper after lease + margin
-- [[system-design-concepts/database-write-capacity]] — rows vs tx; why batch size matters
-- [[theory/copy-on-write-vs-mvcc]] — MVCC is why claims leave dead tuples and why long transactions hurt
-- [[tech/aws-rds-postgresql]] — the managed Postgres underneath; failover windows
-- [[system-design-concepts/transactional-outbox]] — the related "DB row is truth, everything else is a hint" pattern
+- [distributed job scheduler](distributed-job-scheduler.md) — the dispatch path this was worked out for
+- [lease and fencing](lease-and-fencing.md) — claim = CAS, fence on every later write, reaper after lease + margin
+- [database write capacity](database-write-capacity.md) — rows vs tx; why batch size matters
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md) — MVCC is why claims leave dead tuples and why long transactions hurt
+- [aws rds postgresql](../tech/aws-rds-postgresql.md) — the managed Postgres underneath; failover windows
+- [transactional outbox](transactional-outbox.md) — the related "DB row is truth, everything else is a hint" pattern
 
 ## Sources
-- [[sources/docs/design-job-scheduler-mock-interview]] — lock contention; one transaction vs a two-step claim
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — lock contention; one transaction vs a two-step claim

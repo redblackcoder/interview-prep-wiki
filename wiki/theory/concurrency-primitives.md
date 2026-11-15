@@ -18,7 +18,7 @@ Every memory access goes through virtual→physical translation, cached in the *
 - **M:N multiplexing:** the runtime schedules M green threads onto N OS threads (N ≈ core count). A green thread blocked on I/O is parked in user space and its OS thread runs another — no kernel involvement, so blocking is "free."
 - **The catch:** green threads give *concurrency*, not extra *parallelism* — real CPU parallelism is still capped at N cores. And one green thread doing a long CPU-bound (or blocking-FFI) computation without yielding can starve others on its scheduler — which is why BEAM preemptively de-schedules on a reduction count, and why blocking C calls want a real OS thread.
 
-This is the same **preemption-cost logic** as [[system-design-concepts/preemption-economics]]: preempt cheaply where saving/restoring state is cheap (green threads, in user space) and reluctantly where it's expensive (processes, with a TLB flush) — the cost of a switch is what dictates the scheduling design at each layer.
+This is the same **preemption-cost logic** as [preemption economics](../system-design-concepts/preemption-economics.md): preempt cheaply where saving/restoring state is cheap (green threads, in user space) and reluctantly where it's expensive (processes, with a TLB flush) — the cost of a switch is what dictates the scheduling design at each layer.
 
 ## Key points
 - Rank by context-switch cost: process (mode switch + **TLB flush**) > thread (mode switch, no flush) > green thread (no kernel at all).
@@ -32,12 +32,12 @@ This is the same **preemption-cost logic** as [[system-design-concepts/preemptio
 > "There are three execution units and the thing that separates them is context-switch cost. An OS process has its own address space, so switching it needs a mode switch *and* a TLB flush — after which memory accesses are cache-cold, and that's the real cost. A thread shares the address space, so mode switch but no flush. A green thread is scheduled in user space by the runtime with no kernel transition at all, on tiny ~300-byte growable stacks multiplexed M:N onto core-count OS threads — which is why one machine holds millions of them for WebSockets. The catch is green threads give concurrency, not parallelism, and a CPU-bound one can starve its scheduler unless the runtime preempts it."
 
 ## Connections
-- [[theory/actor-model-message-passing]] — BEAM processes *are* green threads; that page covers their memory/messaging, this one their scheduling
-- [[system-design-concepts/preemption-economics]] — same governing rule: preempt where state save/restore is cheap; the context-switch cost here is that rule at the OS layer
-- [[system-design-concepts/compressible-vs-incompressible-resources]] — CPU (time-sliceable) vs memory (not) mirrors why thread stacks are a hard cap while CPU is overcommittable
-- [[system-design-concepts/message-fanout]] — "single-threaded per process" and reduction-count de-scheduling are why fan-out from one process is a bottleneck
-- [[theory/latency-numbers]] — the ns→ms latency gap is *why* blocking a thread on I/O is catastrophic, and why green threads exist for I/O-bound concurrency
+- [actor model message passing](actor-model-message-passing.md) — BEAM processes *are* green threads; that page covers their memory/messaging, this one their scheduling
+- [preemption economics](../system-design-concepts/preemption-economics.md) — same governing rule: preempt where state save/restore is cheap; the context-switch cost here is that rule at the OS layer
+- [compressible vs incompressible resources](../system-design-concepts/compressible-vs-incompressible-resources.md) — CPU (time-sliceable) vs memory (not) mirrors why thread stacks are a hard cap while CPU is overcommittable
+- [message fanout](../system-design-concepts/message-fanout.md) — "single-threaded per process" and reduction-count de-scheduling are why fan-out from one process is a bottleneck
+- [latency numbers](latency-numbers.md) — the ns→ms latency gap is *why* blocking a thread on I/O is catastrophic, and why green threads exist for I/O-bound concurrency
 
 ## Sources
-- [[sources/articles/discord-scaling-elixir-5m-concurrent]] — "OS Primitives: Processes vs. Threads vs. Green Threads" (companion deep-dive)
+- [discord scaling elixir 5m concurrent](../reading-notes/discord-scaling-elixir-5m-concurrent.md) — "OS Primitives: Processes vs. Threads vs. Green Threads" (companion deep-dive)
 - [How Discord Scaled Elixir to 5,000,000 Concurrent Users](https://discord.com/blog/how-discord-scaled-elixir-to-5-000-000-concurrent-users) — original article

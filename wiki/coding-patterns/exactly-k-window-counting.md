@@ -106,10 +106,10 @@ Dry run, 992 `[1,2,1,2,3]`, k = 2: `atMost(2)` = 1+2+3+4+2 = 12 and `atMost(1)` 
 Before coding each one, say what the measure is and why it only grows as the window grows. Work out the expected count by hand from the definition before running anything.
 
 ## Connections
-- [[coding-patterns/concurrent-lru-cache]]: the same `LinkedHashMap` remove-and-reinsert ordering that gives LRU order also gives the O(1) "smallest last-seen index" in approach A
-- [[coding-patterns/sweep-line-resource-scheduling]]: a sibling way to count by position: for each end (here) or each moment (there), count what's valid using endpoints that only move one way
-- [[algorithms/knapsack-variants]]: the contrast: when the measure isn't monotone, a window doesn't work, and you fall back to prefix sums or a DP over the state
+- [concurrent lru cache](concurrent-lru-cache.md): the same `LinkedHashMap` remove-and-reinsert ordering that gives LRU order also gives the O(1) "smallest last-seen index" in approach A
+- [sweep line resource scheduling](sweep-line-resource-scheduling.md): a sibling way to count by position: for each end (here) or each moment (there), count what's valid using endpoints that only move one way
+- [knapsack variants](../algorithms/knapsack-variants.md): the contrast: when the measure isn't monotone, a window doesn't work, and you fall back to prefix sums or a DP over the state
 
 ## Sources
-- [[sources/code/exactly-k-subarray-counting]]: my 992 last-seen solution (with the `count++` bug), my 3306 solution, both compared with atMost
-- Runnable code with brute-force checks: [exactly-k-subarray-counting/](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exactly-k-subarray-counting/)
+- [exactly-k-subarray-counting](../../sources/code/exactly-k-subarray-counting): my 992 last-seen solution (with the `count++` bug), my 3306 solution, both compared with atMost
+- Runnable code with brute-force checks: [exactly-k-subarray-counting/](../../sources/code/exactly-k-subarray-counting)

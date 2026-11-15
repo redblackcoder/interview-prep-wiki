@@ -24,8 +24,8 @@ So the cost/benefit of reliability inverts end to end. The right pipeline is **l
 
 ## The two ends, concretely
 
-- **Edge = load-shedding.** The app→agent hop is fire-and-forget: UDP loopback or a non-blocking datagram UDS, drop-on-full, so a runaway `track.increment` loop can never back-pressure or OOM the real workload. Losing samples here is acceptable *by the SLA*. See [[system-design-concepts/local-ipc-transports]].
-- **Core = durability.** In front of the bottleneck (the TSDB), a durable queue absorbs bursts, survives DB outages, smooths writes to the DB's sustainable rate, and fans out to multiple consumers. See [[system-design-concepts/queue-placement]].
+- **Edge = load-shedding.** The app→agent hop is fire-and-forget: UDP loopback or a non-blocking datagram UDS, drop-on-full, so a runaway `track.increment` loop can never back-pressure or OOM the real workload. Losing samples here is acceptable *by the SLA*. See [local ipc transports](local-ipc-transports.md).
+- **Core = durability.** In front of the bottleneck (the TSDB), a durable queue absorbs bursts, survives DB outages, smooths writes to the DB's sustainable rate, and fans out to multiple consumers. See [queue placement](queue-placement.md).
 
 The interview tell: a candidate asked about UDP said *"this is the opposite of having a queue"* — correct, and the deeper point is that **both are right, at different depths.** Stating the gradient up front *derives* UDP-at-edge and queue-at-core as consequences.
 
@@ -38,21 +38,21 @@ The whole lens assumes **lossy-tolerant** data. If the pipeline carries somethin
 - **Aggregation is what earns durability.** You persist in the core precisely because pre-aggregation made each message represent many events — cheap to store, expensive to lose.
 - **Edge-shed and core-persist are complementary, not opposed.** They're the same decision (match reliability to value) read at two ends.
 - **The flip condition is exactness/ordering sensitivity**, not scale. High volume alone doesn't justify shedding; low value-per-event does.
-- **Idempotence lets the core be cheap too:** an idempotent write ([[system-design-concepts/commutative-aggregation]]) means the durable hop needs only at-least-once, not exactly-once.
+- **Idempotence lets the core be cheap too:** an idempotent write ([commutative aggregation](commutative-aggregation.md)) means the durable hop needs only at-least-once, not exactly-once.
 
 ## Interview angle
 
 > "I'd set reliability as a gradient, not a constant. At the edge — the `increment()` call into the agent — volume is huge and any single sample is worth nothing against a 'spot-big-moves' SLA, so I make that hop lossy: fire-and-forget UDP, drop-on-full, so a bad loop can't hurt the app. As data moves inward it's aggregated — one message now represents thousands of events — so by the time I'm in front of the database I want the opposite: a durable queue that absorbs bursts, survives a DB outage, and rate-limits writes to the bottleneck. UDP-at-edge and queue-at-core look contradictory but they're the same rule — match reliability to value-per-message. The one thing that flips it is if the data is billing or gates a decision; then I can't shed anywhere and pay for durability end to end."
 
 ## Connections
-- [[system-design-concepts/local-ipc-transports]] — the edge end: fire-and-forget datagrams, drop-on-full, backpressure vs load-shedding
-- [[system-design-concepts/queue-placement]] — the core end: a durable queue in front of the bottleneck DB
-- [[system-design-concepts/serving-constrained-resources]] — the same "shed / degrade / add-capacity" reflex when a queue can't fix a *deficit*; here we shed by design
-- [[system-design-concepts/commutative-aggregation]] — idempotent aggregates make the durable core hop safe with only at-least-once delivery
-- [[system-design-concepts/hot-key-write-contention]] — aggregate-and-fold is the same move that both reduces edge volume and dissolves core contention
-- [[system-design-concepts/metrics-pull-vs-push]] — push pipelines choose where sampling/shedding happens; pull sheds implicitly by scrape interval
-- [[system-design-concepts/event-time-vs-processing-time]] — shedding at the edge is a *completeness* trade you accept because the SLA tolerates it
+- [local ipc transports](local-ipc-transports.md) — the edge end: fire-and-forget datagrams, drop-on-full, backpressure vs load-shedding
+- [queue placement](queue-placement.md) — the core end: a durable queue in front of the bottleneck DB
+- [serving constrained resources](serving-constrained-resources.md) — the same "shed / degrade / add-capacity" reflex when a queue can't fix a *deficit*; here we shed by design
+- [commutative aggregation](commutative-aggregation.md) — idempotent aggregates make the durable core hop safe with only at-least-once delivery
+- [hot key write contention](hot-key-write-contention.md) — aggregate-and-fold is the same move that both reduces edge volume and dissolves core contention
+- [metrics pull vs push](metrics-pull-vs-push.md) — push pipelines choose where sampling/shedding happens; pull sheds implicitly by scrape interval
+- [event time vs processing time](event-time-vs-processing-time.md) — shedding at the edge is a *completeness* trade you accept because the SLA tolerates it
 
 ## Sources
-- [[sources/docs/design-metrics-counters-mock-interview]] — "this is the opposite of a queue"; deriving edge-shed vs core-durability from a lossy-tolerant SLA
-- [[sources/docs/metrics-collection-observability-self-study]] — sampling, UDP exposition, and the lossy-vs-exact split that underpins the gradient
+- [operational counter collection](../problems/system-design/operational-counter-collection.md) — "this is the opposite of a queue"; deriving edge-shed vs core-durability from a lossy-tolerant SLA
+- [metrics collection observability self study](../reading-notes/metrics-collection-observability-self-study.md) — sampling, UDP exposition, and the lossy-vs-exact split that underpins the gradient

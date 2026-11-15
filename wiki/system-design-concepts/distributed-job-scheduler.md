@@ -11,9 +11,9 @@ Reference design for a multi-tenant cron + ad-hoc job platform (Airflow/Temporal
 | --- | --- | --- |
 | **Definitions** (tenant-sharded DB) | cron, params, binary pointer (object store), `version`, `enabled` | |
 | **Scheduler** | definition → `QUEUED` execution rows for the next ~5 min | poll interval < lookahead window so a failed loop can retry; executions record `definition_version`; inserts batched (~500 rows/tx) |
-| **Dispatcher** | two-step claim from the DB, picks a pool per job, hands off | fair share per tenant ([[system-design-concepts/fair-share-scheduling]]); holds a **dispatcher lease**; pre-dispatch a few seconds early with a start delay to meet the start SLA |
+| **Dispatcher** | two-step claim from the DB, picks a pool per job, hands off | fair share per tenant ([fair share scheduling](fair-share-scheduling.md)); holds a **dispatcher lease**; pre-dispatch a few seconds early with a start delay to meet the start SLA |
 | **Driver** (trusted, one per pool + a standby) | fine-grained worker placement within a pool; holds the **driver lease**; reports status | control plane; holds DB credentials |
-| **Worker supervisor** | runs the user's binary; kills it on missed driver keepalive | inner lease of the nested pair ([[system-design-concepts/lease-and-fencing]]) |
+| **Worker supervisor** | runs the user's binary; kills it on missed driver keepalive | inner lease of the nested pair ([lease and fencing](lease-and-fencing.md)) |
 | **Status writer** (per shard) | batches driver status events into fenced multi-row updates | fixes the ~3 rows/tx problem (see Capacity) |
 | **Telemetry store** | heartbeats-as-metrics, resource use, logs | KV / time-series; state machine stays in the DB |
 
@@ -26,7 +26,7 @@ Redis (due-index cache) and DynamoDB (lease/fence store) are **optional add-ons*
 - **later:** `WHERE fence=:f`
 - **reapers:** a dead dispatcher's `CLAIMED` rows go back to `QUEUED` with `fence+1` after its lease + margin; a dead pool's rows after the driver lease + margin.
 
-The two-step claim exists so **no transaction stays open across application logic** (pool placement). Detail and SQL: [[system-design-concepts/postgres-as-a-work-queue]].
+The two-step claim exists so **no transaction stays open across application logic** (pool placement). Detail and SQL: [postgres as a work queue](postgres-as-a-work-queue.md).
 
 ## Leases: per driver, not per job
 - One lease row per driver (`driver_leases`), renewed by the driver; execution rows are **not** touched by heartbeats.
@@ -35,7 +35,7 @@ The two-step claim exists so **no transaction stays open across application logi
 - **Driver lease > worst DB failover** (e.g. 60 s vs Aurora ~30 s), so a failover doesn't trigger mass self-kill.
 
 ## Capacity (10k starts/s, 10-min average)
-- Running = 10k × 600 = **6M** ([[theory/littles-law]]).
+- Running = 10k × 600 = **6M** ([littles law](../theory/littles-law.md)).
 - **Row writes ≈ 40k/s:** in any one second four *different* cohorts move — 10k inserted (due in ~5 min), 10k claimed (due now), 10k go RUNNING, 10k finish (started ~10 min ago). Two-step claim adds 10k ASSIGNED; heartbeats add 200.
 - **Transactions are the other number** — batching cuts commits, not row writes:
 
@@ -50,7 +50,7 @@ The two-step claim exists so **no transaction stays open across application logi
 - Driver-direct batching barely helps: a 1,000-job driver with 600 s jobs sees only ~1.7 starts + 1.7 finishes per second, and tenant sharding spreads those over several shards. Route status through a per-shard writer (e.g. Kafka partitioned by shard) → **~370 tx/s total**.
 - Hot working set: 9M queued + running rows × ~500 B ≈ 4.5 GB + indexes → fits in RAM. Disk: ~864M rows/day ≈ 0.9 TB/day → partition by day, keep ~7 days hot, archive to S3.
 - Cron peaks (00:00, top of hour, 1st of month) are **known ahead** from the materialized window → pre-scale pools.
-- How to reason about each number (rows, tx, IOPS, memory, disk) and the DynamoDB equivalent: [[system-design-concepts/database-write-capacity]].
+- How to reason about each number (rows, tx, IOPS, memory, disk) and the DynamoDB equivalent: [database write capacity](database-write-capacity.md).
 
 ## Store choice
 **Baseline: sharded Aurora PostgreSQL only.** At ~40k rows/s and a few hundred tx/s, 4–6 shards with headroom.
@@ -85,18 +85,18 @@ If you go DynamoDB + Redis, DynamoDB becomes authoritative for `CLAIMED → … 
 > "Scheduler materializes five minutes ahead into sharded Aurora. Dispatchers claim in two steps — a `SKIP LOCKED` batch claim to themselves, then a fenced per-row assign to pools — so no transaction spans placement logic. Drivers hold one lease each, not one per job: 200 writes a second instead of 200k, and a standby driver re-adopts the pool so a crash isn't a thousand retries. Status goes through a per-shard writer so commits carry hundreds of rows. That's about 40k row writes and a few hundred transactions a second — five shards. The lease outlasts an Aurora failover, and I carve the failover out of the one-second SLA. I'd add DynamoDB and Redis only if that carve-out is unacceptable."
 
 ## Connections
-- [[system-design-concepts/lease-and-fencing]] — the crux; nested leases and re-adoption
-- [[system-design-concepts/postgres-as-a-work-queue]] — `SKIP LOCKED`, two-step claim, dead-tuple risk
-- [[system-design-concepts/database-write-capacity]] — rows vs tx vs IOPS vs memory vs disk; Postgres vs DynamoDB
-- [[system-design-concepts/transactional-outbox]] — DB → cache sync if Redis is added
-- [[system-design-concepts/fair-share-scheduling]] — hot tenant / worker capacity
-- [[system-design-concepts/exactly-once-semantics]] — why the contract is at-least-once + idempotency key
-- [[theory/littles-law]] — capacity derivation
-- [[tech/aws-rds-postgresql]] — Aurora vs Multi-AZ failover
-- [[system-design-concepts/agent-tool-sandboxing]] — driver/worker trust boundary
-- [[system-design-concepts/preemption-economics]], [[system-design-concepts/compressible-vs-incompressible-resources]] — cluster-scheduler economics underneath the worker pools
-- [[system-design-concepts/work-distribution]] — partitioning scheduler/dispatcher work within a shard
+- [lease and fencing](lease-and-fencing.md) — the crux; nested leases and re-adoption
+- [postgres as a work queue](postgres-as-a-work-queue.md) — `SKIP LOCKED`, two-step claim, dead-tuple risk
+- [database write capacity](database-write-capacity.md) — rows vs tx vs IOPS vs memory vs disk; Postgres vs DynamoDB
+- [transactional outbox](transactional-outbox.md) — DB → cache sync if Redis is added
+- [fair share scheduling](fair-share-scheduling.md) — hot tenant / worker capacity
+- [exactly once semantics](exactly-once-semantics.md) — why the contract is at-least-once + idempotency key
+- [littles law](../theory/littles-law.md) — capacity derivation
+- [aws rds postgresql](../tech/aws-rds-postgresql.md) — Aurora vs Multi-AZ failover
+- [agent tool sandboxing](agent-tool-sandboxing.md) — driver/worker trust boundary
+- [preemption economics](preemption-economics.md), [compressible vs incompressible resources](compressible-vs-incompressible-resources.md) — cluster-scheduler economics underneath the worker pools
+- [work distribution](work-distribution.md) — partitioning scheduler/dispatcher work within a shard
 
 ## Sources
-- [[sources/docs/design-job-scheduler-mock-interview]] — the mock design round: capacity, store choice, two-step claim
-- [[sources/docs/os-scheduling-to-distributed-scheduling]] — OS → cluster scheduling background
+- [distributed job scheduler](../problems/system-design/distributed-job-scheduler.md) — the mock design round: capacity, store choice, two-step claim
+- [os scheduling to distributed scheduling](../reading-notes/os-scheduling-to-distributed-scheduling.md) — OS → cluster scheduling background

@@ -1,8 +1,6 @@
 # Interview prep
 
-## Problems
-
-- [Keyed task executor](problems/coding/keyed-task-executor.md) — Trace three submissions through a bounded executor and examine a shutdown race.
-- [Restaurant reservations](problems/system-design/restaurant-reservations.md) — Work through a booking collision and the table-locking decision on the whiteboard.
-
-[Browse the full problem catalog](../problems/README.md) · [Browse concepts and study notes](../index.md)
+- [Problems](problems/README.md) — 85 coding exercises and system designs with examples, recorded approaches and original sources.
+- [Concepts](concepts.md) — algorithms, coding patterns, system design, technology and theory.
+- [Reading notes](reading-notes/README.md) — study guides and discussions that span multiple problems.
+- [Source collection](../sources/README.md) — inspect the underlying materials.

@@ -56,9 +56,9 @@ BestEffort ── Burstable (request<limit) ── Guaranteed (request==limit) �
 > "CPU is compressible and memory isn't — that's the whole reason k8s treats them differently. `requests` is what the scheduler reserves for bin-packing; `limits` is the ceiling cgroups/CFS enforces. For CPU you can set request below limit (Burstable) and pack many pods on a node, letting the OS time-slice them — so k8s isn't ignoring OS scheduling, it's exposing it as a declared policy. For memory there's no time-slicing: overcommit means an OOM kill, so the request is effectively a hard reservation. `request == limit` is the isolation default, and the CPU Manager static policy is the extreme that pins pods to exclusive cores and turns time-slicing off."
 
 ## Connections
-- [[system-design-concepts/preemption-economics]] — CPU is the "exception" noted there: the resource the cluster still time-slices via cgroups/CFS, precisely because it's compressible
-- [[system-design-concepts/work-distribution]] — bin-packing `requests` onto nodes is the overload-avoidance side of distributing work across a fleet
+- [preemption economics](preemption-economics.md) — CPU is the "exception" noted there: the resource the cluster still time-slices via cgroups/CFS, precisely because it's compressible
+- [work distribution](work-distribution.md) — bin-packing `requests` onto nodes is the overload-avoidance side of distributing work across a fleet
 - Builds on OS scheduling theory — CFS throttling and cgroups (`cpu.shares` / `cfs_quota`) are the mechanism that makes CPU compressible in the first place
 
 ## Sources
-- [[sources/docs/os-scheduling-to-distributed-scheduling]] — the k8s `requests`/`limits` and compressible/incompressible discussion, grounded in the OSTEP CFS chapter
+- [os scheduling to distributed scheduling](../reading-notes/os-scheduling-to-distributed-scheduling.md) — the k8s `requests`/`limits` and compressible/incompressible discussion, grounded in the OSTEP CFS chapter

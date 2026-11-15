@@ -18,7 +18,7 @@ If every chunk or extent picks its 3 replica nodes at random, then with millions
 | Copyset, S = 10 | 5 × 33 = 167 | ~0.1% | ~42 h |
 | Mirrored triples (S = 2) | 33 | ~0.02% | ~9 days (2 peers) |
 
-- The trade-off is real in both directions. Fewer copysets mean loss events are **rarer but bigger** (when a copyset dies you lose all of its data), and repair has **fewer sources**, so MTTR rises, which hurts independent-failure durability ([[theory/durability-math]]). Pick S so the MTTR stays in hours.
+- The trade-off is real in both directions. Fewer copysets mean loss events are **rarer but bigger** (when a copyset dies you lose all of its data), and repair has **fewer sources**, so MTTR rises, which hurts independent-failure durability ([durability math](../theory/durability-math.md)). Pick S so the MTTR stays in hours.
 
 ## How it works in a design
 - Build copysets offline. Take S/(R−1) random permutations of the nodes and chop each into groups of R. Make every member of a group come from a different rack or power domain.
@@ -35,11 +35,11 @@ If every chunk or extent picks its 3 replica nodes at random, then with millions
 > "Per-extent random placement means almost every node triple shares an extent, so any correlated 3-node loss loses data. I constrain placement to rack-diverse copysets and best-fit within one. With a scatter width around 50 on 100 nodes, a random 3-node loss is fatal about 0.5% of the time instead of about 100%, and a dead node still rebuilds from about 50 peers in hours."
 
 ## Connections
-- [[theory/durability-math]]: the correlated-failure ceiling this addresses, and the MTTR term it trades against
-- [[system-design-concepts/replica-repair-and-re-replication]]: scatter width sets rebuild parallelism
-- [[system-design-concepts/distributed-file-system]]: placement step of the put path
-- [[theory/consistent-hashing]]: hash-ring successor placement is another way to bound the number of replica sets
+- [durability math](../theory/durability-math.md): the correlated-failure ceiling this addresses, and the MTTR term it trades against
+- [replica repair and re replication](replica-repair-and-re-replication.md): scatter width sets rebuild parallelism
+- [distributed file system](distributed-file-system.md): placement step of the put path
+- [consistent hashing](../theory/consistent-hashing.md): hash-ring successor placement is another way to bound the number of replica sets
 
 ## Sources
-- [[sources/docs/design-distributed-file-system-interview]]: per-extent replication → copyset risk
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md): per-extent replication → copyset risk
 - Background, not ingested: Cidon et al., "Copysets: Reducing the Frequency of Data Loss in Cloud Storage", USENIX ATC 2013

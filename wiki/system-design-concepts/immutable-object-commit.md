@@ -40,11 +40,11 @@ How a storage system makes a multi-part write of an immutable object appear **al
 > "The file row starts PENDING and invisible. The client streams extents anywhere, and one conditional metadata transaction flips it to COMMITTED and inserts the name if absent. That commit is the moment it becomes visible. Any crash before it leaves unreferenced bytes that a TTL sweeper reclaims. Any crash after it is fixed by retrying commit with the same upload id, which is idempotent."
 
 ## Connections
-- [[system-design-concepts/distributed-file-system]]: where this sits in the put path
-- [[system-design-concepts/transactional-outbox]]: sibling "one local atomic write, everything else follows" pattern
-- [[system-design-concepts/exactly-once-semantics]]: idempotent commit keyed by `upload_id` is the effectively-once close
-- [[system-design-concepts/lease-and-fencing]]: write handles and capacity reservations expire as leases
-- [[theory/copy-on-write-vs-mvcc]]: publish-by-pointer-swap is copy-on-write at the object level
+- [distributed file system](distributed-file-system.md): where this sits in the put path
+- [transactional outbox](transactional-outbox.md): sibling "one local atomic write, everything else follows" pattern
+- [exactly once semantics](exactly-once-semantics.md): idempotent commit keyed by `upload_id` is the effectively-once close
+- [lease and fencing](lease-and-fencing.md): write handles and capacity reservations expire as leases
+- [copy on write vs mvcc](../theory/copy-on-write-vs-mvcc.md): publish-by-pointer-swap is copy-on-write at the object level
 
 ## Sources
-- [[sources/docs/design-distributed-file-system-interview]]: commit visibility and the crash-mid-upload question
+- [lakehouse file storage](../problems/system-design/lakehouse-file-storage.md): commit visibility and the crash-mid-upload question

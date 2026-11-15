@@ -10,7 +10,7 @@ For "reduce a list to one value" problems, solutions typically come in three run
 2. **Manual tail-recursive accumulator** — a local helper carries an accumulator; the recursive call is the last step, so it's O(1) stack and TCO'd to a loop. Fast and explicit, but verbose.
 3. **Idiomatic fold** — recognize that rung 2 *is* a fold, and pass the combining function straight to `List.foldl`. Shortest and clearest, once you see it.
 
-See [[theory/folds-and-tail-recursion]] for *why* rung 2/3 beat rung 1 on stack and time.
+See [folds and tail recursion](../theory/folds-and-tail-recursion.md) for *why* rung 2/3 beat rung 1 on stack and time.
 
 ## Recognizing the rungs (Elm examples)
 
@@ -57,13 +57,13 @@ This is a recurring FP instinct: **push conditional logic to the structure (patt
 > "Most list-reduction problems have three forms: naive recursion, a manual tail-recursive accumulator, and an idiomatic fold — and they're the same computation at rising abstraction. I default to `foldl` for constant stack. If the first element needs special handling, I pattern-match it out as the initial accumulator instead of putting an `if` inside the fold — pushing the conditional to the structure keeps the loop branch-free."
 
 ## Connections
-- [[theory/folds-and-tail-recursion]] — the mechanics (foldl/foldr, TCO) that justify climbing the ladder
-- [[theory/pure-functional-programming]] — immutability is *why* you thread an accumulator rather than mutate a running total
-- [[tech/elm]] — the syntax (`|>`, lambdas, `.field`) the examples are written in
+- [folds and tail recursion](../theory/folds-and-tail-recursion.md) — the mechanics (foldl/foldr, TCO) that justify climbing the ladder
+- [pure functional programming](../theory/pure-functional-programming.md) — immutability is *why* you thread an accumulator rather than mutate a running total
+- [elm](../tech/elm.md) — the syntax (`|>`, lambdas, `.field`) the examples are written in
 
 ## Sources
-- [[sources/docs/functional-programming-elm-study-guide]] — §5 Sample Problems and Comparative Solutions
+- [functional programming elm study guide](../reading-notes/functional-programming-elm-study-guide.md) — §5 Sample Problems and Comparative Solutions
 - Worked solutions in raw (pattern extracted here; full code there):
-  - [Problem 1: List Reversal](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-1-list-reversal) — naive O(N²) → tail-recursive accumulator → `foldl (::)`. Runnable TEA app: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/elm-list-reversal/)
-  - [Problem 2: Guilt Calculator](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-2-guilt-calculator) — map-then-fold → pipeline → single-pass fold
-  - [Problem 3: Path/Breadcrumb Builder](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/functional-programming-elm-study-guide.md#problem-3-pathbreadcrumb-builder) — the pattern-match-out-the-base-case sub-pattern
+  - [Problem 1: List Reversal](../../sources/references/functional-programming-elm-study-guide.md#problem-1-list-reversal) — naive O(N²) → tail-recursive accumulator → `foldl (::)`. Runnable TEA app: [Ellie sandbox](https://ellie-app.com/zkxTj4t9Yqwa1) · [code](../../sources/code/elm-list-reversal)
+  - [Problem 2: Guilt Calculator](../../sources/references/functional-programming-elm-study-guide.md#problem-2-guilt-calculator) — map-then-fold → pipeline → single-pass fold
+  - [Problem 3: Path/Breadcrumb Builder](../../sources/references/functional-programming-elm-study-guide.md#problem-3-pathbreadcrumb-builder) — the pattern-match-out-the-base-case sub-pattern

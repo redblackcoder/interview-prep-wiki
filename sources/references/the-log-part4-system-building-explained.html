@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Log — Part 4: System Building, Explained Layer by Layer</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1b2130; --muted:#5b6472;
+    --log:#2563eb; --log-soft:#e8effe;
+    --serve:#059669; --serve-soft:#e3f6ef;
+    --client:#475569; --client-soft:#eef1f5;
+    --derived:#7c3aed; --derived-soft:#f1e9fd;
+    --amber:#b45309; --amber-soft:#fdf1e0;
+    --line:#d7dbe2; --code:#0f172a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:32px 20px 96px;}
+  header.hero{
+    background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff;
+    border-radius:18px; padding:34px 32px; margin-bottom:12px;
+  }
+  header.hero .kicker{font-size:.8rem; letter-spacing:.12em; text-transform:uppercase; color:#93c5fd; margin:0 0 8px;}
+  header.hero h1{margin:0 0 10px; font-size:1.85rem; line-height:1.2;}
+  header.hero p{margin:0; color:#cbd5e1; font-size:1.02rem;}
+  .src{font-size:.85rem; color:#94a3b8; margin-top:14px;}
+  .src a{color:#93c5fd;}
+
+  .note{
+    background:var(--amber-soft); border:1px solid #f0d19a; border-left:5px solid var(--amber);
+    border-radius:10px; padding:16px 18px; margin:22px 0; font-size:.97rem;
+  }
+  .note b{color:var(--amber);}
+
+  h2.section{
+    font-size:1.35rem; margin:46px 0 6px; display:flex; align-items:center; gap:12px;
+  }
+  h2.section .badge{
+    flex:0 0 auto; width:34px; height:34px; border-radius:9px; background:var(--log);
+    color:#fff; font-size:1rem; font-weight:700; display:grid; place-items:center;
+  }
+  .layer-tag{font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--log); font-weight:700;}
+  h3{font-size:1.08rem; margin:26px 0 4px;}
+  p{margin:10px 0;}
+  .lead{color:var(--muted);}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:8px 8px 4px; margin:18px 0; box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .card figcaption{color:var(--muted); font-size:.86rem; padding:2px 12px 12px; text-align:center;}
+  svg{display:block; width:100%; height:auto;}
+
+  .adds{
+    display:inline-block; background:var(--serve-soft); color:var(--serve);
+    border:1px solid #b6e3d2; border-radius:999px; padding:3px 12px; font-size:.82rem; font-weight:600;
+    margin:4px 0 2px;
+  }
+
+  ul.clean{margin:10px 0; padding-left:0; list-style:none;}
+  ul.clean li{position:relative; padding:6px 0 6px 30px; border-bottom:1px dashed var(--line);}
+  ul.clean li:last-child{border-bottom:none;}
+  ul.clean li::before{content:"✓"; position:absolute; left:2px; top:6px; color:var(--serve); font-weight:800;}
+
+  .callout{border-radius:12px; padding:16px 18px; margin:18px 0; font-size:.97rem;}
+  .callout h4{margin:0 0 6px; font-size:.98rem;}
+  .c-key{background:var(--log-soft); border:1px solid #bcd3fb;}
+  .c-key h4{color:var(--log);}
+  .c-obj{background:#fbeaec; border:1px solid #f0c2c8;}
+  .c-obj h4{color:#b3283b;}
+  .c-real{background:var(--derived-soft); border:1px solid #d9c2fb;}
+  .c-real h4{color:var(--derived);}
+
+  code{background:#eef1f5; padding:1px 6px; border-radius:5px; font-size:.9em; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--code);}
+
+  .futures{display:grid; grid-template-columns:1fr; gap:14px; margin:16px 0;}
+  @media(min-width:720px){.futures{grid-template-columns:repeat(3,1fr);}}
+  .future{border:1px solid var(--line); border-radius:12px; padding:16px; background:var(--card);}
+  .future .n{font-size:.75rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);}
+  .future h4{margin:6px 0 6px; font-size:1rem;}
+  .future p{font-size:.9rem; color:var(--muted); margin:0;}
+  .future.pick{border:2px solid var(--serve); background:var(--serve-soft);}
+  .future.pick .verdict{color:var(--serve); font-weight:700; font-size:.82rem;}
+  .future .verdict{font-size:.82rem; color:var(--muted); font-weight:600; margin-top:8px; display:block;}
+
+  .recap{background:#0f172a; color:#e2e8f0; border-radius:16px; padding:26px 28px; margin:44px 0 0;}
+  .recap h2{color:#fff; margin:0 0 12px;}
+  .recap ol{margin:0; padding-left:20px;}
+  .recap li{margin:8px 0;}
+  .recap b{color:#93c5fd;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:14px 0 4px; font-size:.85rem;}
+  .legend span{display:inline-flex; align-items:center; gap:7px; color:var(--muted);}
+  .sw{width:14px; height:14px; border-radius:4px; display:inline-block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="kicker">A guided re-read</p>
+    <h1>“The Log,” Part 4: System Building — one layer at a time</h1>
+    <p>Part 4 is where many readers lose the thread: Kreps mixes a big-picture philosophy about the future of databases with a concrete engineering mechanism, and jumps between them. This page separates the two — we <b>build the machine first, one idea per layer</b>, then zoom out to the philosophy once the parts are on the table.</p>
+    <p class="src">Re-organized from Jay Kreps, <em>“The Log: What every software engineer should know about real-time data's unifying abstraction”</em> (Dec 16, 2013). All ideas are his; only the ordering and diagrams are new.</p>
+  </header>
+
+  <div class="note">
+    <b>The one sentence to hold onto:</b> A distributed data system can be split into two parts — a <b style="color:var(--log)">log</b> (the source of truth: an ordered record of every change) and a <b style="color:var(--serve)">serving layer</b> (indexes that answer queries). Almost everything hard — consistency, replication, recovery, rebalancing — belongs to the log. What's left over, the query API and index shape, is the <em>only</em> part that should differ between systems.
+  </div>
+
+  <div class="legend">
+    <span><i class="sw" style="background:var(--log)"></i> Log (source of truth)</span>
+    <span><i class="sw" style="background:var(--serve)"></i> Serving node / index</span>
+    <span><i class="sw" style="background:var(--client)"></i> Client</span>
+    <span><i class="sw" style="background:var(--derived)"></i> Other systems / derived feeds</span>
+  </div>
+
+  <!-- ============ THE ONE IDEA ============ -->
+  <h2 class="section"><span class="badge" style="background:#0f172a">0</span> The thesis, in one picture</h2>
+  <p class="lead">Kreps' claim: the log does the same job <em>inside</em> a single distributed database that it does <em>across</em> a whole organization (Parts 2–3). “What, after all, is an organization, if not a very complicated distributed data system?” So we can factor any such system like this:</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 150" role="img" aria-label="A distributed data system equals a log plus a serving layer">
+      <defs><marker id="a0" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#94a3b8"/></marker></defs>
+      <rect x="8" y="35" width="210" height="80" rx="12" fill="#eef1f5" stroke="#cbd2dc"/>
+      <text x="113" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#1b2130">A distributed</text>
+      <text x="113" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1b2130">data system</text>
+      <text x="250" y="82" text-anchor="middle" font-size="30" fill="#94a3b8">=</text>
+      <rect x="292" y="35" width="200" height="80" rx="12" fill="var(--log-soft)" stroke="var(--log)"/>
+      <text x="392" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="var(--log)">The Log</text>
+      <text x="392" y="92" text-anchor="middle" font-size="11.5" fill="#3b6fd0">ordered change record</text>
+      <text x="520" y="82" text-anchor="middle" font-size="26" fill="#94a3b8">+</text>
+      <rect x="548" y="35" width="204" height="80" rx="12" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="650" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="var(--serve)">Serving layer</text>
+      <text x="650" y="92" text-anchor="middle" font-size="11.5" fill="#0a7c5a">indexes for queries</text>
+    </svg>
+    <figcaption>The whole of Part 4 is an argument for reading the right-hand side of this equation.</figcaption>
+  </figure>
+
+  <!-- ============ LAYER 1 ============ -->
+  <h2 class="section"><span class="badge">1</span> The simplest working system</h2>
+  <span class="layer-tag">Layer 1 · writes + one index</span>
+  <p>Start with the smallest thing that works. A writer appends changes to the log; the log assigns each a <b>sequential timestamp</b> (its position). One serving node <b>subscribes</b> to the log, reads changes in order, and applies each to its own local index (a B-tree, an SSTable, an inverted index — whatever it needs to answer its queries).</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 210" role="img" aria-label="A writer appends to the log; a serving node subscribes and builds a local index">
+      <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--log)"/></marker>
+      <marker id="a1s" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--serve)"/></marker></defs>
+
+      <!-- writer -->
+      <rect x="14" y="80" width="96" height="46" rx="10" fill="var(--client-soft)" stroke="var(--client)"/>
+      <text x="62" y="101" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--client)">Writer</text>
+      <text x="62" y="117" text-anchor="middle" font-size="11" fill="#64748b">append</text>
+      <line x1="112" y1="103" x2="176" y2="103" stroke="var(--log)" stroke-width="2.2" marker-end="url(#a1)"/>
+
+      <!-- log cells -->
+      <text x="330" y="58" text-anchor="middle" font-size="12" font-weight="700" fill="var(--log)">THE LOG · append-only, ordered</text>
+      <g font-size="13" font-weight="700" fill="#fff" text-anchor="middle">
+        <rect x="182" y="76" width="52" height="54" rx="7" fill="var(--log)"/><text x="208" y="108">0</text>
+        <rect x="238" y="76" width="52" height="54" rx="7" fill="var(--log)"/><text x="264" y="108">1</text>
+        <rect x="294" y="76" width="52" height="54" rx="7" fill="var(--log)"/><text x="320" y="108">2</text>
+        <rect x="350" y="76" width="52" height="54" rx="7" fill="var(--log)"/><text x="376" y="108">3</text>
+        <rect x="406" y="76" width="52" height="54" rx="7" fill="#3b6fd0"/><text x="432" y="108">4</text>
+      </g>
+      <text x="432" y="150" text-anchor="middle" font-size="10.5" fill="#3b6fd0">newest write → timestamp 4</text>
+
+      <!-- subscribe -->
+      <line x1="462" y1="103" x2="556" y2="103" stroke="var(--serve)" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#a1s)"/>
+      <text x="510" y="94" text-anchor="middle" font-size="10.5" fill="var(--serve)">subscribe</text>
+
+      <!-- serving node -->
+      <rect x="560" y="66" width="186" height="76" rx="11" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="653" y="92" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--serve)">Serving node</text>
+      <text x="653" y="110" text-anchor="middle" font-size="11" fill="#0a7c5a">applies 0→4 in order</text>
+      <text x="653" y="126" text-anchor="middle" font-size="11" fill="#0a7c5a">into local index</text>
+    </svg>
+    <figcaption>Writes flow <b>into</b> the log; the index is a <em>projection</em> of the log, rebuilt by replaying it in order.</figcaption>
+  </figure>
+
+  <div class="callout c-key">
+    <h4>Why this already matters</h4>
+    Two things a state machine needs (from Part 1) fall out for free: everything is <b>ordered</b>, and the index is <b>reconstructable</b> — lose the serving node and you can rebuild its index by replaying the log. The log is the truth; the index is disposable.
+  </div>
+
+  <!-- ============ LAYER 2 ============ -->
+  <h2 class="section"><span class="badge">2</span> Scale it: partitions &amp; replicas</h2>
+  <span class="adds">+ adds: horizontal scale &amp; fault tolerance</span>
+  <p>One log and one node don't scale. So <b>partition</b> the log (Part 3's trick), and give the serving layer the <b>same number of partitions</b> — though it may run on a different number of machines. Each log partition can also be <b>replicated</b> to several serving nodes, each keeping an identical copy of that partition's index.</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 260" role="img" aria-label="Two log partitions, each feeding replicated serving nodes">
+      <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--serve)"/></marker></defs>
+      <!-- partition 0 -->
+      <text x="120" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="var(--log)">Log · partition 0</text>
+      <g font-size="12" font-weight="700" fill="#fff" text-anchor="middle">
+        <rect x="40" y="40" width="42" height="44" rx="6" fill="var(--log)"/><text x="61" y="68">0</text>
+        <rect x="86" y="40" width="42" height="44" rx="6" fill="var(--log)"/><text x="107" y="68">1</text>
+        <rect x="132" y="40" width="42" height="44" rx="6" fill="var(--log)"/><text x="153" y="68">2</text>
+      </g>
+      <!-- partition 1 -->
+      <text x="120" y="164" text-anchor="middle" font-size="12" font-weight="700" fill="var(--log)">Log · partition 1</text>
+      <g font-size="12" font-weight="700" fill="#fff" text-anchor="middle">
+        <rect x="40" y="174" width="42" height="44" rx="6" fill="var(--log)"/><text x="61" y="202">0</text>
+        <rect x="86" y="174" width="42" height="44" rx="6" fill="var(--log)"/><text x="107" y="202">1</text>
+        <rect x="132" y="174" width="42" height="44" rx="6" fill="var(--log)"/><text x="153" y="202">2</text>
+      </g>
+
+      <!-- replicas for p0 -->
+      <line x1="178" y1="62" x2="470" y2="52" stroke="var(--serve)" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+      <line x1="178" y1="62" x2="470" y2="104" stroke="var(--serve)" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+      <rect x="474" y="34" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="549" y="58" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--serve)">P0 replica (leader)</text>
+      <rect x="474" y="86" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="#7fcdb4" stroke-dasharray="4 3"/>
+      <text x="549" y="110" text-anchor="middle" font-size="11.5" fill="#0a7c5a">P0 replica (copy)</text>
+
+      <!-- replicas for p1 -->
+      <line x1="178" y1="196" x2="470" y2="156" stroke="var(--serve)" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+      <line x1="178" y1="196" x2="470" y2="208" stroke="var(--serve)" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+      <rect x="474" y="138" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="549" y="162" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--serve)">P1 replica (leader)</text>
+      <rect x="474" y="190" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="#7fcdb4" stroke-dasharray="4 3"/>
+      <text x="549" y="214" text-anchor="middle" font-size="11.5" fill="#0a7c5a">P1 replica (copy)</text>
+
+      <text x="690" y="128" text-anchor="middle" font-size="10.5" fill="var(--muted)">same # partitions,</text>
+      <text x="690" y="144" text-anchor="middle" font-size="10.5" fill="var(--muted)">different # machines</text>
+    </svg>
+    <figcaption>Ordering is guaranteed <em>within</em> a partition — which is all a per-key system needs. Replicas of a partition are just copies replaying the same sub-log.</figcaption>
+  </figure>
+
+  <!-- ============ LAYER 3 ============ -->
+  <h2 class="section"><span class="badge">3</span> Reads without a leader (the timestamp trick)</h2>
+  <span class="adds">+ adds: correct reads, no leader election</span>
+  <p>Serving nodes replay the log “as quickly as possible,” so a replica may be slightly behind. How do you avoid serving <b>stale data</b> right after a write? The client carries the write's timestamp into its query. A serving node compares that timestamp to how far it has indexed, and <b>waits</b> if it hasn't caught up yet. This gives <b>read-your-writes</b> from any replica.</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 236" role="img" aria-label="Client writes to log getting timestamp X, then reads with timestamp X; serving node delays until indexed up to X">
+      <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--client)"/></marker>
+      <marker id="a3b" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--log)"/></marker></defs>
+
+      <rect x="14" y="92" width="104" height="52" rx="10" fill="var(--client-soft)" stroke="var(--client)"/>
+      <text x="66" y="114" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--client)">Client</text>
+      <text x="66" y="131" text-anchor="middle" font-size="10.5" fill="#64748b">holds ts = X</text>
+
+      <!-- step 1 write -->
+      <path d="M120,104 C 150,104 150,60 178,60" fill="none" stroke="var(--client)" stroke-width="2" marker-end="url(#a3)"/>
+      <text x="150" y="52" text-anchor="middle" font-size="10.5" fill="var(--client)">① write</text>
+      <rect x="182" y="42" width="196" height="40" rx="9" fill="var(--log-soft)" stroke="var(--log)"/>
+      <text x="280" y="66" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--log)">Log → returns ts = X</text>
+
+      <!-- step 2 read -->
+      <path d="M120,132 C 150,132 150,180 178,180" fill="none" stroke="var(--client)" stroke-width="2" marker-end="url(#a3)"/>
+      <text x="150" y="200" text-anchor="middle" font-size="10.5" fill="var(--client)">② read (ts = X)</text>
+
+      <!-- serving node with gauge -->
+      <rect x="182" y="150" width="366" height="66" rx="11" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="238" y="176" font-size="12" font-weight="700" fill="var(--serve)">Serving node</text>
+      <text x="238" y="193" font-size="10.8" fill="#0a7c5a">“indexed up to X? →</text>
+      <text x="238" y="207" font-size="10.8" fill="#0a7c5a">if not, wait, then answer”</text>
+      <!-- progress -->
+      <rect x="424" y="170" width="104" height="12" rx="6" fill="#cdeee1"/>
+      <rect x="424" y="170" width="72" height="12" rx="6" fill="var(--serve)"/>
+      <line x1="496" y1="164" x2="496" y2="188" stroke="var(--log)" stroke-width="2"/>
+      <text x="496" y="200" text-anchor="middle" font-size="9.5" fill="var(--log)">X</text>
+
+      <!-- subscription arrow log->serving -->
+      <line x1="280" y1="84" x2="280" y2="148" stroke="var(--log)" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a3b)"/>
+      <text x="330" y="120" text-anchor="middle" font-size="10" fill="var(--log)">replays log</text>
+    </svg>
+    <figcaption>Because the log is the source of truth, many serving nodes need <b>no “master” at all</b> — there's nothing to elect a leader <em>for</em>. The log already decided the order.</figcaption>
+  </figure>
+
+  <!-- ============ LAYER 4 ============ -->
+  <h2 class="section"><span class="badge">4</span> Recovery &amp; rebalancing, for free</h2>
+  <span class="adds">+ adds: restore failed nodes, move partitions</span>
+  <p>The trickiest chores in a distributed system — restoring a dead node, or moving a partition to a new machine — become <b>replay problems</b>. Two options: keep a <b>fixed window</b> of recent log + a periodic <b>snapshot</b> of the partition, or keep a <b>complete</b> (compacted) log and rebuild from scratch. Either way, the messy, stateful recovery logic moves <em>out</em> of the system-specific serving layer and <em>into</em> the general-purpose log.</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 200" role="img" aria-label="A failed serving node is restored by replaying a snapshot plus recent log">
+      <defs><marker id="a4" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--serve)"/></marker></defs>
+      <!-- snapshot -->
+      <rect x="20" y="70" width="120" height="60" rx="10" fill="#eef1f5" stroke="#cbd2dc"/>
+      <text x="80" y="95" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">Snapshot</text>
+      <text x="80" y="112" text-anchor="middle" font-size="10.5" fill="#64748b">state up to ts 2</text>
+      <text x="170" y="104" text-anchor="middle" font-size="20" fill="#94a3b8">+</text>
+      <!-- recent log window -->
+      <text x="300" y="52" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--log)">recent log window</text>
+      <g font-size="12" font-weight="700" fill="#fff" text-anchor="middle">
+        <rect x="200" y="70" width="46" height="60" rx="7" fill="#93b4ef"/><text x="223" y="105">3</text>
+        <rect x="250" y="70" width="46" height="60" rx="7" fill="var(--log)"/><text x="273" y="105">4</text>
+        <rect x="300" y="70" width="46" height="60" rx="7" fill="var(--log)"/><text x="323" y="105">5</text>
+      </g>
+      <line x1="352" y1="100" x2="470" y2="100" stroke="var(--serve)" stroke-width="2.2" marker-end="url(#a4)"/>
+      <text x="411" y="90" text-anchor="middle" font-size="10.5" fill="var(--serve)">replay</text>
+      <!-- restored node -->
+      <rect x="476" y="66" width="200" height="68" rx="11" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="576" y="94" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--serve)">Restored serving node</text>
+      <text x="576" y="112" text-anchor="middle" font-size="10.8" fill="#0a7c5a">index rebuilt, caught up to 5</text>
+    </svg>
+    <figcaption>“Snapshot + tail of the log” is the same recipe used to bootstrap a brand-new replica when you rebalance.</figcaption>
+  </figure>
+
+  <div class="callout c-key">
+    <h4>Tally: what the log does, so the serving layer doesn't have to</h4>
+    <ul class="clean">
+      <li>Sequences concurrent updates → <b>consistency</b> (eventual or immediate)</li>
+      <li><b>Replication</b> between nodes</li>
+      <li><b>“Commit” semantics</b> — acknowledge a write only once it can't be lost</li>
+      <li>An external <b>subscription feed</b> out of the system</li>
+      <li><b>Restore</b> failed replicas &amp; <b>bootstrap</b> new ones</li>
+      <li><b>Rebalance</b> data between nodes</li>
+    </ul>
+    That's most of what a distributed data system <em>is</em>. What remains is just the <b>query API + index shape</b> — the part that legitimately differs (a full-text search hits every partition; a key lookup hits one).
+  </div>
+
+  <!-- ============ LAYER 5 ============ -->
+  <h2 class="section"><span class="badge">5</span> One log, many indexes → back to data integration</h2>
+  <span class="adds">+ adds: the link to Parts 2 &amp; 3</span>
+  <p>Here's where Part 4 reconnects to the rest of the essay. Since the log already exposes a subscription feed, <b>many different systems can share one log</b>, each building the index it's good at. And a log-fed system is itself a stream source — a stream processor can consume feeds and serve its output through yet another index.</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 250" role="img" aria-label="One shared log feeding a key-value store, a search index, an OLAP system, and a stream processor whose output feeds another index">
+      <defs><marker id="a5" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker></defs>
+      <!-- log spine -->
+      <rect x="40" y="104" width="150" height="52" rx="11" fill="var(--log)"/>
+      <text x="115" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Shared LOG</text>
+      <text x="115" y="147" text-anchor="middle" font-size="10.5" fill="#dbe7ff">system of record</text>
+
+      <!-- fan out -->
+      <g stroke="#9aa6b6" stroke-width="1.8" fill="none">
+        <path d="M192,120 C 250,120 250,44 300,44" marker-end="url(#a5)"/>
+        <path d="M192,128 C 250,128 250,104 300,104" marker-end="url(#a5)"/>
+        <path d="M192,140 C 250,140 250,166 300,166" marker-end="url(#a5)"/>
+        <path d="M192,150 C 250,150 250,224 300,224" marker-end="url(#a5)"/>
+      </g>
+
+      <rect x="304" y="26" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="379" y="50" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--serve)">Key-value store</text>
+      <rect x="304" y="86" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="379" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--serve)">Search index</text>
+      <rect x="304" y="148" width="150" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="379" y="172" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--serve)">OLAP / graph</text>
+
+      <!-- stream processor -->
+      <rect x="304" y="206" width="150" height="38" rx="9" fill="var(--derived-soft)" stroke="var(--derived)"/>
+      <text x="379" y="230" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--derived)">Stream processor</text>
+      <line x1="456" y1="225" x2="520" y2="225" stroke="var(--derived)" stroke-width="1.8" marker-end="url(#a5)"/>
+      <rect x="524" y="206" width="170" height="38" rx="9" fill="var(--serve-soft)" stroke="var(--serve)"/>
+      <text x="609" y="230" text-anchor="middle" font-size="11" font-weight="700" fill="var(--serve)">index on derived feed</text>
+      <text x="500" y="212" text-anchor="middle" font-size="9.5" fill="var(--derived)">new feed</text>
+    </svg>
+    <figcaption>Every index type is “just a different view of the same log.” The cost of an extra copy of data in the log is <b>amortized</b> across all these consumers.</figcaption>
+  </figure>
+
+  <!-- ============ ZOOM OUT ============ -->
+  <h2 class="section"><span class="badge" style="background:var(--derived)">6</span> Now zoom out: “unbundling the database”</h2>
+  <p class="lead">Only <em>after</em> the mechanism is clear does Kreps' philosophy land. If every query system is “just an index,” then your whole organization looks like <b>one giant distributed database</b> — Redis, Solr, Hive, a stream processor: all just different indexes and materialized views over a shared log. Why do we have so many separate systems? Because building distributed systems is <b>hard</b>, so each one narrows its scope to stay feasible. He sees three ways this could go:</p>
+
+  <div class="futures">
+    <div class="future">
+      <span class="n">Future 1</span>
+      <h4>Status quo</h4>
+      <p>Systems stay separate. Then cross-system <b>data integration via an external log</b> stays one of the most important problems.</p>
+      <span class="verdict">Likely for a while</span>
+    </div>
+    <div class="future">
+      <span class="n">Future 2</span>
+      <h4>Re-consolidation</h4>
+      <p>One general “uber-system” absorbs every function — you'd run one, not a dozen. No integration problem left.</p>
+      <span class="verdict">He thinks: unlikely</span>
+    </div>
+    <div class="future pick">
+      <span class="n">Future 3 · his favorite</span>
+      <h4>Unbundling</h4>
+      <p>Infra decomposes into reusable open-source blocks. Assemble systems Lego-style; if build time drops from years to weeks, the pull toward one monolith disappears.</p>
+      <span class="verdict">The appealing path</span>
+    </div>
+  </div>
+
+  <h3>“Unbundling” = distributed-systems Lego</h3>
+  <p>The insight is that the pieces already exist as separate components — with the <b>log as one of the core blocks</b>:</p>
+
+  <figure class="card">
+    <svg viewBox="0 0 760 176" role="img" aria-label="Building blocks: coordination, resource management, indexing, communication, serialization, and the log">
+      <g font-size="11" text-anchor="middle">
+        <rect x="20" y="30" width="164" height="46" rx="9" fill="#eef1f5" stroke="#cbd2dc"/>
+        <text x="102" y="50" font-weight="700" fill="#334155">Coordination</text><text x="102" y="66" fill="#64748b">ZooKeeper</text>
+        <rect x="200" y="30" width="164" height="46" rx="9" fill="#eef1f5" stroke="#cbd2dc"/>
+        <text x="282" y="50" font-weight="700" fill="#334155">Resource mgmt</text><text x="282" y="66" fill="#64748b">Mesos / YARN</text>
+        <rect x="380" y="30" width="164" height="46" rx="9" fill="#eef1f5" stroke="#cbd2dc"/>
+        <text x="462" y="50" font-weight="700" fill="#334155">Indexing</text><text x="462" y="66" fill="#64748b">Lucene / LevelDB</text>
+        <rect x="560" y="30" width="180" height="46" rx="9" fill="#eef1f5" stroke="#cbd2dc"/>
+        <text x="650" y="50" font-weight="700" fill="#334155">Communication</text><text x="650" y="66" fill="#64748b">Netty / Finagle</text>
+
+        <rect x="110" y="92" width="200" height="46" rx="9" fill="#eef1f5" stroke="#cbd2dc"/>
+        <text x="210" y="112" font-weight="700" fill="#334155">Serialization</text><text x="210" y="128" fill="#64748b">Avro / Protobuf / Thrift</text>
+        <rect x="330" y="92" width="220" height="46" rx="9" fill="var(--log-soft)" stroke="var(--log)"/>
+        <text x="440" y="112" font-weight="700" fill="var(--log)">The backing log</text><text x="440" y="128" fill="#3b6fd0">Kafka / BookKeeper</text>
+      </g>
+      <text x="380" y="164" text-anchor="middle" font-size="10.5" fill="var(--muted)">Snap these together → a distributed data system, without rebuilding consistency &amp; recovery each time.</text>
+    </svg>
+    <figcaption>The log becomes a <b>commoditized building block</b> — like a hash table, you use it without caring about the exact algorithm inside.</figcaption>
+  </figure>
+
+  <!-- ============ OBJECTIONS ============ -->
+  <h2 class="section"><span class="badge" style="background:var(--amber)">7</span> Two objections he heads off</h2>
+
+  <div class="callout c-obj">
+    <h4>“Keeping a whole extra copy in the log is wasteful!”</h4>
+    Not really, for three reasons: (1) the log does only <b>linear reads/writes</b>, so it's happy on cheap multi-TB spinning disks (LinkedIn stored 75&nbsp;TB/datacenter on Kafka), while serving systems burn expensive RAM/SSD; (2) that cost is <b>amortized</b> across every index that shares the log; (3) the log is simply a very efficient storage shape. Net expense: minimal.
+  </div>
+
+  <div class="callout c-key">
+    <h4>“Doesn't the log have to be strongly consistent?”</h4>
+    No. Kafka/BookKeeper happen to be consistent logs, but you could factor a <b>Dynamo-style, eventually-consistent (AP) log</b> + a key-value serving layer. Such a log redelivers old messages and pushes reconciliation onto the subscriber — trickier, but the same two-part factoring still holds.
+  </div>
+
+  <!-- ============ LINKEDIN ============ -->
+  <h2 class="section"><span class="badge" style="background:var(--derived)">8</span> How LinkedIn actually ran this</h2>
+  <div class="callout c-real">
+    <h4>Not theory — production</h4>
+    LinkedIn's search, social graph, and OLAP systems were all built this way: each feeds off a database change-log (via <b>Databus</b>) or a dedicated <b>Kafka</b> feed, then adds its own partitioning + index + query API. A single feed is often replicated into <b>several</b> serving systems at once.
+    <p style="margin:10px 0 0;">The radical part: those serving systems have <b>no external write API at all</b>. Kafka and the databases are the system of record; each node <b>“blindly transcribes”</b> its partition's feed into local storage, and a dead node is restored by replaying the upstream log. Taken to the limit, the serving tier is <b>“nothing less than a sort of cache”</b> — writes go straight to the log, and the index is just a fast, rebuildable view of it.</p>
+  </div>
+
+  <!-- ============ RECAP ============ -->
+  <div class="recap">
+    <h2>The 30-second recap</h2>
+    <ol>
+      <li><b>Factor the system</b> into a <b>log</b> (ordered truth) + a <b>serving layer</b> (indexes).</li>
+      <li><b>Layer 1:</b> writes go to the log; a node subscribes and builds an index that's a replayable projection.</li>
+      <li><b>Layers 2–4:</b> partition + replicate for scale/HA; get correct reads via a <b>write-timestamp</b> (so no leader election needed); recover and rebalance by <b>replaying snapshot + log tail</b>.</li>
+      <li>The log therefore owns <b>consistency, replication, commit, subscription, recovery, rebalancing</b> — leaving only the <b>query API + index shape</b> to vary per system.</li>
+      <li><b>Layer 5:</b> one log, many indexes → this is the same data-integration idea from Parts 2–3, now inside one system.</li>
+      <li><b>Zoom out:</b> the org is one big database; every store is “just an index.” Kreps bets on <b>unbundling</b> — assembling systems from reusable blocks, with the log as a commoditized building block.</li>
+      <li><b>Objections</b> (wasteful copy? must it be consistent?) both dissolve; LinkedIn ran exactly this, with serving tiers as write-API-less caches over the log.</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

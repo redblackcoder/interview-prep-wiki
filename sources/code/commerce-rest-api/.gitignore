@@ -1,0 +1,12 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+.idea/
+*.iml
+# .vscode/settings.json holds a machine-specific absolute path; keep it local.
+.vscode/
+.DS_Store
+# frontend
+frontend/node_modules/
+frontend/dist/
