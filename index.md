@@ -2,6 +2,8 @@
 
 ## Categories
 
+- [[problems/README|Problems]] — Coding exercises and system designs with worked solutions
+
 - [[wiki/theory/|Theory]] — CS fundamentals
 - [[wiki/system-design-concepts/|System Design Concepts]] — Patterns from design problems
 - [[wiki/tech/|Tech]] — Technologies and platforms

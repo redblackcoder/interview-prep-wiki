@@ -19,6 +19,8 @@ log.md                  # Chronological ingest log
 
 ## Usage
 
+Browse the [problem catalog](problems/README.md) for problem statements, solution summaries and links to the raw solutions.
+
 Open this directory as an Obsidian vault. Pages use `[[wikilinks]]` for internal cross-references.
 
 ## Companion repo
