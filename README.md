@@ -2,6 +2,8 @@
 
 Structured knowledge base for technical interview preparation (senior roles). Built as an Obsidian vault with interlinked wiki pages extracted from practice problems, system design exercises, and study materials.
 
+[Open the study home](wiki/README.md)
+
 ## Structure
 
 ```
@@ -11,7 +13,7 @@ wiki/                   # Wiki pages organized by category
   tech/                 # Technologies (AWS, k8s, Kafka, Redis)
   algorithms/           # CS algorithms (sorting, graphs, DP)
   coding-patterns/      # Patterns from coding problems (sliding window, two pointers)
-sources/                # Source extracts (what was learned from each raw material)
+sources/                # Source extracts, saved code, and anonymized notes
 refs/                   # Cross-reference indexes
 index.md                # Master page catalog
 log.md                  # Chronological ingest log
