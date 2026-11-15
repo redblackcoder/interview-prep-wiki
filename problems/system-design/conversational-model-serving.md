@@ -2,8 +2,8 @@
 
 Stream responses for multi-turn conversations under a fixed inference budget.
 
-## Solution summary
+## Recorded approach
 
-Persist conversation turns and route worker output back to the connection holding the request.
+Hold the client stream open for token delivery and queue requests when generation capacity is exhausted. The discussion surfaced the need to route queued responses back to the waiting connection.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/conversational-model-serving.md)
+[Anonymized candidate design notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/conversational-model-serving.md)

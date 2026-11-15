@@ -2,8 +2,8 @@
 
 Ingest large evidence files with integrity verification, access control and an auditable chain of custody.
 
-## Solution summary
+## Recorded approach
 
-Verify signed content manifests and couple protected state changes to durable audit records.
+Verify hashes and device signatures on upload, log custody changes in a hash chain, and filter search by access policy. The audit discussion raised an atomicity gap.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/digital-evidence-archive.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/digital-evidence-archive.md)

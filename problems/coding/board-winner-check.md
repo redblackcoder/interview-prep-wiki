@@ -2,8 +2,8 @@
 
 Detect a winning row, column or diagonal on a square game board.
 
-## Solution summary
+## Recorded approach
 
-Scan complete lines for a common occupied value, or maintain counters as moves arrive.
+The Java solution checked rows, columns and both diagonals. The follow-up proposed updating per-player counters after each move.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/board-winner-check.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/board-winner-check.md)

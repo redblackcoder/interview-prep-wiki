@@ -2,8 +2,8 @@
 
 Route an authenticated user from one landing page to the chosen workspace.
 
-## Solution summary
+## Recorded approach
 
-Resolve workspace membership before proxying to its home region.
+Use a central landing page and a routing proxy keyed by workspace and identity. The discussion compared geo-DNS and Anycast and left cross-workspace authorization open.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/unified-workspace-routing.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/unified-workspace-routing.md)

@@ -2,8 +2,8 @@
 
 Share a fixed number of concurrent inference slots among latency-sensitive features.
 
-## Solution summary
+## Recorded approach
 
-Serve priority tiers in order and share freed slots by weight among eligible requests in a tier.
+Use priority tiers and weighted sharing among waiting calls. Compare a shared counter with per-worker allocations and bound pending requests by timeout.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/shared-inference-capacity.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/shared-inference-capacity.md)

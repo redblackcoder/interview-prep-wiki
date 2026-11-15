@@ -2,8 +2,8 @@
 
 Rank products and customers and report order value and returns by period.
 
-## Solution summary
+## Recorded approach
 
-Keep line-item facts at their original grain and use separate timestamps for sales and returns.
+The board models orders, line items, transactions and returns. Its sales query ranks products by the sum of quantity times price.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/order-and-returns-analytics.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/order-and-returns-analytics.md)

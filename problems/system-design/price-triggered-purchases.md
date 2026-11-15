@@ -2,8 +2,8 @@
 
 Buy from a seller when a quoted price falls within a customer's limit before expiry.
 
-## Solution summary
+## Recorded approach
 
-Coalesce due checks by item and retry purchases with a stable order ID.
+Persist orders, queue due work by book, and use each order ID as the seller idempotency key. Hourly check buckets were proposed after a long order could go unchecked.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/price-triggered-purchases.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/price-triggered-purchases.md)

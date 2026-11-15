@@ -2,8 +2,8 @@
 
 Accept contest submissions and rank contestants by accepted problems, failed attempts and time.
 
-## Solution summary
+## Recorded approach
 
-Queue immutable submissions for isolated judging and derive standings from recorded verdicts.
+The board models contest problems, test cases and timestamped submissions. A submission queue feeds verification, whose result is associated with the submitted solution.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/contest-judging-service.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/contest-judging-service.md)

@@ -2,8 +2,8 @@
 
 Apply ordered accept and block rules over string and Boolean attributes.
 
-## Solution summary
+## Recorded approach
 
-Compile predicates into an expression tree and return the action of the first matching rule.
+Evaluate rules in order, parse quoted strings without splitting on embedded operators, and compose equality and Boolean clauses into a nested predicate tree.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/fraud-rule-interpreter.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/fraud-rule-interpreter.md)

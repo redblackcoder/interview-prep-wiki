@@ -2,8 +2,8 @@
 
 Search an in-memory document collection with nested AND and OR expressions and ranked partial matches.
 
-## Solution summary
+## Recorded approach
 
-Evaluate a query tree over postings, then rank eligible documents with weighted term frequencies.
+Index term frequencies by term and document ID. Evaluate AND/OR in a query tree and use weighted TF-IDF to rank matches.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/boolean-document-search.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/boolean-document-search.md)

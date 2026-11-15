@@ -2,8 +2,8 @@
 
 Upload short videos and serve a personalized, continuously paginated feed.
 
-## Solution summary
+## Recorded approach
 
-Transcode asynchronously and combine precomputed timelines with read-time fanout for popular accounts.
+The board separates upload, encoding and metadata from feed generation. The feed service consumes ranked post IDs from a feed database and cache.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/short-video-feed.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/short-video-feed.md)

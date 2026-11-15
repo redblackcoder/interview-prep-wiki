@@ -2,8 +2,8 @@
 
 Encode and lazily decode integers in repeated-value runs or groups of eight literals.
 
-## Solution summary
+## Recorded approach
 
-Start a candidate repeat run and switch to literal mode if a short run breaks.
+The encoder switches from a short repeat to a literal run when a different value arrives. The decoder advances a run index and an offset, yielding one value at a time.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/streaming-integer-run-codec.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/streaming-integer-run-codec.md)

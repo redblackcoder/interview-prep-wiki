@@ -2,8 +2,8 @@
 
 Accept bids until a fixed close and determine one winner under heavy contention.
 
-## Solution summary
+## Recorded approach
 
-Durably append bids per auction and compute the maximum asynchronously.
+Log bids by auction and aggregate the maximum asynchronously. The recorded design discusses delayed closing and recovery across regions.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/live-auctions.md)
+[Anonymized candidate design notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/live-auctions.md)

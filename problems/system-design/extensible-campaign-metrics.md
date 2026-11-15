@@ -2,8 +2,8 @@
 
 Add dashboard metrics and dimensions without rewriting a batch pipeline for each request.
 
-## Solution summary
+## Recorded approach
 
-Keep a defined fact grain, dimension tables and versioned aggregation definitions.
+Aggregate structured campaign logs in micro-batches. A star schema and configuration-driven contract allow the dashboard to add dimensions and metrics.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/extensible-campaign-metrics.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/extensible-campaign-metrics.md)

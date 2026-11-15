@@ -2,8 +2,8 @@
 
 Run interactive and batch workflows that gather context, call models, check quality and publish outputs.
 
-## Solution summary
+## Recorded approach
 
-Compile a versioned workflow graph and checkpoint completed steps.
+Author workflows as DAGs, validate them before deployment, and execute online and batch runs separately. The design covers tenant isolation and resuming failed steps.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/model-workflow-platform.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/model-workflow-platform.md)

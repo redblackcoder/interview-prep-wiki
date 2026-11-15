@@ -2,8 +2,8 @@
 
 Coordinate many producers and consumers on a finite FIFO.
 
-## Solution summary
+## Recorded approach
 
-Protect ring-buffer state with a lock and separate conditions for free space and available items.
+Use a circular buffer with head and tail pointers, a mutex and condition variables. The discussion included blocking, timeout and fairness options.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/bounded-multi-producer-queue.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/bounded-multi-producer-queue.md)

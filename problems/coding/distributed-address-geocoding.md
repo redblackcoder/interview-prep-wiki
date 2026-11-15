@@ -2,8 +2,8 @@
 
 Replace unreliable coordinates in a large file while sharing geocoder results across duplicate addresses.
 
-## Solution summary
+## Recorded approach
 
-Partition by normalized address, geocode distinct keys, then join results back to all input rows.
+Partition input by address hash and shuffle matching keys to the same worker for geocoding.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/distributed-address-geocoding.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/distributed-address-geocoding.md)

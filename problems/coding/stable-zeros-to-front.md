@@ -2,8 +2,8 @@
 
 Move zeros to the beginning of an array while keeping the order of nonzeros.
 
-## Solution summary
+## Recorded approach
 
-Compact nonzero values from right to left, then zero the remaining prefix.
+The Java implementation scanned from the end with two pointers, moving zeros to the front while preserving the order of other values.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/stable-zeros-to-front.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/stable-zeros-to-front.md)

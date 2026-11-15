@@ -2,8 +2,8 @@
 
 Maximize profit with at most two non-overlapping transactions.
 
-## Solution summary
+## Recorded approach
 
-Combine the best prefix trade and the best suffix trade across each split. The recorded follow-up was unfinished.
+The follow-up split the prices into prefix and suffix ranges. The implementation ended with a known bug.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/stock-profit-with-two-trades.md)
+[Anonymized session notes (partial)](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/stock-profit-with-two-trades.md)

@@ -1,6 +1,6 @@
 # Problems
 
-Browse interview and practice problems by format. Each overview links to its implementation or worked solution in the companion repository. Worked solutions reconstruct the technical approach when only notes or a whiteboard survived.
+Each entry links to saved code, a whiteboard, or notes from the exercise. Partial attempts retain their original stopping point.
 
 ## AI-assisted coding
 

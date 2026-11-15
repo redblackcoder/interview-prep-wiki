@@ -2,8 +2,8 @@
 
 Delete the fewest intervals so the survivors do not overlap.
 
-## Solution summary
+## Recorded approach
 
-Use suffix dynamic programming to maximize the number of compatible intervals retained.
+The board explores deletion heuristics and a suffix DP. Its written keep branch skips conflicting intervals without charging those deletions, so the recorded recurrence is incomplete.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/remove-overlapping-intervals.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/remove-overlapping-intervals.md)

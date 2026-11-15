@@ -2,10 +2,10 @@
 
 Keep concurrent point reads and writes recoverable after a process or machine crash.
 
-## Solution summary
+## Recorded approach
 
-Order updates through a write-ahead log and publish in-memory values after durable flush.
+Serialize WAL writes ahead of map updates and replay the log on restart. Group commit was discussed as a way to share flush costs.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/durable-single-node-key-value-store.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/durable-single-node-key-value-store.md)
 
-[Java store implementation](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/lsm-kv-store/src/main/java/com/practice/lsm/KVStore.java)
+[Saved Java implementation](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/lsm-kv-store/src/main/java/com/practice/lsm/KVStore.java)

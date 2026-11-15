@@ -2,8 +2,8 @@
 
 Return the ten highest-ranked keyword suggestions while a user types.
 
-## Solution summary
+## Recorded approach
 
-Serve prefix lookups from a precomputed vocabulary index.
+The diagram compares precomputed top-ten results per prefix with sharded tries. A ranker and retriever sit behind the autocomplete service, and a query corpus feeds the indexer.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/search-autocomplete.md)
+[Original architecture sketch (anonymized crop)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/search-autocomplete.md)

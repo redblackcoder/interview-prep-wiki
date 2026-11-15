@@ -2,8 +2,8 @@
 
 Match a string against literals, dot and the zero-or-more star operator.
 
-## Solution summary
+## Recorded approach
 
-Memoize suffix pairs. At a starred atom either skip it or consume one matching character and stay at that atom.
+The notes identify the two branches for a star: skip the atom or consume one matching character while staying at the atom.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/whole-string-pattern-matching.md)
+[Recorded practice notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/whole-string-pattern-matching.md)

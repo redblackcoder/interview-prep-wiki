@@ -2,8 +2,8 @@
 
 Drive a rover with turn and move commands on a grid containing obstacles.
 
-## Solution summary
+## Recorded approach
 
-Model heading and position independently and test a proposed move before committing it.
+The Java CLI used a controller, rover state and commands. The obstacle extension checked a hash set of points before moving.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/rover-command-line.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/rover-command-line.md)

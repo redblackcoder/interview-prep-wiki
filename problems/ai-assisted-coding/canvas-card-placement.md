@@ -2,8 +2,8 @@
 
 Build an ordered list of cards with canvas-specific ranking, eligibility and mandatory positions.
 
-## Solution summary
+## Recorded approach
 
-Filter and rank each pool, place mandatory cards, then fill the remaining positions in order.
+The implementation used a fixed-size array, separate ad and content counters, and canvas-specific placement rules. The recorded tests exposed a one-based indexing error.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/canvas-card-placement.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/canvas-card-placement.md)

@@ -2,8 +2,8 @@
 
 Share binary files with users and groups and synchronize changes across devices.
 
-## Solution summary
+## Recorded approach
 
-Separate object contents from versioned metadata, permissions and a change feed.
+The uploader creates pending metadata and stores file bytes separately. The board shows identity-provider integration and compares polling with WebSockets for client sync.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/document-sharing-and-sync.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/document-sharing-and-sync.md)

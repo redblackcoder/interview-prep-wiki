@@ -2,8 +2,8 @@
 
 Merge two sorted arrays into the first array using its spare trailing capacity.
 
-## Solution summary
+## Recorded approach
 
-The initial forward-shifting approach can take quadratic time. The reconstructed linear follow-up fills the destination backwards from the larger unconsumed tail.
+The proposed forward insertion shifted batches. Reverse filling was discussed as a linear alternative, and its implementation remained unfinished.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/merge-sorted-arrays-in-place.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/merge-sorted-arrays-in-place.md)

@@ -2,8 +2,8 @@
 
 Resolve a permission for a user with multiple roles and inherited policies.
 
-## Solution summary
+## Recorded approach
 
-Search each role hierarchy for a decision, honoring local overrides, then combine user roles with OR.
+The Java evaluator traversed nested roles with DFS, applied higher-level overrides, combined user roles with OR and denied by default.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/nested-role-permissions.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/nested-role-permissions.md)

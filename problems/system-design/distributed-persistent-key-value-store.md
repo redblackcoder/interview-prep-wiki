@@ -2,8 +2,8 @@
 
 Provide durable point reads and partition-local range scans across storage nodes.
 
-## Solution summary
+## Recorded approach
 
-Route by partition key, order by sort key inside a shard, and replicate shard updates.
+Route requests through stateless coordinators and replicate across failure domains. The exercise ended at the choice between direct quorum writes and a leader per shard.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/distributed-persistent-key-value-store.md)
+[Anonymized design notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/distributed-persistent-key-value-store.md)

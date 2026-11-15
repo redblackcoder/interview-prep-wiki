@@ -2,8 +2,8 @@
 
 Recover a partitioned event pipeline whose lag grows while consumers appear healthy.
 
-## Solution summary
+## Recorded approach
 
-Compare lag and processing rate per partition before changing fleet size.
+Investigate hot partitions and retrying sources. The recorded proposals were key salting, incorporating session identity, and throttling the offending source.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/stream-backlog-diagnosis.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/stream-backlog-diagnosis.md)

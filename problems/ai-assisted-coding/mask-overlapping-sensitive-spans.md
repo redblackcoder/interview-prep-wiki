@@ -2,8 +2,8 @@
 
 Mask portions of each line identified by multiple detectors.
 
-## Solution summary
+## Recorded approach
 
-Merge half-open spans and render each covered range once. The original processor collected spans but left rendering unfinished.
+The processor collects half-open spans from each detector for each input line. Its apply method still returns the original line and contains the original TODO.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/mask-overlapping-sensitive-spans.md)
+[Saved Java implementation (partial)](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/java-practice/practice/aiassisted/pii/Processor.java)

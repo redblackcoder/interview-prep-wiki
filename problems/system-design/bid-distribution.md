@@ -2,8 +2,8 @@
 
 Distribute changing bid values to several independent serving clusters.
 
-## Solution summary
+## Recorded approach
 
-Ship partitioned deltas and use periodic snapshots to bound recovery time.
+Publish chunked bid deltas keyed by advertiser. Each cluster applies updates locally and can recover from a snapshot plus later offsets.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/bid-distribution.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/bid-distribution.md)

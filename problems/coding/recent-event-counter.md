@@ -2,8 +2,8 @@
 
 Count events in a rolling five-minute window.
 
-## Solution summary
+## Recorded approach
 
-Keep ordered timestamps in a deque and remove expired entries from the front.
+Append timestamped events to a deque and remove entries strictly older than the window start. An event exactly at the cutoff still counts.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/recent-event-counter.md)
+[Saved Java excerpt](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/Count%20Events.md)

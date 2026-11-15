@@ -2,8 +2,8 @@
 
 Allocate unique identifiers from multiple machines without a central write for every ID.
 
-## Solution summary
+## Recorded approach
 
-Lease disjoint ID ranges or combine a unique worker identity with time and a local sequence.
+The design moved from a per-millisecond counter to worker IDs with leases. It considered clock rollback, restart state and the cost of persisting a last-issued ID.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/distributed-id-generation.md)
+[Anonymized candidate design notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/distributed-id-generation.md)

@@ -2,8 +2,8 @@
 
 Find the maximum gain from one buy followed by one sale.
 
-## Solution summary
+## Recorded approach
 
-Track the cheapest price seen before each sale candidate.
+Scan backward and track the best later selling price.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/maximum-stock-profit.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/maximum-stock-profit.md)

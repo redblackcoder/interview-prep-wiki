@@ -2,8 +2,8 @@
 
 Detect engagement regressions during frequent releases by independent teams.
 
-## Solution summary
+## Recorded approach
 
-Roll out to measured cohorts and make promotion conditional on guardrail metrics.
+The proposed rollout gradually increased exposure and rolled back on metric degradation. Enforced experiments and release scorecards came up in feedback.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/guarded-feature-rollout.md)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/guarded-feature-rollout.md)

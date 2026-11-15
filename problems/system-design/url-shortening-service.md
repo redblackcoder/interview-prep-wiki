@@ -2,8 +2,8 @@
 
 Create short, globally unique redirects and serve fast lookups across regions.
 
-## Solution summary
+## Recorded approach
 
-Allocate keys without collisions, persist the mapping before acknowledgment and cache redirects near readers.
+The initial proposal used truncated hashes and retried collisions. The discussion moved to region prefixes, pre-generated keys and an atomic counter, then considered enumeration of sequential IDs.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/url-shortener-global-database-review.html)
+[Anonymized session notes](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/url-shortening-service.md)

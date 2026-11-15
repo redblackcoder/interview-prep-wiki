@@ -2,8 +2,8 @@
 
 Count contiguous subarrays of positive integers with product strictly below k.
 
-## Solution summary
+## Recorded approach
 
-Maintain the longest valid window ending at each right endpoint.
+The board traces a sliding window, dividing out the leftmost factor when extending the window would exceed the threshold.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/worked-problems/subarray-product-below-threshold.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/code/exercise-notes/subarray-product-below-threshold.md)

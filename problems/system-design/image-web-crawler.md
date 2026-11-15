@@ -2,8 +2,8 @@
 
 Submit seed URLs and retrieve a paginated set of images reachable from each seed.
 
-## Solution summary
+## Recorded approach
 
-Traverse a bounded frontier and retain seed provenance even when page fetches are shared.
+Submit seeds as a job, track pending URLs and associate each discovered image with its input URL. The second board explores host-based sharding and the crawl frontier.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/image-web-crawler.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/image-web-crawler.md)

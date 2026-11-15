@@ -2,8 +2,8 @@
 
 Match an on-demand ride to an available driver with the requested vehicle type.
 
-## Solution summary
+## Recorded approach
 
-Use a regional spatial index for discovery and a conditional assignment for correctness.
+Index available drivers by cell and have a match service shortlist nearby drivers. Queue offers and record matched riders and drivers in a key-value store.
 
-[Full solution in interview-prep-raw](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/ride-dispatch.md)
+[Original whiteboard (anonymized export)](https://github.com/redblackcoder/interview-prep-raw/blob/master/docs/designs/ride-dispatch.md)
